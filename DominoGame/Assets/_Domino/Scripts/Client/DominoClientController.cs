@@ -133,7 +133,7 @@ namespace Domino.Client
                         }
                         else if (e.Player != 0)
                         {
-                            yield return new WaitForSeconds(UnityEngine.Random.Range(.8f, 1.5f));
+                            yield return new WaitForSeconds(UnityEngine.Random.Range(1.1f, 1.7f));
                             foreach (var candidate in game.Hand(e.Player))
                             {
                                 if (!game.CanPlay(candidate)) continue;

@@ -75,7 +75,7 @@ namespace Domino.UI
             dragOffset = Rect.anchoredPosition - pointer;
             eventData.eligibleForClick = false;
             transform.SetAsLastSibling();
-            Rect.localScale = Vector3.one * 1.13f;
+            Rect.localScale = Vector3.one * 1.24f;
         }
         public void OnDrag(PointerEventData eventData)
         {
@@ -110,7 +110,11 @@ namespace Domino.UI
             bool ivory = TileStyles.Current == TileStyle.TeamFhoIvory;
             bool brandedWhite = TileStyles.Current == TileStyle.TeamFhoWhite;
             Rounded(vh, new Rect(r.x + 1, r.y - 4, r.width, r.height), 6, new Color(0, 0, 0, .24f));
-            if (selected) Rounded(vh, new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 6), 8, UiKit.Gold);
+            if (selected)
+            {
+                Rounded(vh, new Rect(r.x - 7, r.y - 7, r.width + 14, r.height + 14), 10, new Color(UiKit.Gold.r, UiKit.Gold.g, UiKit.Gold.b, .18f));
+                Rounded(vh, new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 6), 8, UiKit.Gold);
+            }
             Rounded(vh, r, 6, UiKit.Hex(brandedWhite ? "B2BAC8" : ivory ? "B8AD92" : "073DAE"));
             Rounded(vh, new Rect(r.x + 1, r.y + 2, r.width - 2, r.height - 3), 5, UiKit.Hex(ivory || brandedWhite ? "FFFFFF" : "76C9FF"));
             Rounded(vh, new Rect(r.x + 2, r.y + 3, r.width - 4, r.height - 5), 4,

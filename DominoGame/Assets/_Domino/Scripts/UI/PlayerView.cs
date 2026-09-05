@@ -9,13 +9,14 @@ namespace Domino.UI
         Text count;
         bool active;
         float intensity;
-        public void Initialize(string playerName, string initials, Color accent)
+        public void Initialize(string playerName, string initials, Color accent, bool horizontal = false)
         {
-            halo = UiKit.Panel("Turn halo", transform, new Vector2(68, 68), Vector2.zero, UiKit.Gold);
-            UiKit.Panel("Avatar", transform, new Vector2(60, 60), Vector2.zero, accent);
-            UiKit.Label("Initials", transform, initials, new Vector2(56, 56), Vector2.zero, 25, UiKit.Cream);
-            UiKit.Label("Name", transform, playerName, new Vector2(150, 30), new Vector2(0, -52), 23, UiKit.Cream);
-            count = UiKit.Label("Count", transform, "0 fichas", new Vector2(150, 26), new Vector2(0, -81), 16, UiKit.Muted);
+            var avatar = horizontal ? new Vector2(-60, 0) : Vector2.zero;
+            halo = UiKit.Panel("Turn halo", transform, new Vector2(54, 54), avatar, UiKit.Gold);
+            UiKit.Panel("Avatar", transform, new Vector2(46, 46), avatar, accent);
+            UiKit.Label("Initials", transform, initials, new Vector2(44, 44), avatar, 21, UiKit.Cream);
+            UiKit.Label("Name", transform, playerName, new Vector2(110, 26), horizontal ? new Vector2(23, 12) : new Vector2(0, -42), 20, UiKit.Cream);
+            count = UiKit.Label("Count", transform, "0 fichas", new Vector2(horizontal ? 150 : 124, 28), horizontal ? new Vector2(23, -13) : new Vector2(0, -67), 13, UiKit.Muted);
         }
         public void SetCount(int remaining) => count.text = $"{remaining} fichas";
         public void ShowPoints(int remaining, int points) => count.text = $"{remaining} fichas · {points} pts";

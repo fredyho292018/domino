@@ -70,7 +70,7 @@ namespace Domino.Client
         }
         IEnumerator WaitForTurn()
         {
-            float deadline = Time.realtimeSinceStartup + 15;
+            float deadline = Time.realtimeSinceStartup + 30;
             while (!controller.AcceptingInput && Time.realtimeSinceStartup < deadline) yield return null;
             Check(controller.AcceptingInput, "Local turn before timeout");
         }
