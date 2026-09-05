@@ -1,0 +1,27 @@
+# Unity generated data (including nested projects)
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/UserSettings/
+**/MemoryCaptures/
+**/Recordings/
+.vs/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.log
+.DS_Store
+Thumbs.db
+Validation/Generated/
