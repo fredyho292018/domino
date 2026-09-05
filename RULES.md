@@ -43,16 +43,17 @@ Meta inicial: 200 puntos. Gana el primer jugador/equipo que alcance o supere la 
 
 ## Configuración disponible
 
-En el componente DominoClientController de la escena:
+La única fuente de reglas es `DominoGame/Assets/_Domino/Config/double-nine-partners-v1.json`, referenciada como TextAsset desde la escena. El controlador ya no contiene meta, bono ni variantes duplicadas en el Inspector.
 
-- Teams: parejas o individual.
-- Target Score: meta, inicialmente 200.
-- Finish Bonus: bono de salida, inicialmente 10.
-- Blocked Winner: menor mano individual (regla confirmada); existe variante por suma de pareja.
-- Points Source: todos los demás jugadores o solamente rivales.
-- Compound Ties: duplicación acumulativa o valor máximo ×2.
+El arranque pasa por `GameConfigurationDto → GameConfigurationValidator → GameConfigurationSnapshot → GameRules`. Las colecciones del snapshot son copias de solo lectura; la partida conserva ese mismo snapshot durante todas sus rondas y reinicios del controlador. Los cambios en JSON se cargan al volver a iniciar Play, nunca a mitad de una partida.
 
-Configurar antes de entrar en Play. Los valores se copian a GameRules al iniciar la client y no cambian durante la partida.
+El contrato incluye reparto, equipos, turnos, salidas, pases, tranca, puntuación independiente de salida/tranca, empate y meta. Conserva las variantes que ya existían (individual, suma de pareja, contar rivales y empates acumulativos), sin publicar nuevas modalidades. El cliente rechaza cantidades distintas de cuatro jugadores, manos superiores a diez, valores fuera de 1..9 y políticas no implementadas. Técnicamente el generador admite Double-6, pero no se incluye una modalidad nueva.
+
+Un JSON ausente, ilegible o inválido registra `CONFIGURATION_LOAD=FAILURE` e impide arrancar. No existe fallback oculto. `CONFIGURATION_LOAD=SUCCESS` registra identidad y versiones.
+
+La puntuación provisional de tranca permanece intacta: otras manos, incluido compañero, sin bono. También siguen pendientes la política definitiva de salida y las variantes de empate ya señaladas arriba.
+
+TODO: el asiento humano cero y los tres jugadores automáticos pertenecerán a `SessionSetup`. No son parte de la configuración de reglas.
 
 ## Características implementadas
 

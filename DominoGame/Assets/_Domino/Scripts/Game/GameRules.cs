@@ -1,27 +1,22 @@
 using System;
+using System.Collections.Generic;
+using Domino.Configuration;
 
 namespace Domino.Game
 {
-    public enum BlockedWinnerRule { LowestPlayer, LowestTeamTotal }
-    public enum PointsSource { OpponentsOnly, AllOtherPlayers }
-
     /// <summary>Local house rules, independent of presentation and transport.</summary>
     public sealed class GameRules
     {
-        public bool Teams { get; }
-        public int TargetScore { get; }
-        public int FinishBonus { get; }
-        public BlockedWinnerRule BlockedWinner { get; }
-        public PointsSource Scoring { get; }
-        public bool CompoundTies { get; }
-        public GameRules(bool teams = true, int targetScore = 200, int finishBonus = 10,
-            BlockedWinnerRule blockedWinner = BlockedWinnerRule.LowestPlayer,
-            PointsSource scoring = PointsSource.AllOtherPlayers, bool compoundTies = false)
-        {
-            if (targetScore < 1 || finishBonus < 0) throw new ArgumentOutOfRangeException(nameof(targetScore));
-            Teams = teams; TargetScore = targetScore; FinishBonus = finishBonus;
-            BlockedWinner = blockedWinner; Scoring = scoring; CompoundTies = compoundTies;
-        }
-        public int Side(int player) => Teams ? player % 2 : player;
+        public GameConfigurationSnapshot Configuration { get; }
+        public bool Teams => Configuration.TeamMode == TeamMode.FixedTeams;
+        public int TargetScore => Configuration.TargetScore;
+        public int FinishBonus => Configuration.FinishScoring.Bonus;
+        public BlockedWinnerRule BlockedWinner => Configuration.Blocked.Winner;
+        public bool CompoundTies => Configuration.Tie.Compound;
+        public GameRules(GameConfigurationSnapshot configuration)
+            => Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        public int GetTeamForPlayer(int player) => Configuration.GetTeamForPlayer(player);
+        public IReadOnlyList<int> GetTeamMembers(int team) => Configuration.GetTeamMembers(team);
+        public int Side(int player) => GetTeamForPlayer(player);
     }
 }

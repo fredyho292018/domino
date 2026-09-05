@@ -1,5 +1,11 @@
 # Validación actual — Doble Nueve
 
+## Fase 1 de configuración (2026-09-05)
+
+Compilación: SUCCESS. Configuración: 80 comprobaciones. Dominio/geometría: 2.981.089 comprobaciones y mil rondas. Cien partidas completas coinciden exactamente con la referencia previa al refactor. Unity 6000.0.41f1 cargó el TextAsset con JsonUtility y completó cinco rondas hasta 200 en Play Mode automatizado de una copia aislada, con Console Errors = 0 durante esa sesión. No incluye revisión visual humana ni build móvil. Detalles y reproducción en `PHASE1.md`.
+
+## Historial anterior
+
 - Compilación C# independiente contra Unity 6000.0.41f1: SUCCESS; 0 errores y 2 avisos de campos serializados del controlador.
 - Modelo: SUCCESS; 1.000 partidas, 1.983.660 comprobaciones.
 - Cobertura observada: 16.105 jugadas por el inicio, 15.577 por el final, 13.580 inversiones, 8.885 pases, 418 victorias por mano vacía y 582 partidas trancadas.

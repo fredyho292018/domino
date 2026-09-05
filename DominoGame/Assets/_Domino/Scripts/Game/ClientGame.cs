@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Domino.Core;
+using Domino.Configuration;
 
 namespace Domino.Game
 {
     /// <summary>Double Nine, ten per player; fifteen reserved tiles are not drawn.</summary>
     public sealed class ClientGame
     {
-        public const int Fredy = 0, Alex = 1, Maria = 2, John = 3, HandSize = 10;
-        readonly List<DominoTile>[] hands = { new(), new(), new(), new() };
+        readonly List<DominoTile>[] hands;
         readonly List<DominoTile> chain = new(), reserve = new();
         int consecutivePasses;
         public event Action<GameEvent> Changed;
@@ -19,7 +19,14 @@ namespace Domino.Game
         public GameRules Rules { get; }
         public MatchState Match { get; }
         public RoundResult Result { get; private set; }
-        public ClientGame(GameRules rules = null) { Rules = rules ?? new GameRules(); Match = new MatchState(Rules); }
+        public GameConfigurationSnapshot Configuration => Rules.Configuration;
+        public ClientGame(GameRules rules)
+        {
+            Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            hands = new List<DominoTile>[Configuration.PlayerCount];
+            for (int p = 0; p < hands.Length; p++) hands[p] = new List<DominoTile>();
+            Match = new MatchState(Rules);
+        }
         public int LeftEnd => chain.Count == 0 ? -1 : chain[0].SideA;
         public int RightEnd => chain.Count == 0 ? -1 : chain[chain.Count - 1].SideB;
         public IReadOnlyList<DominoTile> Hand(int player) => hands[player].AsReadOnly();
@@ -34,22 +41,24 @@ namespace Domino.Game
         }
         void Deal(int seed)
         {
-            var tiles = DominoTile.CreateSet();
+            var tiles = DominoTile.CreateSet(Configuration.MaxPip);
             var random = new Random(seed);
             for (int i = tiles.Count - 1; i > 0; i--)
             { int j = random.Next(i + 1); (tiles[i], tiles[j]) = (tiles[j], tiles[i]); }
             foreach (var hand in hands) hand.Clear();
             chain.Clear(); reserve.Clear();
-            for (int i = 0; i < HandSize * 4; i++) hands[i % 4].Add(tiles[i]);
-            reserve.AddRange(tiles.GetRange(HandSize * 4, tiles.Count - HandSize * 4));
-            CurrentPlayer = Fredy; Finished = false; Blocked = false; Winner = -1; consecutivePasses = 0; Result = null;
+            int dealt = Configuration.TilesPerPlayer * Configuration.PlayerCount;
+            for (int i = 0; i < dealt; i++) hands[Configuration.Deal.SeatOrder[i % hands.Length]].Add(tiles[i]);
+            reserve.AddRange(tiles.GetRange(dealt, tiles.Count - dealt));
+            CurrentPlayer = Match.RoundNumber == 1 ? Configuration.FirstRoundStarting.Seat : Configuration.FollowingRoundStarting.Seat;
+            Finished = false; Blocked = false; Winner = -1; consecutivePasses = 0; Result = null;
             Changed?.Invoke(new GameEvent(GameEventType.GAME_STARTED));
-            Changed?.Invoke(new GameEvent(GameEventType.TURN_CHANGED, Fredy));
+            Changed?.Invoke(new GameEvent(GameEventType.TURN_CHANGED, CurrentPlayer));
         }
         public bool CanPlay(DominoTile tile, ChainEnd end = ChainEnd.Auto)
         {
-            if (Finished) return false;
-            if (chain.Count == 0) return true;
+            if (Finished || tile.SideA > Configuration.MaxPip || tile.SideB > Configuration.MaxPip) return false;
+            if (chain.Count == 0) return Configuration.OpeningTile == OpeningTilePolicy.Any;
             bool left = tile.SideA == LeftEnd || tile.SideB == LeftEnd;
             bool right = tile.SideA == RightEnd || tile.SideB == RightEnd;
             return end == ChainEnd.Left ? left : end == ChainEnd.Right ? right : left || right;
@@ -73,13 +82,13 @@ namespace Domino.Game
             if (Finished || player != CurrentPlayer || HasLegalMove(player)) return false;
             consecutivePasses++;
             Changed?.Invoke(new GameEvent(GameEventType.PLAYER_PASSED, player));
-            if (consecutivePasses == 4) Finish(-1, true); else AdvanceTurn();
+            if (consecutivePasses == Configuration.PlayerCount) Finish(-1, true); else AdvanceTurn();
             return true;
         }
         void Finish(int player, bool blocked)
         {
-            var points = new int[4];
-            for (int p = 0; p < 4; p++) foreach (var tile in hands[p]) points[p] += tile.SideA + tile.SideB;
+            var points = new int[Configuration.PlayerCount];
+            for (int p = 0; p < hands.Length; p++) foreach (var tile in hands[p]) points[p] += tile.SideA + tile.SideB;
             Result = RoundScoring.Evaluate(Rules, points, player, blocked, Match.Multiplier);
             Match.Apply(Result);
             Finished = true; Winner = Result.WinnerPlayer; Blocked = blocked;
@@ -88,7 +97,7 @@ namespace Domino.Game
         }
         void AdvanceTurn()
         {
-            CurrentPlayer = CurrentPlayer switch { Fredy => John, John => Maria, Maria => Alex, Alex => Fredy, _ => throw new InvalidOperationException() };
+            CurrentPlayer = Configuration.GetNextPlayer(CurrentPlayer);
             Changed?.Invoke(new GameEvent(GameEventType.TURN_CHANGED, CurrentPlayer));
         }
     }

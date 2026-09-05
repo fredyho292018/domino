@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Domino.Core;
 using Domino.Game;
 using Domino.UI;
+using Domino.Configuration;
 
 static class DomainTests
 {
@@ -11,9 +12,13 @@ static class DomainTests
     static void Check(bool value, string message) { checks++; if (!value) throw new Exception(message); }
     static void Main()
     {
+        ConfigurationTests.Run();
+        string trace = RegressionTrace.Compute(() => new ClientGame(ConfigurationTests.Rules()));
+        Check(trace == "EFADD088F8AB7A9E11CC109A322267C5B7800F7F85BB2D64B6F8F30F95998D52", "Exact baseline: 100 complete matches, deals, events, rounds and scores");
+        Console.WriteLine("REGRESSION_TRACE=MATCH " + trace);
         ScoringTests();
         CompactLayoutTests();
-        var set = DominoTile.CreateSet();
+        var set = DominoTile.CreateSet(9);
         Check(set.Count == 55 && set.Distinct().Count() == 55, "Unique Double Nine set");
         for (int a = 0; a <= 9; a++) for (int b = a; b <= 9; b++)
             Check(set.Contains(new DominoTile(a,b)), "All combinations through nine");
@@ -24,7 +29,7 @@ static class DomainTests
             Check(rejected, "Invalid value rejected");
         }
         int leftPlays = 0, rightPlays = 0, passes = 0, blocked = 0, wins = 0, flips = 0;
-        var game = new ClientGame();
+        var game = new ClientGame(ConfigurationTests.Rules());
         var events = new List<GameEvent>(); game.Changed += events.Add;
         for (int seed = 0; seed < 1000; seed++)
         {
@@ -143,7 +148,7 @@ static class DomainTests
     }
     static void ScoringTests()
     {
-        var rules = new GameRules(targetScore:500, compoundTies:true);
+        var rules = ConfigurationTests.Rules(d=> { d.targetScore=500; d.tie.repeatedTie="MULTIPLY"; });
         Check(rules.Side(0) == rules.Side(2) && rules.Side(1) == rules.Side(3), "Fredy Maria vs Alex John");
         var finish = RoundScoring.Evaluate(rules, new[] {0,20,30,40}, 0, false, 1);
         Check(finish.BasePoints == 90 && finish.Bonus == 10 && finish.Award == 100, "All other hands plus ten for going out");
@@ -165,11 +170,11 @@ static class DomainTests
         match.NextRound(); match.Apply(finish);
         Check(match.Finished && match.WinnerSide == 0 && match.Score(0) == 500 && !match.NextRound(), "First side to 500 ends match");
         match.Reset(); Check(match.Score(0) == 0 && match.RoundNumber == 1 && match.Multiplier == 1 && !match.Finished, "New match resets totals");
-        var solo = new GameRules(teams:false);
+        var solo = ConfigurationTests.Rules(d=> {d.teamMode="INDIVIDUAL";d.teamAssignments=Enumerable.Range(0,4).Select(p=>new TeamAssignmentDto{members=new[]{p}}).ToArray();});
         Check(RoundScoring.Evaluate(solo,new[]{20,25,2,40},-1,true,1).WinnerSide == 2, "Individual mode");
-        var alternative = new GameRules(scoring:PointsSource.OpponentsOnly, compoundTies:false);
+        var alternative = ConfigurationTests.Rules(d=>d.finishScoring.source="OPPONENTS_ONLY");
         Check(RoundScoring.Evaluate(alternative,new[]{0,20,30,40},0,false,1).Award == 70,"Configurable opponent-only score");
-        var standard = new GameRules();
+        var standard = ConfigurationTests.Rules();
         Check(standard.TargetScore == 200, "Default match target is 200");
         var to200 = new MatchState(standard);
         to200.Apply(RoundScoring.Evaluate(standard,new[]{0,20,30,40},0,false,1));

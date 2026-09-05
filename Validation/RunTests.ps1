@@ -7,6 +7,10 @@ $project = @"
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
   <ItemGroup>
     <Compile Include="../DomainTests.cs" />
+    <Compile Include="../RegressionTrace.cs" />
+    <Compile Include="../ConfigurationTests.cs" />
+    <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Configuration/*.cs" />
+    <None Include="../../DominoGame/Assets/_Domino/Config/double-nine-partners-v1.json" Link="double-nine-partners-v1.json" CopyToOutputDirectory="Always" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Core/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Game/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/UI/BoardLayout.cs" />

@@ -16,7 +16,7 @@ Proyecto local Unity 6 LTS **6000.0.41f1**. Abrir la carpeta `DominoGame` y la e
 
 - Tocar una ficha para seleccionar; tocar de nuevo para deseleccionar.
 - JUGAR o tocar la mesa coloca la seleccionada en un extremo válido; si ambos sirven, se prioriza el final de la cadena.
-- Arrastrar y soltar dentro de la mesa: se prioriza el extremo más cercano. Si solo sirve el otro, se coloca allí automáticamente.
+- Arrastrar y soltar dentro de la mesa: se valida el extremo más cercano. Si no encaja, vuelve a la mano sin cambiar automáticamente al otro extremo. Los destinos válidos se resaltan con zoom y borde dorado.
 - La mesa se ilumina verde con una ficha válida y rojiza con una inválida. Las jugadas inválidas vuelven a la mano y muestran los números necesarios.
 - Soltar fuera de la mesa cancela el arrastre.
 - Reiniciar cancela animaciones y comienza con otro reparto.
@@ -24,7 +24,7 @@ Proyecto local Unity 6 LTS **6000.0.41f1**. Abrir la carpeta `DominoGame` y la e
 
 ## Estructura
 
-`Core`: datos y eventos independientes de Unity. `Game/ClientGame`: reglas, orientación lógica de la cadena, manos, reserva, turnos y final de ronda. `Client/DominoClientController`: intenciones del usuario y simulación de oponentes mediante una cola de eventos. `UI`: geometría, prefabs, arrastre, animación y área segura.
+`Configuration`: DTO, validador y snapshot inmutable sin Unity. `Core`: datos y eventos independientes de Unity. `Game/ClientGame`: reglas, orientación lógica de la cadena, manos, reserva, turnos y final de ronda. `Client/LocalGameConfiguration`: lectura del TextAsset con JsonUtility nativo. `Client/DominoClientController`: intenciones del usuario y simulación de oponentes mediante una cola de eventos. `UI`: geometría, prefabs, arrastre, animación y área segura.
 
 Los eventos locales incluyen inicio, ficha jugada con índice de inserción y orientación, cambio de turno, pase y final. No hay backend, red, autenticación ni servicios externos.
 
@@ -41,18 +41,20 @@ Desde la raíz, PowerShell:
 
 La compilación independiente usa las bibliotecas reales de Unity, sin abrir el editor. Las pruebas ejecutan 1.000 partidas, comprueban combinaciones, 10 fichas por mano, reserva de 15, extremos, orientación, intentos inválidos sin mutación, pases, turnos, finalización y geometría. No sustituyen la comprobación visual.
 
-En Play, `Domino > Run interactive smoke test (Play Mode)` verifica reparto, gráficos, arrastre, reinicios y una partida con reglas. Puede tardar hasta tres minutos. Después comprobar manualmente mouse/touch y las proporciones 16:9, 18:9, 19.5:9 y 20:9, especialmente las diez fichas y los extremos en curvas. `Domino > Capture Game View (Play Mode)` guarda capturas locales.
+En Play, `Domino > Run interactive smoke test (Play Mode)` verifica JSON, reparto, gráficos, arrastre, reinicios, conservación del snapshot y partida hasta la meta. El ejecutor batch de Fase 1 usa tiempo acelerado solo durante la prueba. Después comprobar manualmente mouse/touch y las proporciones 16:9, 18:9, 19.5:9 y 20:9, especialmente las diez fichas y los extremos en curvas. `Domino > Capture Game View (Play Mode)` guarda capturas locales.
 
-Unity abrió correctamente tras resolverse el problema inicial de licencia. La versión actual de doble nueve aún necesita revisión visual dentro del editor. No se afirma Console Errors = 0 sin una sesión comprobada.
+La Fase 1 pasó Play Mode automatizado en Unity 6000.0.41f1, cinco rondas hasta la meta y cero errores de consola durante la sesión de prueba aislada. No sustituye revisión visual humana ni builds móviles. Véase `Validation/PHASE1.md`.
 
 ## Móvil y Git
 
 Landscape, Android ARM64/IL2CPP preparado y soporte iOS. Android SDK/NDK/OpenJDK están instalados; no hay builds ni firma verificados. iOS final requiere macOS/Xcode.
 
-Assets con sus metas, Packages y ProjectSettings son versionables; Library, temporales, builds y resultados generados están ignorados. No se ha hecho push.
+Assets con sus metas, Packages y ProjectSettings son versionables; Library, temporales, builds y resultados generados están ignorados.
 
 ## Partidas y reglas de casa
 
-La configuración está en DominoClientController (modo, meta, bono, tranca, fuente de puntos y multiplicador). Siguiente conserva puntuaciones; Reiniciar comienza una partida nueva. RULES.md es la especificación de reglas y características, incluidos los puntos todavía por confirmar.
+La configuración está en `DominoGame/Assets/_Domino/Config/double-nine-partners-v1.json`. La escena referencia ese archivo como TextAsset para incluirlo en builds, sin rutas del sistema operativo. No hay defaults de juego en el controlador ni fallback silencioso: un error de carga detiene el arranque.
+
+Siguiente conserva puntuaciones; Reiniciar comienza una partida nueva usando el snapshot ya cargado. Para cargar cambios del JSON, volver a iniciar Play. RULES.md identifica las reglas pendientes de confirmación, preservadas por esta fase.
 
 

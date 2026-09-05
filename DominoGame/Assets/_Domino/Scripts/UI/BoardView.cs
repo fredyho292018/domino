@@ -2,19 +2,37 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Domino.Core;
+using Domino.Configuration;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 namespace Domino.UI
 {
+    public enum DealPresentationPhase { Idle, Washing, Dealing, RevealingHand, OrganizingHands, Ready, Playing }
+
     public sealed class BoardView : MonoBehaviour
     {
+        public const float InitialWashDuration = 1.2f;
+        public const float HandOrganizeDuration = .75f;
+        readonly Stack<DominoTileView> tilePool = new();
+        readonly List<DominoTileView> dealStock = new();
+        readonly List<DominoTileView> previewTiles = new();
+        public DealPresentationPhase DealPhase { get; private set; }
+        public bool IsPreparingRound => DealPhase != DealPresentationPhase.Idle && DealPhase != DealPresentationPhase.Playing;
+        public int VisuallyDealt { get; private set; }
+        public int CreatedTileViews { get; private set; }
+        public event Action<DealPresentationPhase> DealPhaseChanged;
+        public event Action<int> TileDealt;
+        public IReadOnlyList<DominoTileView> HandViews(int player) => hands[player];
         readonly List<DominoTileView>[] hands = { new(), new(), new(), new() };
         readonly List<DominoTileView> played = new();
         readonly Dictionary<DominoTileView, (Vector3 scale, Vector2 position, float started)> endpointZoom = new();
         ChainEnd? opponentPlacement;
         readonly List<DominoTileView> washReserve = new();
+        public IReadOnlyList<DominoTileView> ReserveViews => washReserve;
+        Text reserveLabel;
+        bool reserveParked;
         readonly PlayerView[] players = new PlayerView[4];
         static readonly Vector2[] PlayerPositions = { new(-674, -397), new(-735, 80), new(0, 416), new(735, 80) };
         readonly List<RectTransform> tableLayers = new();
@@ -22,6 +40,7 @@ namespace Domino.UI
         const float LocalScale = 1.12f;
         RectTransform content, safe, tiles;
         DominoTileView tilePrefab;
+        GameConfigurationSnapshot configuration;
         Text prompt, boardHint, round;
         Text scoreA, scoreB;
         TableEffects effects;
@@ -43,8 +62,9 @@ namespace Domino.UI
         public IReadOnlyList<DominoTileView> LocalTiles => hands[0];
         public int PlayedCount => played.Count;
 
-        public void Initialize(DominoTileView dominoPrefab, PlayerView playerPrefab)
+        public void Initialize(DominoTileView dominoPrefab, PlayerView playerPrefab, GameConfigurationSnapshot configuration)
         {
+            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             tilePrefab = dominoPrefab;
             var canvas = gameObject.AddComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             gameObject.AddComponent<GraphicRaycaster>();
@@ -93,8 +113,11 @@ namespace Domino.UI
                 players[p].Initialize(names[p], initials[p], UiKit.Hex(colors[p]), p == 0 || p == 2);
             }
             tiles = UiKit.Rect("Tiles", content, Vector2.zero, Vector2.zero);
+            reserveLabel = UiKit.Label("Reserve count", tiles, "", new Vector2(210, 22), Vector2.zero, 14, UiKit.Muted);
+            reserveLabel.gameObject.SetActive(false);
             var banner = UiKit.Rect("Turn banner", players[0].transform, new Vector2(180, 22), new Vector2(12, -35));
             turnBanner = banner.gameObject.AddComponent<CanvasGroup>();
+            turnBanner.alpha = 0;
             UiKit.Label("Your turn", banner, "TU TURNO", new Vector2(180, 22), Vector2.zero, 12, UiKit.Gold);
             prompt = UiKit.Label("Prompt", content, "Repartiendo…", new Vector2(950, 28), new Vector2(0, -294), 15, UiKit.Muted);
             playButton = UiKit.Button("Play", content, "JUGAR  →", new Vector2(158, 48), new Vector2(684, -377), UiKit.Hex("63826A"), () =>
@@ -129,6 +152,8 @@ namespace Domino.UI
             menu.transform.SetAsLastSibling();
             effects = gameObject.AddComponent<TableEffects>();
             effects.Initialize(content);
+            // Allocate once, before animation. All rounds reuse these views.
+            for (int i = 0; i < configuration.TotalTiles; i++) ReleaseTile(CreateTile());
             SetInteraction(false, false);
             Fit();
         }
@@ -153,13 +178,16 @@ namespace Domino.UI
             for (int p = 1; p <= 3; p += 2)
                 ((RectTransform)players[p].transform).anchoredPosition = new Vector2((p == 1 ? -1 : 1) * (width / 2 - 65), 80);
             ((RectTransform)players[0].transform).anchoredPosition = new Vector2(-width / 2 + 126, -397);
-            if (resized)
-                for (int p = 1; p <= 3; p += 2)
+            reserveLabel.rectTransform.anchoredPosition = ReservePosition(2) + Vector2.up * 28;
+            if (reserveParked)
+                for (int i = 0; i < washReserve.Count; i++) washReserve[i].Rect.anchoredPosition = ReservePosition(i);
+            if (resized && !IsPreparingRound)
+                for (int p = 0; p < hands.Length; p++)
                     for (int i = 0; i < hands[p].Count; i++)
                     {
                         var view = hands[p][i];
                         view.Home = HandPosition(p, i, hands[p].Count);
-                        view.Rect.anchoredPosition = new Vector2(view.Home.x, view.Rect.anchoredPosition.y);
+                        if (!view.IsDragging) view.Rect.anchoredPosition = view.Home + (view.Selected ? Vector2.up * 26 : Vector2.zero);
                     }
         }
         void Update()
@@ -179,58 +207,212 @@ namespace Domino.UI
         {
             ResetEndpointZoom();
             effects.Clear();
+            SetDealPhase(DealPresentationPhase.Idle);
+            VisuallyDealt = 0;
+            foreach (var view in dealStock) ReleaseTile(view);
+            dealStock.Clear();
+            foreach (var view in previewTiles) ReleaseTile(view);
+            previewTiles.Clear();
             if (washPreview) { washPreview.gameObject.SetActive(false); Destroy(washPreview.gameObject); washPreview = null; }
             tiles.gameObject.SetActive(true);
-            foreach (var tile in washReserve) { tile.gameObject.SetActive(false); Destroy(tile.gameObject); }
+            foreach (var tile in washReserve) ReleaseTile(tile);
             washReserve.Clear();
+            reserveParked = false;
+            reserveLabel.gameObject.SetActive(false);
             roundEnded = matchEnded = false;
             playButton.GetComponentInChildren<Text>().text = "JUGAR  →";
             CancelDrag();
-            foreach (var hand in hands) { foreach (var tile in hand) { tile.gameObject.SetActive(false); Destroy(tile.gameObject); } hand.Clear(); }
-            foreach (var tile in played) { tile.gameObject.SetActive(false); Destroy(tile.gameObject); }
+            foreach (var hand in hands) { foreach (var tile in hand) ReleaseTile(tile); hand.Clear(); }
+            foreach (var tile in played) ReleaseTile(tile);
             played.Clear(); boardHint.gameObject.SetActive(true); menu.SetActive(false);
             foreach (var player in players) { player.SetCount(0); player.SetTurn(false); }
             bannerTarget = 0; round.text = "RONDA 01";
+            turnBanner.alpha = 0;
             SetInteraction(false, false);
         }
         Vector2 HandPosition(int player, int index, int count)
         {
             float offset = index - (count - 1) * .5f;
+            float available = Mathf.Min(750, content.rect.width - 560);
+            float spacing = Mathf.Min(65, (available - 96 * LocalScale) / Mathf.Max(1, count - 1));
             return player switch
             {
-                0 => new Vector2(offset * 65, -388),
+                0 => new Vector2(offset * spacing, -content.rect.height * (388f / 900)),
                 1 => new Vector2(-content.sizeDelta.x / 2 + 65, -24 - index * 9),
                 2 => new Vector2(156 + index * 9, 415),
                 _ => new Vector2(content.sizeDelta.x / 2 - 65, -24 - index * 9)
             };
         }
+        Vector2 ReservePosition(int index)
+        {
+            var surface = dropSurface.rectTransform;
+            return surface.anchoredPosition + new Vector2(surface.rect.width / 2 - 126 + (index % 5 - 2) * 40,
+                surface.rect.height / 2 - 44 - index / 5 * 22);
+        }
         public IEnumerator Deal(IReadOnlyList<DominoTile>[] modelHands)
         {
-            prompt.text = "Repartiendo 10 fichas por jugador…";
-            for (int n = 0; n < modelHands[0].Count; n++)
-            for (int p = 0; p < 4; p++)
+            SetDealPhase(DealPresentationPhase.Washing);
+            SetInteraction(false, false);
+            foreach (var player in players) player.SetTurn(false);
+            bannerTarget = 0;
+            VisuallyDealt = 0;
+            boardHint.gameObject.SetActive(false);
+            prompt.text = "Dándole agua al dominó…";
+            for (int i = 0; i < configuration.TotalTiles; i++)
             {
-                var view = Instantiate(tilePrefab, tiles);
-                view.name = p == 0 ? $"Local {modelHands[p][n]}" : $"Player {p + 1} hidden tile";
-                view.Initialize(modelHands[p][n], false, p == 0);
-                view.Clicked = t => TileSelected?.Invoke(t);
-                view.DragRequested = BeginDrag;
-                view.DragMoved = HoverDrag;
-                view.DragReleased = Drop;
-                view.Rect.anchoredPosition = Vector2.zero;
-                view.Rect.localScale = Vector3.one * .6f;
-                hands[p].Add(view);
-                view.Home = HandPosition(p, n, modelHands[p].Count);
-                yield return Move(view, view.Home, p == 0 ? 90 : 0, p == 0 ? LocalScale : .48f, .095f / .36f);
-                if (p == 0) view.Reveal();
-                players[p].SetCount(n + 1);
+                var view = AcquireTile();
+                // Values stay private until a hand is assigned; all wash tiles are backs.
+                view.Initialize(default, false, false);
+                view.Rect.localScale = Vector3.one * .5f;
+                dealStock.Add(view);
             }
+            for (float elapsed = 0; elapsed < InitialWashDuration; elapsed += Time.deltaTime)
+            {
+                float progress = Mathf.Clamp01(elapsed / InitialWashDuration);
+                float strength = Mathf.Sin(progress * Mathf.PI);
+                var size = dropSurface.rectTransform.rect.size;
+                for (int i = 0; i < dealStock.Count; i++)
+                {
+                    float angle = i * 2.39996f;
+                    float radius = Mathf.Sqrt((i + .5f) / dealStock.Count);
+                    var anchor = new Vector2(Mathf.Cos(angle) * size.x * .22f * radius, Mathf.Sin(angle) * size.y * .2f * radius);
+                    var swirl = new Vector2(Mathf.Sin(angle + progress * 8) * 35, Mathf.Cos(angle + progress * 8) * 24) * strength;
+                    dealStock[i].Rect.anchoredPosition = dropSurface.rectTransform.anchoredPosition + anchor + swirl;
+                    dealStock[i].Rect.localRotation = Quaternion.Euler(0, 0, i * 137.5f + strength * 35);
+                }
+                yield return null;
+            }
+            // Set aside the fifteen undealt views; no draw operation is introduced.
+            int toDeal = configuration.PlayerCount * configuration.TilesPerPlayer;
+            while (dealStock.Count > toDeal)
+            {
+                int last = dealStock.Count - 1;
+                var reserveTile = dealStock[last];
+                reserveTile.name = "Undealt reserve tile";
+                washReserve.Add(reserveTile); dealStock.RemoveAt(last);
+            }
+            SetDealPhase(DealPresentationPhase.Dealing);
+            prompt.text = $"Repartiendo {configuration.TilesPerPlayer} fichas por jugador…";
+            for (int n = 0; n < modelHands[0].Count; n++)
+            foreach (int p in configuration.Deal.SeatOrder)
+            {
+                var view = dealStock[dealStock.Count - 1];
+                dealStock.RemoveAt(dealStock.Count - 1);
+                var startRotation = view.Rect.localRotation;
+                view.name = "Player " + (p + 1) + " tile";
+                view.Initialize(modelHands[p][n], false, false);
+                view.Rect.localRotation = startRotation;
+                hands[p].Add(view);
+                view.transform.SetAsLastSibling();
+                int seat = p, index = n, count = modelHands[p].Count;
+                float duration = .245f + .04f * (.5f + .5f * Mathf.Sin(VisuallyDealt * 2.4f));
+                yield return Move(view, () => ProvisionalHandPosition(seat, index, count), p == 0 ? 90 + (n % 2 == 0 ? -4 : 4) : (n % 2 == 0 ? -3 : 3), p == 0 ? LocalScale : .48f, duration);
+                view.Home = HandPosition(p, n, count);
+                players[p].SetCount(n + 1);
+                VisuallyDealt++;
+                TileDealt?.Invoke(p);
+            }
+            // Only move the reserve once all forty arrivals have completed.
+            reserveLabel.text = $"RESERVA · {washReserve.Count}";
+            reserveLabel.gameObject.SetActive(washReserve.Count > 0);
+            var reserveStarts = new Vector2[washReserve.Count];
+            var reserveRotations = new Quaternion[washReserve.Count];
+            for (int i = 0; i < washReserve.Count; i++)
+            { reserveStarts[i] = washReserve[i].Rect.anchoredPosition; reserveRotations[i] = washReserve[i].Rect.localRotation; }
+            for (float elapsed = 0; elapsed < .35f; elapsed += Time.deltaTime)
+            {
+                float t = Mathf.SmoothStep(0, 1, elapsed / .35f);
+                for (int i = 0; i < washReserve.Count; i++)
+                {
+                    var rect = washReserve[i].Rect;
+                    rect.anchoredPosition = Vector2.Lerp(reserveStarts[i], ReservePosition(i), t);
+                    rect.localRotation = Quaternion.Slerp(reserveRotations[i], Quaternion.identity, t);
+                    rect.localScale = Vector3.one * Mathf.Lerp(.5f, .36f, t);
+                }
+                yield return null;
+            }
+            reserveParked = true;
+            foreach (var tile in washReserve) { tile.Rect.localRotation = Quaternion.identity; tile.Rect.localScale = Vector3.one * .36f; }
+            yield return new WaitForSeconds(.12f);
+            SetDealPhase(DealPresentationPhase.RevealingHand);
+            prompt.text = "Preparando tu mano…";
+            for (int phase = 0; phase < 2; phase++)
+            {
+                for (float elapsed = 0; elapsed < .16f; elapsed += Time.deltaTime)
+                {
+                    float t = Mathf.SmoothStep(0, 1, elapsed / .16f);
+                    float width = phase == 0 ? Mathf.Lerp(1, .03f, t) : Mathf.Lerp(.03f, 1, t);
+                    foreach (var view in hands[0]) view.Rect.localScale = new Vector3(LocalScale, LocalScale * width, LocalScale);
+                    yield return null;
+                }
+                if (phase == 0) foreach (var view in hands[0]) view.Reveal();
+            }
+            SetDealPhase(DealPresentationPhase.OrganizingHands);
+            var starts = new Vector2[toDeal]; var rotations = new Quaternion[toDeal];
+            int cursor = 0;
+            foreach (var hand in hands) foreach (var view in hand)
+            { starts[cursor] = view.Rect.anchoredPosition; rotations[cursor++] = view.Rect.localRotation; }
+            for (float elapsed = 0; elapsed < HandOrganizeDuration; elapsed += Time.deltaTime)
+            {
+                float t = Mathf.SmoothStep(0, 1, elapsed / HandOrganizeDuration);
+                cursor = 0;
+                for (int p = 0; p < hands.Length; p++) for (int n = 0; n < hands[p].Count; n++)
+                {
+                    var view = hands[p][n];
+                    view.Home = HandPosition(p, n, hands[p].Count);
+                    view.Rect.anchoredPosition = Vector2.Lerp(starts[cursor], view.Home, t);
+                    view.Rect.localRotation = Quaternion.Slerp(rotations[cursor++], Quaternion.Euler(0, 0, p == 0 ? 90 : 0), t);
+                    view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .48f);
+                }
+                yield return null;
+            }
+            for (int p = 0; p < hands.Length; p++) for (int n = 0; n < hands[p].Count; n++)
+            {
+                var view = hands[p][n];
+                view.Home = HandPosition(p, n, hands[p].Count);
+                view.Rect.anchoredPosition = view.Home;
+                view.Rect.localRotation = Quaternion.Euler(0, 0, p == 0 ? 90 : 0);
+                view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .48f);
+            }
+            SetDealPhase(DealPresentationPhase.Ready);
+            prompt.text = "Manos listas";
+            yield return new WaitForSeconds(.08f);
+        }
+        Vector2 ProvisionalHandPosition(int player, int index, int count)
+        {
+            var target = HandPosition(player, index, count);
+            if (player == 0) return new Vector2(target.x * .78f, target.y + (index % 2 == 0 ? 2 : -2));
+            return target + new Vector2(index % 2 == 0 ? -5 : 5, 3);
+        }
+        void SetDealPhase(DealPresentationPhase phase) { DealPhase = phase; DealPhaseChanged?.Invoke(phase); }
+        DominoTileView CreateTile()
+        {
+            var view = Instantiate(tilePrefab, tiles);
+            CreatedTileViews++;
+            view.Initialize(default, false, false);
+            view.Clicked = t => TileSelected?.Invoke(t);
+            view.DragRequested = BeginDrag; view.DragMoved = HoverDrag; view.DragReleased = Drop;
+            return view;
+        }
+        DominoTileView AcquireTile()
+        {
+            var view = tilePool.Count > 0 ? tilePool.Pop() : CreateTile();
+            view.transform.SetParent(tiles, false); view.gameObject.SetActive(true);
+            return view;
+        }
+        void ReleaseTile(DominoTileView view)
+        {
+            view.CancelDrag(); view.Selectable = false; view.Select(false); view.Conceal();
+            view.gameObject.SetActive(false); view.transform.SetParent(tiles, false);
+            tilePool.Push(view);
         }
         public void SetInteraction(bool canChoose, bool canPlay)
         {
+            if (IsPreparingRound) canChoose = canPlay = false;
             if (!canChoose) ResetEndpointZoom();
             foreach (var tile in hands[0]) tile.Selectable = canChoose;
             playButton.interactable = canPlay;
+            dropSurface.GetComponent<Button>().interactable = canChoose;
             UpdatePlacementTargets();
         }
         bool BeginDrag(DominoTileView tile)
@@ -292,12 +474,15 @@ namespace Domino.UI
         }
         public void SetTurn(int player)
         {
+            if (DealPhase == DealPresentationPhase.Ready) SetDealPhase(DealPresentationPhase.Playing);
+            if (IsPreparingRound) return;
             for (int p = 0; p < 4; p++) players[p].SetTurn(p == player);
             bannerTarget = player == 0 ? 1 : 0;
             prompt.text = player == 0 ? "Arrastra una ficha a la mesa o selecciónala para jugar" : new[] { "", "Alex está pensando…", "Maria está pensando…", "John está pensando…" }[player];
         }
         public void SetSelected(DominoTileView selection)
         {
+            if (IsPreparingRound) return;
             foreach (var tile in hands[0]) tile.Select(tile == selection);
             if (selection) selection.transform.SetAsLastSibling();
             playButton.interactable = selection != null;
@@ -371,37 +556,40 @@ namespace Domino.UI
             washPreview = UiKit.Rect("Wash preview tiles", content, Vector2.zero, Vector2.zero);
             // Keep the hands and chain intact; only preview copies are shuffled.
             washPreview.SetSiblingIndex(tiles.GetSiblingIndex() + 1);
-            var clientTiles = new List<DominoTileView>();
-            var set = DominoTile.CreateSet();
+            var set = DominoTile.CreateSet(configuration.MaxPip);
             for (int i = 0; i < set.Count; i++)
             {
-                var tile = Instantiate(tilePrefab, washPreview);
+                var tile = AcquireTile();
+                tile.transform.SetParent(washPreview, false);
                 tile.Initialize(set[i], isPreview, false);
                 tile.Rect.anchoredPosition = new Vector2((i % 11 - 5) * 52, (i / 11 - 2) * 38);
                 tile.Rect.localScale = Vector3.one * .5f;
-                clientTiles.Add(tile);
+                previewTiles.Add(tile);
             }
             tiles.gameObject.SetActive(false);
             ShowMessage(isPreview ? "Vista previa: dándole agua al dominó…" : "Dándole agua al dominó antes de repartir…");
-            yield return effects.Wash(clientTiles);
+            yield return effects.Wash(previewTiles);
             yield return new WaitForSeconds(.7f);
+            foreach (var tile in previewTiles) ReleaseTile(tile);
+            previewTiles.Clear();
             washPreview.gameObject.SetActive(false); Destroy(washPreview.gameObject); washPreview = null;
             tiles.gameObject.SetActive(true);
         }
         public IEnumerator WashDominoes(IReadOnlyList<DominoTile> reserve)
         {
             SetInteraction(false, false);
-            var all = new List<DominoTileView>(55);
+            reserveParked = false;
+            reserveLabel.gameObject.SetActive(false);
+            var all = new List<DominoTileView>(configuration.TotalTiles);
             all.AddRange(played);
             foreach (var hand in hands) all.AddRange(hand);
-            foreach (var data in reserve)
+            for (int i = 0; i < reserve.Count; i++)
             {
-                var tile = Instantiate(tilePrefab, tiles);
+                var tile = i < washReserve.Count ? washReserve[i] : AcquireTile();
                 tile.name = "Reserve - washing dominoes";
-                tile.Initialize(data, false, false);
-                tile.Rect.anchoredPosition = new Vector2(0,170);
-                tile.Rect.localScale = Vector3.one*.5f;
-                washReserve.Add(tile); all.Add(tile);
+                tile.Orient(reserve[i]); tile.Conceal();
+                if (i >= washReserve.Count) washReserve.Add(tile);
+                all.Add(tile);
             }
             foreach (var tile in all) { tile.Selectable = false; tile.Select(false); }
             ShowMessage("Dándole agua al dominó…");
@@ -464,7 +652,7 @@ namespace Domino.UI
                 yield return null;
             }
         }
-        static IEnumerator Move(DominoTileView tile, Vector2 end, float angle, float scale, float duration)
+        static IEnumerator Move(DominoTileView tile, Func<Vector2> destination, float angle, float scale, float duration)
         {
             Vector2 start = tile.Rect.anchoredPosition;
             var startRotation = tile.Rect.localRotation; var startScale = tile.Rect.localScale;
@@ -475,12 +663,12 @@ namespace Domino.UI
                 float progress = Mathf.Clamp01(elapsed / duration);
                 // Smootherstep starts and ends with zero velocity and acceleration.
                 float t = progress * progress * progress * (progress * (progress * 6 - 15) + 10);
-                tile.Rect.anchoredPosition = Vector2.Lerp(start, end, t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * 8);
+                tile.Rect.anchoredPosition = Vector2.Lerp(start, destination(), t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * 8);
                 tile.Rect.localRotation = Quaternion.Slerp(startRotation, Quaternion.Euler(0, 0, angle), t);
                 tile.Rect.localScale = Vector3.Lerp(startScale, Vector3.one * scale, t);
                 yield return null;
             }
-            tile.Rect.anchoredPosition = end;
+            tile.Rect.anchoredPosition = destination();
             tile.Rect.localRotation = Quaternion.Euler(0, 0, angle);
             tile.Rect.localScale = Vector3.one * scale;
         }

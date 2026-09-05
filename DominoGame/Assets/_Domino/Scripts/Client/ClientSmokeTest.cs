@@ -3,6 +3,7 @@ using System.Collections;
 using Domino.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Domino.Client
 {
@@ -22,6 +23,10 @@ namespace Domino.Client
             yield return new WaitForSeconds(.35f);
             controller.RestartClient();
             yield return WaitForTurn();
+            var snapshot = controller.State.Configuration;
+            Check(snapshot.Id == "double-nine-partners" && snapshot.TargetScore == 200, "Bundled JSON loaded");
+            Check(controller.State.Reserve.Count == 15 && controller.State.CurrentPlayer == 0, "Reserve and first seat");
+            Check(snapshot.GetTeamForPlayer(0) == snapshot.GetTeamForPlayer(2) && snapshot.GetTeamForPlayer(1) == snapshot.GetTeamForPlayer(3), "Original teams");
             Check(controller.View.LocalTiles.Count == 10, "Ten local tiles after restart during deal");
             Canvas.ForceUpdateCanvases();
             foreach (var tile in FindObjectsByType<DominoTileView>(FindObjectsSortMode.None))
@@ -47,9 +52,27 @@ namespace Domino.Client
             yield return new WaitForSeconds(.1f);
             controller.RestartClient();
             yield return WaitForTurn();
-            float deadline = Time.realtimeSinceStartup + 180;
-            while (!controller.State.Finished && Time.realtimeSinceStartup < deadline)
+            float deadline = Time.realtimeSinceStartup + 210 * Mathf.Max(1, 4 / Mathf.Max(1, Time.timeScale));
+            var playButton = controller.View.transform.Find("Safe area/Landscape composition/Play").GetComponent<Button>();
+            int roundsCompleted = 0;
+            while (Time.realtimeSinceStartup < deadline)
             {
+                if (controller.State.Finished)
+                {
+                    // Wait for the actual presentation, including reveal/celebration/wash.
+                    if (!playButton.interactable || playButton.GetComponentInChildren<Text>().text == "JUGAR  →")
+                    { yield return null; continue; }
+                    Check(controller.View.PlayedCount == controller.State.Chain.Count, "All legal plays visible");
+                    roundsCompleted++;
+                    if (controller.State.Match.Finished) break;
+                    int oldRound = controller.State.Match.RoundNumber;
+                    int scoreA = controller.State.Match.Score(0), scoreB = controller.State.Match.Score(1);
+                    playButton.onClick.Invoke();
+                    Check(controller.State.Match.RoundNumber == oldRound + 1 && controller.State.CurrentPlayer == 0, "Next round starts with Fredy");
+                    Check(controller.State.Match.Score(0) == scoreA && controller.State.Match.Score(1) == scoreB, "Next round retains scores");
+                    Check(ReferenceEquals(snapshot, controller.State.Match.Configuration), "Same snapshot across rounds and restart");
+                    Check(controller.State.Hand(0).Count == 10 && controller.State.Reserve.Count == 15, "Next round deal");
+                }
                 if (controller.AcceptingInput)
                 {
                     foreach (var tile in controller.View.LocalTiles)
@@ -61,11 +84,11 @@ namespace Domino.Client
                 }
                 yield return null;
             }
-            yield return new WaitForSeconds(1);
-            Check(controller.State.Finished, "Round completed or blocked without hanging");
+            Check(controller.State.Match.Finished && roundsCompleted > 0, "Full match completed without hanging");
+            Check(controller.State.Match.Score(controller.State.Match.WinnerSide) >= snapshot.TargetScore, "Match ends at configured target");
             Check(controller.View.PlayedCount == controller.State.Chain.Count, "All legal plays visible");
             Check(errors == 0, "No errors during smoke validation");
-            Debug.Log("DOMINO_SMOKE_SUCCESS: Double Nine, ten tiles, drag, legal plays, passes, turns, restart, round end. Visual inspection still required.");
+            Debug.Log($"DOMINO_SMOKE_SUCCESS: JSON configuration, Double Nine, ten tiles, reserve, teams, drag, legal plays, passes, turns, restart, {roundsCompleted} rounds, immutable snapshot and target 200. Visual inspection still required.");
             Destroy(this);
         }
         IEnumerator WaitForTurn()

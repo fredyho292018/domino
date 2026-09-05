@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   tilePrefab: {fileID: 11400000, guid: 495a30d0cfa0e34815de0a7f31f18e79, type: 3}
   playerPrefab: {fileID: 11400000, guid: 19249729e961e39f7364e3b70ea214f1, type: 3}
-  targetScore: 200
+  configurationJson: {fileID: 4900000, guid: e3cd4a1a0ec74f96a4eb786fc272851a, type: 3}
 --- !u!1 &200000
 GameObject:
   m_ObjectHideFlags: 0

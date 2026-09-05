@@ -13,13 +13,8 @@ namespace Domino.Client
     {
         [SerializeField] DominoTileView tilePrefab;
         [SerializeField] PlayerView playerPrefab;
-        [Header("Reglas de la partida")]
-        [SerializeField] bool teams = true;
-        [SerializeField, Min(1)] int targetScore = 200;
-        [SerializeField, Min(0)] int finishBonus = 10;
-        [SerializeField] BlockedWinnerRule blockedWinner = BlockedWinnerRule.LowestPlayer;
-        [SerializeField] PointsSource pointsSource = PointsSource.AllOtherPlayers;
-        [SerializeField] bool compoundTies = false;
+        [Header("Configuración local de reglas")]
+        [SerializeField] TextAsset configurationJson;
         ClientGame game;
         readonly Queue<GameEvent> events = new();
         BoardView board;
@@ -32,11 +27,22 @@ namespace Domino.Client
         void Start()
         {
             Application.targetFrameRate = 60;
-            game = new ClientGame(new GameRules(teams, targetScore, finishBonus, blockedWinner, pointsSource, compoundTies));
+            try
+            {
+                var configuration = LocalGameConfiguration.Load(configurationJson);
+                game = new ClientGame(new GameRules(configuration));
+                Debug.Log($"CONFIGURATION_LOAD=SUCCESS id={configuration.Id} version={configuration.Version} schema={configuration.SchemaVersion} ruleset={configuration.RulesetVersion}");
+            }
+            catch (Exception error)
+            {
+                Debug.LogError("CONFIGURATION_LOAD=FAILURE: " + error.Message, this);
+                enabled = false;
+                return;
+            }
             if (!tilePrefab || !playerPrefab) throw new InvalidOperationException("Assign the DominoTile and Player prefabs in DominoClient.");
             if (!FindFirstObjectByType<EventSystem>()) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             board = new GameObject("Domino Canvas", typeof(RectTransform)).AddComponent<BoardView>();
-            board.Initialize(tilePrefab, playerPrefab);
+            board.Initialize(tilePrefab, playerPrefab, game.Configuration);
             board.CanPlace = (tile, end) => game.CanPlay(tile, end);
             board.TileSelected += Select;
             board.TileDropped += PlayDropped;
@@ -49,6 +55,7 @@ namespace Domino.Client
         void Enqueue(GameEvent e) => events.Enqueue(e);
         public void RestartClient()
         {
+            if (game == null || !board) return;
             previewing = false;
             StopAllCoroutines(); events.Clear(); acceptingInput = false; selected = null;
             board.Clear(); game.Start(Environment.TickCount);
@@ -114,9 +121,8 @@ namespace Domino.Client
                 {
                     case GameEventType.GAME_STARTED:
                         board.UpdateScore(game.Rules, game.Match);
-                        if (game.Match.RoundNumber == 1) yield return board.PreviewWash(false);
-                        var hands = new IReadOnlyList<DominoTile>[4];
-                        for (int p = 0; p < 4; p++) hands[p] = game.Hand(p);
+                        var hands = new IReadOnlyList<DominoTile>[game.Configuration.PlayerCount];
+                        for (int p = 0; p < hands.Length; p++) hands[p] = game.Hand(p);
                         yield return board.Deal(hands);
                         break;
                     case GameEventType.TILE_PLAYED:
@@ -131,6 +137,7 @@ namespace Domino.Client
                             board.ShowMessage(new[] { "Fredy", "Alex", "Maria", "John" }[e.Player] + " no tiene jugada: pasa");
                             game.TryPass(e.Player);
                         }
+                        // TODO: Human/bot seat ownership belongs to SessionSetup, not rules.
                         else if (e.Player != 0)
                         {
                             yield return new WaitForSeconds(UnityEngine.Random.Range(1.1f, 1.7f));
@@ -152,7 +159,7 @@ namespace Domino.Client
                         board.UpdateScore(game.Rules, game.Match);
                         var result = game.Result;
                         string winnerName = result.Tie ? "" : game.Rules.Teams
-                            ? (result.WinnerSide == 0 ? "Fredy–Maria" : "Alex–John")
+                            ? TeamName(result.WinnerSide)
                             : new[] { "Fredy", "Alex", "Maria", "John" }[result.WinnerPlayer];
                         string summary = result.Tie ? $"Tranca empatada · Próxima ronda ×{game.Match.Multiplier}"
                             : $"{winnerName}: +{result.Award} pts ({result.BasePoints} + {result.Bonus}) ×{result.Multiplier}";
@@ -169,6 +176,14 @@ namespace Domino.Client
         {
             if (game != null) game.Changed -= Enqueue;
             if (board) Destroy(board.gameObject);
+        }
+        string TeamName(int team)
+        {
+            string[] names = { "Fredy", "Alex", "Maria", "John" };
+            var members = game.Rules.GetTeamMembers(team);
+            var labels = new string[members.Count];
+            for (int i = 0; i < members.Count; i++) labels[i] = names[members[i]];
+            return string.Join("–", labels);
         }
     }
     internal static class ViewListExtensions

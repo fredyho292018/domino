@@ -1,0 +1,35 @@
+{
+  "id": "double-nine-partners",
+  "version": 1,
+  "schemaVersion": 1,
+  "rulesetVersion": "1.0",
+  "playerCount": 4,
+  "teamMode": "FIXED_TEAMS",
+  "teamAssignments": [{ "members": [0, 2] }, { "members": [1, 3] }],
+  "maxPip": 9,
+  "tilesPerPlayer": 10,
+  "deal": { "method": "ROUND_ROBIN", "seatOrder": [0, 1, 2, 3], "undealtTiles": "RESERVE" },
+  "drawPolicy": "NONE",
+  "turnOrder": [0, 3, 2, 1],
+  "firstRoundStarting": { "mode": "FIXED_SEAT", "seat": 0 },
+  "followingRoundStarting": { "mode": "FIXED_SEAT", "seat": 0 },
+  "openingTilePolicy": "ANY",
+  "passPolicy": "NO_LEGAL_MOVE",
+  "blocked": {
+    "detection": "ALL_PLAYERS_PASS_CONSECUTIVELY",
+    "winner": "LOWEST_INDIVIDUAL_PIPS",
+    "opposingTeamsMinimumTie": "ROUND_TIE",
+    "sameTeamMinimumTie": "TEAM_WINS",
+    "winningRepresentative": "FIRST_SEAT_IN_WINNING_MINIMUM"
+  },
+  "finishScoring": { "source": "ALL_OTHER_PLAYERS", "bonus": 10 },
+  "blockedScoring": { "source": "ALL_OTHER_PLAYERS", "bonus": 0 },
+  "tie": {
+    "award": 0,
+    "nextRoundMultiplier": 2,
+    "repeatedTie": "KEEP_MULTIPLIER",
+    "appliesTo": "TOTAL_INCLUDING_BONUS",
+    "afterAward": "RESET_TO_ONE"
+  },
+  "targetScore": 200
+}
