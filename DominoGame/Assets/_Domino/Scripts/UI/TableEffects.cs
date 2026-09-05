@@ -78,23 +78,11 @@ namespace Domino.UI
             UiKit.Panel("Gold rule", card.transform, new Vector2(90,3), new Vector2(0,48), UiKit.Gold);
             UiKit.Label("Title", card.transform, match ? "¡PARTIDA GANADA!" : "¡RONDA GANADA!", new Vector2(490,40), new Vector2(0,15), 29, UiKit.Gold);
             UiKit.Label("Winner", card.transform, winner, new Vector2(490,38), new Vector2(0,-32), 25, UiKit.Cream);
-            const int count = 32;
-            var pieces = new RectTransform[count];
-            for (int i = 0; i < count; i++)
-                pieces[i] = UiKit.Panel("Confetti", effect, new Vector2(5+i%3*2,12), Vector2.zero,
-                    i%3 == 0 ? UiKit.Cream : i%3 == 1 ? UiKit.Gold : UiKit.Hex("74B6A1")).rectTransform;
             float duration = match ? 2.2f : 1.6f;
             for (float elapsed = 0; elapsed < duration; elapsed += Time.deltaTime)
             {
                 group.alpha = Mathf.Min(Mathf.Clamp01(elapsed/.15f), Mathf.Clamp01((duration-elapsed)/.3f));
                 card.rectTransform.localScale = Vector3.one*(1+.07f*Mathf.Sin(Mathf.Clamp01(elapsed/.35f)*Mathf.PI));
-                for (int i = 0; i < count; i++)
-                {
-                    float angle = (i*137.5f)*Mathf.Deg2Rad;
-                    float speed = 130+i%7*18;
-                    pieces[i].anchoredPosition = new Vector2(Mathf.Cos(angle)*speed*elapsed, 60+Mathf.Sin(angle)*speed*elapsed-70*elapsed*elapsed);
-                    pieces[i].localRotation = Quaternion.Euler(0,0,i*23+elapsed*(90+i*7));
-                }
                 yield return null;
             }
             Clear();

@@ -6,10 +6,26 @@ namespace Domino.UI
     public static class UiKit
     {
         public static readonly Color Ink = Hex("142B2C");
-        public static readonly Color Cream = Hex("F3EEDD");
-        public static readonly Color Gold = Hex("D7B879");
-        public static readonly Color Muted = Hex("9DBAB4");
+        public static Color Cream => DominoVisualTheme.Text;
+        public static Color Gold => DominoVisualTheme.Accent;
+        public static Color Muted => DominoVisualTheme.SecondaryText;
         static Sprite rounded;
+        static Sprite circle;
+        public static Image Disc(string name, Transform parent, float diameter, Vector2 position, Color color)
+        {
+            if (!circle)
+            {
+                var texture = new Texture2D(96, 96, TextureFormat.RGBA32, false) { name = "Avatar disc", filterMode = FilterMode.Bilinear };
+                var pixels = new Color[96 * 96];
+                for (int y = 0; y < 96; y++) for (int x = 0; x < 96; x++)
+                    pixels[y * 96 + x] = new Color(1, 1, 1, Mathf.Clamp01(47.5f - Vector2.Distance(new Vector2(x, y), Vector2.one * 47.5f)));
+                texture.SetPixels(pixels); texture.Apply();
+                circle = Sprite.Create(texture, new Rect(0, 0, 96, 96), Vector2.one * .5f);
+            }
+            var image = Rect(name, parent, Vector2.one * diameter, position).gameObject.AddComponent<Image>();
+            image.sprite = circle; image.color = color; image.raycastTarget = false;
+            return image;
+        }
         static Font font;
         public static Color Hex(string value) { ColorUtility.TryParseHtmlString("#" + value, out var c); return c; }
         public static Font Font => font ? font : font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

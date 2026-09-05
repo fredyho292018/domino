@@ -109,7 +109,7 @@ namespace Domino.UI
             var r = rectTransform.rect;
             bool ivory = TileStyles.Current == TileStyle.TeamFhoIvory;
             bool brandedWhite = TileStyles.Current == TileStyle.TeamFhoWhite;
-            Rounded(vh, new Rect(r.x + 1, r.y - 4, r.width, r.height), 6, new Color(0, 0, 0, .24f));
+            Rounded(vh, new Rect(r.x + 2, r.y - (selected ? 7 : 4), r.width + (selected ? 2 : 0), r.height), 6, new Color(0, 0, 0, selected ? DominoVisualTheme.SelectedShadowAlpha : DominoVisualTheme.ContactShadowAlpha));
             if (selected)
             {
                 Rounded(vh, new Rect(r.x - 7, r.y - 7, r.width + 14, r.height + 14), 10, new Color(UiKit.Gold.r, UiKit.Gold.g, UiKit.Gold.b, .18f));
@@ -118,7 +118,7 @@ namespace Domino.UI
             Rounded(vh, r, 6, UiKit.Hex(brandedWhite ? "B2BAC8" : ivory ? "B8AD92" : "073DAE"));
             Rounded(vh, new Rect(r.x + 1, r.y + 2, r.width - 2, r.height - 3), 5, UiKit.Hex(ivory || brandedWhite ? "FFFFFF" : "76C9FF"));
             Rounded(vh, new Rect(r.x + 2, r.y + 3, r.width - 4, r.height - 5), 4,
-                brandedWhite ? Color.white : ivory ? UiKit.Hex("F5F1DF") : front ? UiKit.Hex("057AE8") : UiKit.Hex("EBF7FF"));
+                brandedWhite ? Color.white : ivory ? DominoVisualTheme.TileFace : front ? UiKit.Hex("057AE8") : UiKit.Hex("EBF7FF"));
             Rounded(vh, new Rect(r.x + 4, r.y + 4, r.width - 8, 2), 1,
                 brandedWhite ? UiKit.Hex("E2E7EF") : ivory ? UiKit.Hex("D9D0B7") : front ? UiKit.Hex("0755C9") : UiKit.Hex("BDDEEF"));
             if (front)
@@ -166,7 +166,7 @@ namespace Domino.UI
             if (TileStyles.Current != TileStyle.CubaBlue)
             {
                 Circle(vh,center,radius+.5f,UiKit.Hex("C1BBA9"));
-                Circle(vh,center,radius,UiKit.Hex("111B1E"));
+                Circle(vh,center,radius,DominoVisualTheme.Pip);
                 Circle(vh,center+new Vector2(-.65f,.9f),radius*.3f,UiKit.Hex("627074"));
                 return;
             }

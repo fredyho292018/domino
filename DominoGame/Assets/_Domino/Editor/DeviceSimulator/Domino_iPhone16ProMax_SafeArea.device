@@ -1,0 +1,57 @@
+{
+  "friendlyName": "Domino iPhone16ProMax_SafeArea",
+  "systemInfo": {
+    "operatingSystem": "iOS"
+  },
+  "screens": [
+    {
+      "height": 2868,
+      "dpi": 460,
+      "navigationBarHeight": 0,
+      "orientations": [
+        {
+          "orientation": 1,
+          "safeArea": {
+            "y": 102,
+            "x": 0,
+            "width": 1320,
+            "height": 2580
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 2,
+          "safeArea": {
+            "y": 186,
+            "x": 0,
+            "width": 1320,
+            "height": 2580
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 3,
+          "safeArea": {
+            "y": 63,
+            "x": 186,
+            "width": 2496,
+            "height": 1257
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 4,
+          "safeArea": {
+            "y": 63,
+            "x": 186,
+            "width": 2496,
+            "height": 1257
+          },
+          "cutouts": []
+        }
+      ],
+      "width": 1320
+    }
+  ],
+  "version": 1
+}

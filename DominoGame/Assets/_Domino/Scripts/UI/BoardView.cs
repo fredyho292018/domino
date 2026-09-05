@@ -34,16 +34,18 @@ namespace Domino.UI
         Text reserveLabel;
         bool reserveParked;
         readonly PlayerView[] players = new PlayerView[4];
-        static readonly Vector2[] PlayerPositions = { new(-674, -397), new(-735, 80), new(0, 416), new(735, 80) };
+        static readonly Vector2[] PlayerPositions = { new(-674, -397), new(-735, 80), new(0, 402), new(735, 80) };
         readonly List<RectTransform> tableLayers = new();
-        static readonly float[] TableInsets = { 0, 0, 12, 16, 28, 31 };
-        const float LocalScale = 1.12f;
+        static readonly float[] TableInsets = { 0, 0, 4, 6, 8, 10 };
+        const float LocalScale = 1.16f;
         RectTransform content, safe, tiles;
         DominoTileView tilePrefab;
         GameConfigurationSnapshot configuration;
         Text prompt, boardHint, round;
         Text scoreA, scoreB;
         TableEffects effects;
+        FeedbackPresenter feedback;
+        public FeedbackPresenter Feedback => feedback;
         RectTransform washPreview;
         bool roundEnded, matchEnded;
         CanvasGroup turnBanner;
@@ -59,6 +61,8 @@ namespace Domino.UI
         public event Action PlayRequested;
         public event Action RestartRequested;
         public event Action NextRoundRequested;
+        // Optional audio adapter can subscribe without changing gameplay or adding an audio dependency.
+        public event Action TileLanded;
         public IReadOnlyList<DominoTileView> LocalTiles => hands[0];
         public int PlayedCount => played.Count;
 
@@ -66,6 +70,7 @@ namespace Domino.UI
         {
             this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             tilePrefab = dominoPrefab;
+            gameObject.AddComponent<DominoWashAudio>().Initialize(this);
             var canvas = gameObject.AddComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             gameObject.AddComponent<GraphicRaycaster>();
             var bg = UiKit.Rect("Backdrop", transform, Vector2.zero, Vector2.zero);
@@ -76,7 +81,7 @@ namespace Domino.UI
             content = UiKit.Rect("Landscape composition", safe, new Vector2(1600, 900), Vector2.zero);
 
             UiKit.Label("Brand", content, "TEAMFHO  /  DOMINO", new Vector2(320, 40), new Vector2(-610, 415), 22, UiKit.Cream, TextAnchor.MiddleLeft);
-            var scoreboard = UiKit.Panel("Score surface", content, new Vector2(310, 58), new Vector2(525, 414), UiKit.Hex("193A37")).transform;
+            var scoreboard = UiKit.Panel("Score surface", content, new Vector2(310, 58), new Vector2(525, 414), Color.clear).transform;
             round = UiKit.Label("Round", scoreboard, "RONDA 01", new Vector2(290, 20), new Vector2(0, -17), 12, UiKit.Muted);
             scoreA = UiKit.Label("Team A", scoreboard, "A  0", new Vector2(140, 32), new Vector2(-75, 9), 20, UiKit.Cream);
             UiKit.Label("Score separator", scoreboard, "·", new Vector2(20, 30), new Vector2(0, 9), 18, UiKit.Muted);
@@ -89,6 +94,12 @@ namespace Domino.UI
             UiKit.Panel("Inner stitch", content, new Vector2(977, 395), Vector2.zero, UiKit.Hex("397366"));
             var table = UiKit.Panel("Playing surface", content, new Vector2(974, 392), Vector2.zero, UiKit.Hex("245A50"));
             dropSurface = table;
+            table.color = DominoVisualTheme.Table;
+            table.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            var feltLight = UiKit.Rect("Felt lighting", table.transform, Vector2.zero, Vector2.zero);
+            feltLight.anchorMin = Vector2.zero; feltLight.anchorMax = Vector2.one;
+            var lighting = feltLight.gameObject.AddComponent<SoftBackdrop>();
+            lighting.TableSurface = true; lighting.raycastTarget = false;
             string[] layers = { "Table shadow", "Table outer rail", "Brass inlay", "Felt", "Inner stitch", "Playing surface" };
             for (int i = 0; i < layers.Length; i++)
             {
@@ -98,6 +109,10 @@ namespace Domino.UI
                 layer.anchoredPosition = new Vector2(0, i == 0 ? 17 : 25);
                 tableLayers.Add(layer);
             }
+            content.Find("Table outer rail").GetComponent<Image>().color = DominoVisualTheme.Rail;
+            content.Find("Brass inlay").GetComponent<Image>().color = Color.Lerp(DominoVisualTheme.Rail, UiKit.Gold, .22f);
+            content.Find("Felt").GetComponent<Image>().color = DominoVisualTheme.Table;
+            content.Find("Inner stitch").GetComponent<Image>().color = DominoVisualTheme.Table;
             table.raycastTarget = true;
             table.gameObject.AddComponent<Button>().onClick.AddListener(() => PlayRequested?.Invoke());
             boardHint = UiKit.Label("Empty board", content, "T E A M F H O", new Vector2(450, 60), new Vector2(0, 25), 24, UiKit.Hex("548679"));
@@ -126,8 +141,8 @@ namespace Domino.UI
                 else if (roundEnded) NextRoundRequested?.Invoke();
                 else PlayRequested?.Invoke();
             });
-            UiKit.Button("Restart", content, "Reiniciar", new Vector2(158, 32), new Vector2(684, -423), UiKit.Hex("24443E"), () => RestartRequested?.Invoke());
-            var menuButton = UiKit.Button("Menu", content, "", new Vector2(48, 48), new Vector2(736, 414), UiKit.Hex("294841"), ToggleMenu);
+            UiKit.Button("Restart", content, "Reiniciar", new Vector2(158, 32), new Vector2(684, -423), Color.clear, () => RestartRequested?.Invoke());
+            var menuButton = UiKit.Button("Menu", content, "", new Vector2(48, 48), new Vector2(736, 414), Color.clear, ToggleMenu);
             for (int i = -1; i <= 1; i++) UiKit.Panel("Menu line", menuButton.transform, new Vector2(20, 2), new Vector2(0, i * 6), UiKit.Cream);
             menu = UiKit.Panel("Client menu", content, new Vector2(330, 275), new Vector2(595, 190), UiKit.Hex("102D2A")).gameObject;
             menu.GetComponent<Image>().raycastTarget = true;
@@ -152,6 +167,8 @@ namespace Domino.UI
             menu.transform.SetAsLastSibling();
             effects = gameObject.AddComponent<TableEffects>();
             effects.Initialize(content);
+            feedback = gameObject.AddComponent<FeedbackPresenter>();
+            feedback.Initialize(content, (RectTransform)turnBanner.transform, (RectTransform)scoreboard);
             // Allocate once, before animation. All rounds reuse these views.
             for (int i = 0; i < configuration.TotalTiles; i++) ReleaseTile(CreateTile());
             SetInteraction(false, false);
@@ -169,7 +186,7 @@ namespace Domino.UI
             if (!content) return;
             float scale = Mathf.Min(safe.rect.width / 1600, safe.rect.height / 900);
             if (scale <= 0) return;
-            float width = safe.rect.width / scale;
+            float width = Mathf.Min(2100, safe.rect.width / scale);
             bool resized = Mathf.Abs(content.sizeDelta.x - width) > .1f;
             content.sizeDelta = new Vector2(width, 900);
             content.localScale = Vector3.one * scale;
@@ -207,6 +224,7 @@ namespace Domino.UI
         {
             ResetEndpointZoom();
             effects.Clear();
+            feedback.Clear();
             SetDealPhase(DealPresentationPhase.Idle);
             VisuallyDealt = 0;
             foreach (var view in dealStock) ReleaseTile(view);
@@ -238,9 +256,9 @@ namespace Domino.UI
             return player switch
             {
                 0 => new Vector2(offset * spacing, -content.rect.height * (388f / 900)),
-                1 => new Vector2(-content.sizeDelta.x / 2 + 65, -24 - index * 9),
-                2 => new Vector2(156 + index * 9, 415),
-                _ => new Vector2(content.sizeDelta.x / 2 - 65, -24 - index * 9)
+                1 => new Vector2(-content.sizeDelta.x / 2 + 65, -32 - index * 7),
+                2 => new Vector2(144 + index * 7, 415),
+                _ => new Vector2(content.sizeDelta.x / 2 - 65, -32 - index * 7)
             };
         }
         Vector2 ReservePosition(int index)
@@ -306,7 +324,7 @@ namespace Domino.UI
                 view.transform.SetAsLastSibling();
                 int seat = p, index = n, count = modelHands[p].Count;
                 float duration = .245f + .04f * (.5f + .5f * Mathf.Sin(VisuallyDealt * 2.4f));
-                yield return Move(view, () => ProvisionalHandPosition(seat, index, count), p == 0 ? 90 + (n % 2 == 0 ? -4 : 4) : (n % 2 == 0 ? -3 : 3), p == 0 ? LocalScale : .48f, duration);
+                yield return Move(view, () => ProvisionalHandPosition(seat, index, count), p == 0 ? 90 + (n % 2 == 0 ? -4 : 4) : (n % 2 == 0 ? -3 : 3), p == 0 ? LocalScale : .42f, duration);
                 view.Home = HandPosition(p, n, count);
                 players[p].SetCount(n + 1);
                 VisuallyDealt++;
@@ -362,7 +380,7 @@ namespace Domino.UI
                     view.Home = HandPosition(p, n, hands[p].Count);
                     view.Rect.anchoredPosition = Vector2.Lerp(starts[cursor], view.Home, t);
                     view.Rect.localRotation = Quaternion.Slerp(rotations[cursor++], Quaternion.Euler(0, 0, p == 0 ? 90 : 0), t);
-                    view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .48f);
+                    view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .42f);
                 }
                 yield return null;
             }
@@ -372,7 +390,7 @@ namespace Domino.UI
                 view.Home = HandPosition(p, n, hands[p].Count);
                 view.Rect.anchoredPosition = view.Home;
                 view.Rect.localRotation = Quaternion.Euler(0, 0, p == 0 ? 90 : 0);
-                view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .48f);
+                view.Rect.localScale = Vector3.one * (p == 0 ? LocalScale : .42f);
             }
             SetDealPhase(DealPresentationPhase.Ready);
             prompt.text = "Manos listas";
@@ -478,6 +496,7 @@ namespace Domino.UI
             if (IsPreparingRound) return;
             for (int p = 0; p < 4; p++) players[p].SetTurn(p == player);
             bannerTarget = player == 0 ? 1 : 0;
+            feedback.Turn(player == 0);
             prompt.text = player == 0 ? "Arrastra una ficha a la mesa o selecciónala para jugar" : new[] { "", "Alex está pensando…", "Maria está pensando…", "John está pensando…" }[player];
         }
         public void SetSelected(DominoTileView selection)
@@ -485,6 +504,7 @@ namespace Domino.UI
             if (IsPreparingRound) return;
             foreach (var tile in hands[0]) tile.Select(tile == selection);
             if (selection) selection.transform.SetAsLastSibling();
+            if (selection) feedback.Cue(FeedbackCue.TilePick, selection.Rect.anchoredPosition);
             playButton.interactable = selection != null;
             prompt.text = selection ? "Arrastra al extremo resaltado o pulsa JUGAR" : "Selecciona una ficha y toca la mesa para jugar";
             UpdatePlacementTargets();
@@ -550,7 +570,12 @@ namespace Domino.UI
         }
         public void ShowMessage(string message) => prompt.text = message;
         public IEnumerator ShowPass(int player) => effects.Knock(player);
-        public IEnumerator ShowWinner(string winner, bool match) => effects.Celebrate(winner, match);
+        public IEnumerator ShowWinner(string winner, bool match)
+        {
+            feedback.Cue(match ? FeedbackCue.GameWin : FeedbackCue.RoundWin, Vector2.zero);
+            yield return effects.Celebrate(winner, match);
+            feedback.Clear();
+        }
         public IEnumerator PreviewWash(bool isPreview = true)
         {
             washPreview = UiKit.Rect("Wash preview tiles", content, Vector2.zero, Vector2.zero);
@@ -610,8 +635,18 @@ namespace Domino.UI
             ResetEndpointZoom();
             hands[e.Player].Remove(tile); played.Insert(e.ChainIndex, tile); tile.Orient(e.Tile); tile.Select(false); tile.Selectable = false;
             tile.transform.SetAsLastSibling();
+            feedback.Cue(FeedbackCue.TilePlay, tile.Rect.anchoredPosition);
             yield return MoveChain(e.Player == 0 ? .42f : .75f, tile);
             tile.Reveal();
+            TileLanded?.Invoke();
+            feedback.Cue(FeedbackCue.TileImpact, tile.Rect.anchoredPosition);
+            var landingScale = tile.Rect.localScale;
+            for (float elapsed = 0; elapsed < .14f; elapsed += Time.deltaTime)
+            {
+                tile.Rect.localScale = landingScale * (1 + .03f * Mathf.Sin(Mathf.Clamp01(elapsed / .14f) * Mathf.PI));
+                yield return null;
+            }
+            tile.Rect.localScale = landingScale;
             players[e.Player].SetCount(hands[e.Player].Count);
             for (int i = 0; i < hands[e.Player].Count; i++) hands[e.Player][i].Home = HandPosition(e.Player, i, hands[e.Player].Count);
             // Reflow also runs while inputs are locked.
@@ -675,8 +710,8 @@ namespace Domino.UI
         public void UpdateScore(Domino.Game.GameRules rules, Domino.Game.MatchState match)
         {
             scoreA.fontSize = scoreB.fontSize = rules.Teams ? 18 : 15;
-            scoreA.text = rules.Teams ? $"A  {match.Score(0)}" : $"F {match.Score(0)} · M {match.Score(2)}";
-            scoreB.text = rules.Teams ? $"{match.Score(1)}  B" : $"A {match.Score(1)} · J {match.Score(3)}";
+            scoreA.text = rules.Teams ? $"NOSOTROS  {match.Score(0)}" : $"F {match.Score(0)} · M {match.Score(2)}";
+            scoreB.text = rules.Teams ? $"{match.Score(1)}  ELLOS" : $"A {match.Score(1)} · J {match.Score(3)}";
             round.text = $"R{match.RoundNumber} · META {rules.TargetScore} · ×{match.Multiplier}";
             round.rectTransform.sizeDelta = new Vector2(290, 25);
         }

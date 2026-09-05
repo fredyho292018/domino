@@ -55,6 +55,7 @@ namespace Domino.Client
             float deadline = Time.realtimeSinceStartup + 210 * Mathf.Max(1, 4 / Mathf.Max(1, Time.timeScale));
             var playButton = controller.View.transform.Find("Safe area/Landscape composition/Play").GetComponent<Button>();
             int roundsCompleted = 0;
+            bool capturedChain = false;
             while (Time.realtimeSinceStartup < deadline)
             {
                 if (controller.State.Finished)
@@ -75,6 +76,12 @@ namespace Domino.Client
                 }
                 if (controller.AcceptingInput)
                 {
+                    if (!capturedChain && controller.View.PlayedCount >= 12 && SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
+                    {
+                        capturedChain = true;
+                        ScreenCapture.CaptureScreenshot(System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../../visual-v2-chain.png")));
+                        yield return new WaitForSeconds(.3f);
+                    }
                     foreach (var tile in controller.View.LocalTiles)
                     {
                         if (!controller.State.CanPlay(tile.Tile)) continue;

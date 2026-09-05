@@ -27,8 +27,8 @@ namespace Domino.Client
             Check(controller && controller.View && controller.State != null, "Controller initialized");
             controller.View.DealPhaseChanged += OnPhase;
             controller.View.TileDealt += OnTile;
-            int[,] sizes = { {1600,900}, {1950,900}, {2000,900}, {2100,900}, {1200,900} };
-            string[] names = { "16x9", "19.5x9", "20x9", "21x9", "tablet-4x3" };
+            int[,] sizes = { {1600,900}, {1950,900}, {2000,900}, {2100,900}, {1200,900}, {1800,900} };
+            string[] names = { "16x9", "19.5x9", "20x9", "21x9", "tablet-4x3", "18x9" };
             for (int test = 0; test < names.Length; test++)
             {
                 capturePhases = test == 0;
@@ -92,7 +92,28 @@ namespace Domino.Client
             controller.RestartClient();
             yield return CheckPreparation();
             Check(controller.View.CreatedTileViews == 55 && dealt == 40, "Restart cancels and reuses all views");
-            Debug.Log($"DOMINO_DEALING_SUCCESS: {checks} checks; wash, 40 deals, reveal, organization, hidden opponents, input/bot gates, pool reuse and five responsive layouts.");
+            var feedback = controller.View.Feedback;
+            Check(feedback && feedback.GetComponentsInChildren<ParticleSystem>().Length == 3, "Three persistent native particle systems");
+            feedback.Cue(FeedbackCue.GameWin, Vector2.zero);
+            Check(feedback.LiveParticles > 0 && feedback.LiveParticles <= 64, "Bounded celebration burst");
+            yield return new WaitForSecondsRealtime(.18f);
+            Check(feedback.LiveParticles > 0, "Native particles remain alive while simulating");
+            foreach (var particles in feedback.GetComponentsInChildren<FeedbackParticles>())
+                if (particles.LiveCount > 0)
+                    Check(particles.canvasRenderer && particles.canvasRenderer.GetMesh() && particles.canvasRenderer.GetMesh().vertexCount > 0, "Active particles submit visible UI geometry");
+            if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null) Capture("FeedbackParticles");
+            yield return new WaitForSecondsRealtime(.12f);
+            controller.RestartClient();
+            Check(feedback.LiveParticles == 0, "Restart clears active particles immediately");
+            yield return CheckPreparation();
+            feedback.Animations = FeedbackAnimationMode.Off;
+            feedback.Cue(FeedbackCue.GameWin, Vector2.zero);
+            Check(feedback.LiveParticles == 0, "Effects off prevents particles");
+            feedback.Animations = FeedbackAnimationMode.Reduced;
+            feedback.Cue(FeedbackCue.GameWin, Vector2.zero);
+            Check(feedback.LiveParticles > 0 && feedback.LiveParticles <= 20, "Reduced effects limits particles");
+            feedback.Clear(); feedback.Animations = FeedbackAnimationMode.Full;
+            Debug.Log($"DOMINO_DEALING_SUCCESS: {checks} checks; wash, 40 deals, reveal, organization, hidden opponents, input/bot gates, pool reuse and six responsive layouts.");
             Destroy(this);
         }
         IEnumerator CheckPreparation()
@@ -120,6 +141,19 @@ namespace Domino.Client
         }
         void OnPhase(DealPresentationPhase phase)
         {
+            var washAudio = controller.View.GetComponent<AudioSource>();
+            Check(washAudio && washAudio.clip && !washAudio.loop && washAudio.spatialBlend == 0, "Wash has reusable 2D audio");
+            Check(washAudio.isPlaying == (phase == DealPresentationPhase.Washing), "Wash audio starts and stops with visual phase");
+            if (phase == DealPresentationPhase.Washing)
+            {
+                var samples = new float[washAudio.clip.samples];
+                Check(washAudio.clip.GetData(samples, 0), "Wash audio samples accessible");
+                float peak = 0;
+                foreach (float sample in samples) peak = Mathf.Max(peak, Mathf.Abs(sample));
+                Check(peak > .05f && peak < 1, "Wash audio non-silent and unclipped");
+                Check(Mathf.Abs(washAudio.clip.length - BoardView.InitialWashDuration) < .001f, "Wash audio matches animation duration");
+                Check(FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Length == 1, "Exactly one audio listener");
+            }
             if (phase == DealPresentationPhase.Idle) { phases.Clear(); Array.Clear(received,0,received.Length); dealt=0; }
             phases.Add(phase);
             if (phase == DealPresentationPhase.Washing) washStarted = Time.time;

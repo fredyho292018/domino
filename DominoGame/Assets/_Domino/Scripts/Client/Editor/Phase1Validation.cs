@@ -69,7 +69,11 @@ namespace Domino.Editor
                 DealingSmokeTest.ResizeGameView = ResizeGameView;
                 controller.gameObject.AddComponent<DealingSmokeTest>();
             }
-            else controller.gameObject.AddComponent<ClientSmokeTest>();
+            else
+            {
+                if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null) ResizeGameView(1600, 900);
+                controller.gameObject.AddComponent<ClientSmokeTest>();
+            }
         }
         static void OnLog(string message, string stack, LogType type)
         {
