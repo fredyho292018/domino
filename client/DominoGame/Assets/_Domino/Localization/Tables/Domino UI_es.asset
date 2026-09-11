@@ -1,0 +1,527 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: Domino UI_es
+  m_EditorClassIdentifier: 
+  m_LocaleId:
+    m_Code: es
+  m_SharedData: {fileID: 11400000, guid: b787000c94add624d8c3529bf807766f, type: 2}
+  m_Metadata:
+    m_Items:
+    - rid: 7246862583952572444
+  m_TableData:
+  - m_Id: 644640768
+    m_Localized: Jugar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 741109760
+    m_Localized: Ajustes
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304064
+    m_Localized: Salir
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304065
+    m_Localized: Volver
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304066
+    m_Localized: La mesa es tuya
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304067
+    m_Localized: "Una mesa. Cuatro jugadores. Tu pr\xF3xima partida."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304068
+    m_Localized: "Sin conexi\xF3n \xB7 Juega a tu ritmo"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304069
+    m_Localized: Elige tu partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304070
+    m_Localized: Partida por equipos
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304071
+    m_Localized: "T\xFA + Bot vs 2 Bots"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304072
+    m_Localized: '{0} contra {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304073
+    m_Localized: "Pr\xF3ximamente"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304074
+    m_Localized: "T\xFA"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304075
+    m_Localized: Bot
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304076
+    m_Localized: Jugador
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304077
+    m_Localized: "Compa\xF1ero"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304078
+    m_Localized: Rival
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304079
+    m_Localized: Doble {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304080
+    m_Localized: '{0} {0:plural:ficha|fichas}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304081
+    m_Localized: Sin robo
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304082
+    m_Localized: Meta {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304083
+    m_Localized: "{0} \xB7 {1} \xB7 {2} \xB7 {3}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304084
+    m_Localized: Ronda {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304085
+    m_Localized: Equipo A
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304086
+    m_Localized: Equipo B
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304087
+    m_Localized: Nosotros {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304088
+    m_Localized: Ellos {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304089
+    m_Localized: "F {0} \xB7 M {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304090
+    m_Localized: "A {0} \xB7 J {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304091
+    m_Localized: "R{0} \xB7 Meta {1} \xB7 \xD7{2}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304092
+    m_Localized: Tu turno
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304093
+    m_Localized: Paso
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304094
+    m_Localized: "Jugar \u2192"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304095
+    m_Localized: Reiniciar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304096
+    m_Localized: Salir de la partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304097
+    m_Localized: Continuar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304098
+    m_Localized: "Siguiente ronda \u2192"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304099
+    m_Localized: Nueva partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304100
+    m_Localized: "Repartiendo\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304101
+    m_Localized: "D\xE1ndole agua al domin\xF3\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304102
+    m_Localized: "D\xE1ndole agua al domin\xF3 antes de repartir\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304103
+    m_Localized: "Vista previa: d\xE1ndole agua al domin\xF3\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304104
+    m_Localized: "Repartiendo {0} {0:plural:ficha|fichas} por jugador\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304105
+    m_Localized: "Reserva \xB7 {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304106
+    m_Localized: "Preparando tu mano\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304107
+    m_Localized: Manos listas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304108
+    m_Localized: Arrastra a la mesa y suelta para jugar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304109
+    m_Localized: No encaja en ese extremo. Usa una ficha resaltada de la mesa.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304110
+    m_Localized: "Arrastra una ficha a la mesa o selecci\xF3nala para jugar"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304111
+    m_Localized: "{0} est\xE1 pensando\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304112
+    m_Localized: Arrastra al extremo resaltado o pulsa Jugar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304113
+    m_Localized: Selecciona una ficha y toca la mesa para jugar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304114
+    m_Localized: 'No encaja: necesitas un {0} o un {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304115
+    m_Localized: '{0} no tiene jugada: pasa'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304116
+    m_Localized: "{0} {0:plural:ficha|fichas} \xB7 {1} pts"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304117
+    m_Localized: "\xA1Domin\xF3!"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304118
+    m_Localized: Ronda ganada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304119
+    m_Localized: Ronda perdida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304120
+    m_Localized: Victoria
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304121
+    m_Localized: Derrota
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304122
+    m_Localized: Empate
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304123
+    m_Localized: Fin de la partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304124
+    m_Localized: "Tranca empatada \xB7 Pr\xF3xima ronda \xD7{0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304125
+    m_Localized: "{0}: +{1} pts ({2} + {3}) \xD7{4}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304126
+    m_Localized: "{0} \xB7 {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304127
+    m_Localized: Estilo de fichas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304128
+    m_Localized: "TEAMFHO \xB7 Marfil"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304129
+    m_Localized: "Cuba \xB7 Azul"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304130
+    m_Localized: "TEAMFHO \xB7 Blanco"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304131
+    m_Localized: Se aplica al instante y se guarda
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304132
+    m_Localized: '{0}{1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304133
+    m_Localized: Idioma
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304134
+    m_Localized: English
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304135
+    m_Localized: "Espa\xF1ol"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304136
+    m_Localized: "Cargando\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304137
+    m_Localized: "Conectando\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304138
+    m_Localized: "Sin conexi\xF3n"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304139
+    m_Localized: Reintentar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304140
+    m_Localized: Cancelar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304141
+    m_Localized: Confirmar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 745304142
+    m_Localized: No disponible
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 338098959884288
+    m_Localized: Tu turno, {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 338099018604544
+    m_Localized: Turno de {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  references:
+    version: 2
+    RefIds:
+    - rid: 7246862583952572444
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 644640768
+        - id: 741109760
+        - id: 745304064
+        - id: 745304065
+        - id: 745304066
+        - id: 745304067
+        - id: 745304068
+        - id: 745304069
+        - id: 745304070
+        - id: 745304071
+        - id: 745304072
+        - id: 745304073
+        - id: 745304074
+        - id: 745304075
+        - id: 745304076
+        - id: 745304077
+        - id: 745304078
+        - id: 745304079
+        - id: 745304080
+        - id: 745304081
+        - id: 745304082
+        - id: 745304083
+        - id: 745304084
+        - id: 745304085
+        - id: 745304086
+        - id: 745304087
+        - id: 745304088
+        - id: 745304089
+        - id: 745304090
+        - id: 745304091
+        - id: 745304092
+        - id: 745304093
+        - id: 745304094
+        - id: 745304095
+        - id: 745304096
+        - id: 745304097
+        - id: 745304098
+        - id: 745304099
+        - id: 745304100
+        - id: 745304101
+        - id: 745304102
+        - id: 745304103
+        - id: 745304104
+        - id: 745304105
+        - id: 745304106
+        - id: 745304107
+        - id: 745304108
+        - id: 745304109
+        - id: 745304110
+        - id: 745304111
+        - id: 745304112
+        - id: 745304113
+        - id: 745304114
+        - id: 745304115
+        - id: 745304116
+        - id: 745304117
+        - id: 745304118
+        - id: 745304119
+        - id: 745304120
+        - id: 745304121
+        - id: 745304122
+        - id: 745304123
+        - id: 745304124
+        - id: 745304125
+        - id: 745304126
+        - id: 745304127
+        - id: 745304128
+        - id: 745304129
+        - id: 745304130
+        - id: 745304131
+        - id: 745304132
+        - id: 745304133
+        - id: 745304134
+        - id: 745304135
+        - id: 745304136
+        - id: 745304137
+        - id: 745304138
+        - id: 745304139
+        - id: 745304140
+        - id: 745304141
+        - id: 745304142
+        - id: 338098959884288
+        - id: 338099018604544

@@ -1,0 +1,57 @@
+{
+  "friendlyName": "Domino Android_Tablet_Synthetic",
+  "systemInfo": {
+    "operatingSystem": "Android"
+  },
+  "screens": [
+    {
+      "height": 2560,
+      "dpi": 240,
+      "navigationBarHeight": 0,
+      "orientations": [
+        {
+          "orientation": 1,
+          "safeArea": {
+            "y": 48,
+            "x": 0,
+            "width": 1600,
+            "height": 2512
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 2,
+          "safeArea": {
+            "y": 0,
+            "x": 0,
+            "width": 1600,
+            "height": 2512
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 3,
+          "safeArea": {
+            "y": 48,
+            "x": 0,
+            "width": 2560,
+            "height": 1552
+          },
+          "cutouts": []
+        },
+        {
+          "orientation": 4,
+          "safeArea": {
+            "y": 48,
+            "x": 0,
+            "width": 2560,
+            "height": 1552
+          },
+          "cutouts": []
+        }
+      ],
+      "width": 1600
+    }
+  ],
+  "version": 1
+}

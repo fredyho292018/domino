@@ -1,0 +1,360 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: Domino UI Shared Data
+  m_EditorClassIdentifier: 
+  m_TableCollectionName: Domino UI
+  m_TableCollectionNameGuidString: b787000c94add624d8c3529bf807766f
+  m_Entries:
+  - m_Id: 644640768
+    m_Key: menu.play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 741109760
+    m_Key: menu.settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304064
+    m_Key: menu.exit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304065
+    m_Key: menu.back
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304066
+    m_Key: menu.eyebrow
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304067
+    m_Key: menu.welcome
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304068
+    m_Key: menu.offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304069
+    m_Key: menu.choose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304070
+    m_Key: mode.team_match.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304071
+    m_Key: mode.team_match.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304072
+    m_Key: mode.teams
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304073
+    m_Key: mode.coming_soon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304074
+    m_Key: player.you
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304075
+    m_Key: player.bot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304076
+    m_Key: player.player
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304077
+    m_Key: player.partner
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304078
+    m_Key: player.opponent
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304079
+    m_Key: rules.double_nine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304080
+    m_Key: rules.tiles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304081
+    m_Key: rules.no_draw
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304082
+    m_Key: rules.target_score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304083
+    m_Key: rules.summary
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304084
+    m_Key: game.round
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304085
+    m_Key: game.team_a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304086
+    m_Key: game.team_b
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304087
+    m_Key: game.score_a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304088
+    m_Key: game.score_b
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304089
+    m_Key: game.individual_a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304090
+    m_Key: game.individual_b
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304091
+    m_Key: game.score_round
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304092
+    m_Key: game.your_turn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304093
+    m_Key: game.pass
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304094
+    m_Key: game.play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304095
+    m_Key: game.restart
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304096
+    m_Key: game.exit_match
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304097
+    m_Key: game.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304098
+    m_Key: game.next_round
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304099
+    m_Key: game.new_match
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304100
+    m_Key: game.dealing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304101
+    m_Key: game.washing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304102
+    m_Key: game.wash_before_deal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304103
+    m_Key: game.wash_preview
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304104
+    m_Key: game.deal_count
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304105
+    m_Key: game.reserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304106
+    m_Key: game.preparing_hand
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304107
+    m_Key: game.hands_ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304108
+    m_Key: game.drag_drop
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304109
+    m_Key: game.invalid_end
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304110
+    m_Key: game.drag_select
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304111
+    m_Key: game.thinking
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304112
+    m_Key: game.selected_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304113
+    m_Key: game.select_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304114
+    m_Key: game.no_match
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304115
+    m_Key: game.player_passed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304116
+    m_Key: game.hand_points
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304117
+    m_Key: result.domino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304118
+    m_Key: result.round_won
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304119
+    m_Key: result.round_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304120
+    m_Key: result.victory
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304121
+    m_Key: result.defeat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304122
+    m_Key: result.draw
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304123
+    m_Key: result.game_over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304124
+    m_Key: result.tie_summary
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304125
+    m_Key: result.award
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304126
+    m_Key: result.match_summary
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304127
+    m_Key: style.heading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304128
+    m_Key: style.ivory
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304129
+    m_Key: style.blue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304130
+    m_Key: style.white
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304131
+    m_Key: style.saved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304132
+    m_Key: style.choice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304133
+    m_Key: settings.language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304134
+    m_Key: settings.english
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304135
+    m_Key: settings.spanish
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304136
+    m_Key: system.loading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304137
+    m_Key: system.connecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304138
+    m_Key: system.offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304139
+    m_Key: system.retry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304140
+    m_Key: system.cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304141
+    m_Key: system.confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 745304142
+    m_Key: system.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 338098959884288
+    m_Key: game.your_turn_named
+    m_Metadata:
+      m_Items: []
+  - m_Id: 338099018604544
+    m_Key: game.turn_named
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 7246862583952572440
+  references:
+    version: 2
+    RefIds:
+    - rid: 7246862583952572440
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1788656933236

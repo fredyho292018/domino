@@ -1,0 +1,419 @@
+{
+  "entries": [
+    {
+      "key": "menu.play",
+      "en": "Play",
+      "es": "Jugar"
+    },
+    {
+      "key": "menu.settings",
+      "en": "Settings",
+      "es": "Ajustes"
+    },
+    {
+      "key": "menu.exit",
+      "en": "Exit",
+      "es": "Salir"
+    },
+    {
+      "key": "menu.back",
+      "en": "Back",
+      "es": "Volver"
+    },
+    {
+      "key": "menu.eyebrow",
+      "en": "The table is yours",
+      "es": "La mesa es tuya"
+    },
+    {
+      "key": "menu.welcome",
+      "en": "One table. Four players. Your next match.",
+      "es": "Una mesa. Cuatro jugadores. Tu próxima partida."
+    },
+    {
+      "key": "menu.offline",
+      "en": "Offline · Play at your own pace",
+      "es": "Sin conexión · Juega a tu ritmo"
+    },
+    {
+      "key": "menu.choose",
+      "en": "Choose your game",
+      "es": "Elige tu partida"
+    },
+    {
+      "key": "mode.team_match.title",
+      "en": "Team Match",
+      "es": "Partida por equipos"
+    },
+    {
+      "key": "mode.team_match.subtitle",
+      "en": "You + Bot vs 2 Bots",
+      "es": "Tú + Bot vs 2 Bots"
+    },
+    {
+      "key": "mode.teams",
+      "en": "{0} vs {1}",
+      "es": "{0} contra {1}"
+    },
+    {
+      "key": "mode.coming_soon",
+      "en": "Coming Soon",
+      "es": "Próximamente"
+    },
+    {
+      "key": "player.you",
+      "en": "You",
+      "es": "Tú"
+    },
+    {
+      "key": "player.bot",
+      "en": "Bot",
+      "es": "Bot"
+    },
+    {
+      "key": "player.player",
+      "en": "Player",
+      "es": "Jugador"
+    },
+    {
+      "key": "player.partner",
+      "en": "Partner",
+      "es": "Compañero"
+    },
+    {
+      "key": "player.opponent",
+      "en": "Opponent",
+      "es": "Rival"
+    },
+    {
+      "key": "rules.double_nine",
+      "en": "Double-{0}",
+      "es": "Doble {0}"
+    },
+    {
+      "key": "rules.tiles",
+      "en": "{0} {0:plural:tile|tiles}",
+      "es": "{0} {0:plural:ficha|fichas}"
+    },
+    {
+      "key": "rules.no_draw",
+      "en": "No Draw",
+      "es": "Sin robo"
+    },
+    {
+      "key": "rules.target_score",
+      "en": "Target {0}",
+      "es": "Meta {0}"
+    },
+    {
+      "key": "rules.summary",
+      "en": "{0} · {1} · {2} · {3}",
+      "es": "{0} · {1} · {2} · {3}"
+    },
+    {
+      "key": "game.round",
+      "en": "Round {0}",
+      "es": "Ronda {0}"
+    },
+    {
+      "key": "game.team_a",
+      "en": "Team A",
+      "es": "Equipo A"
+    },
+    {
+      "key": "game.team_b",
+      "en": "Team B",
+      "es": "Equipo B"
+    },
+    {
+      "key": "game.score_a",
+      "en": "Us {0}",
+      "es": "Nosotros {0}"
+    },
+    {
+      "key": "game.score_b",
+      "en": "Them {0}",
+      "es": "Ellos {0}"
+    },
+    {
+      "key": "game.individual_a",
+      "en": "F {0} · M {1}",
+      "es": "F {0} · M {1}"
+    },
+    {
+      "key": "game.individual_b",
+      "en": "A {0} · J {1}",
+      "es": "A {0} · J {1}"
+    },
+    {
+      "key": "game.score_round",
+      "en": "R{0} · Target {1} · ×{2}",
+      "es": "R{0} · Meta {1} · ×{2}"
+    },
+    {
+      "key": "game.your_turn",
+      "en": "Your Turn",
+      "es": "Tu turno"
+    },
+    {
+      "key": "game.pass",
+      "en": "Pass",
+      "es": "Paso"
+    },
+    {
+      "key": "game.play",
+      "en": "Play →",
+      "es": "Jugar →"
+    },
+    {
+      "key": "game.restart",
+      "en": "Restart",
+      "es": "Reiniciar"
+    },
+    {
+      "key": "game.exit_match",
+      "en": "Exit Match",
+      "es": "Salir de la partida"
+    },
+    {
+      "key": "game.continue",
+      "en": "Continue",
+      "es": "Continuar"
+    },
+    {
+      "key": "game.next_round",
+      "en": "Next Round →",
+      "es": "Siguiente ronda →"
+    },
+    {
+      "key": "game.new_match",
+      "en": "New Match",
+      "es": "Nueva partida"
+    },
+    {
+      "key": "game.dealing",
+      "en": "Dealing…",
+      "es": "Repartiendo…"
+    },
+    {
+      "key": "game.washing",
+      "en": "Shuffling the dominoes…",
+      "es": "Dándole agua al dominó…"
+    },
+    {
+      "key": "game.wash_before_deal",
+      "en": "Shuffling before the deal…",
+      "es": "Dándole agua al dominó antes de repartir…"
+    },
+    {
+      "key": "game.wash_preview",
+      "en": "Preview: shuffling the dominoes…",
+      "es": "Vista previa: dándole agua al dominó…"
+    },
+    {
+      "key": "game.deal_count",
+      "en": "Dealing {0} {0:plural:tile|tiles} per player…",
+      "es": "Repartiendo {0} {0:plural:ficha|fichas} por jugador…"
+    },
+    {
+      "key": "game.reserve",
+      "en": "Reserve · {0}",
+      "es": "Reserva · {0}"
+    },
+    {
+      "key": "game.preparing_hand",
+      "en": "Preparing your hand…",
+      "es": "Preparando tu mano…"
+    },
+    {
+      "key": "game.hands_ready",
+      "en": "Hands ready",
+      "es": "Manos listas"
+    },
+    {
+      "key": "game.drag_drop",
+      "en": "Drag onto the table and release to play",
+      "es": "Arrastra a la mesa y suelta para jugar"
+    },
+    {
+      "key": "game.invalid_end",
+      "en": "That end does not match. Use a highlighted tile on the table.",
+      "es": "No encaja en ese extremo. Usa una ficha resaltada de la mesa."
+    },
+    {
+      "key": "game.drag_select",
+      "en": "Drag a tile onto the table or select it to play",
+      "es": "Arrastra una ficha a la mesa o selecciónala para jugar"
+    },
+    {
+      "key": "game.thinking",
+      "en": "{0} is thinking…",
+      "es": "{0} está pensando…"
+    },
+    {
+      "key": "game.selected_hint",
+      "en": "Drag to the highlighted end or press Play",
+      "es": "Arrastra al extremo resaltado o pulsa Jugar"
+    },
+    {
+      "key": "game.select_hint",
+      "en": "Select a tile and tap the table to play",
+      "es": "Selecciona una ficha y toca la mesa para jugar"
+    },
+    {
+      "key": "game.no_match",
+      "en": "Does not match: you need {0} or {1}",
+      "es": "No encaja: necesitas un {0} o un {1}"
+    },
+    {
+      "key": "game.player_passed",
+      "en": "{0} has no legal move: pass",
+      "es": "{0} no tiene jugada: pasa"
+    },
+    {
+      "key": "game.hand_points",
+      "en": "{0} {0:plural:tile|tiles} · {1} pts",
+      "es": "{0} {0:plural:ficha|fichas} · {1} pts"
+    },
+    {
+      "key": "result.domino",
+      "en": "Domino!",
+      "es": "¡Dominó!"
+    },
+    {
+      "key": "result.round_won",
+      "en": "Round Won",
+      "es": "Ronda ganada"
+    },
+    {
+      "key": "result.round_lost",
+      "en": "Round Lost",
+      "es": "Ronda perdida"
+    },
+    {
+      "key": "result.victory",
+      "en": "Victory",
+      "es": "Victoria"
+    },
+    {
+      "key": "result.defeat",
+      "en": "Defeat",
+      "es": "Derrota"
+    },
+    {
+      "key": "result.draw",
+      "en": "Draw",
+      "es": "Empate"
+    },
+    {
+      "key": "result.game_over",
+      "en": "Game Over",
+      "es": "Fin de la partida"
+    },
+    {
+      "key": "result.tie_summary",
+      "en": "Blocked draw · Next round ×{0}",
+      "es": "Tranca empatada · Próxima ronda ×{0}"
+    },
+    {
+      "key": "result.award",
+      "en": "{0}: +{1} pts ({2} + {3}) ×{4}",
+      "es": "{0}: +{1} pts ({2} + {3}) ×{4}"
+    },
+    {
+      "key": "result.match_summary",
+      "en": "{0} · {1}",
+      "es": "{0} · {1}"
+    },
+    {
+      "key": "style.heading",
+      "en": "Tile style",
+      "es": "Estilo de fichas"
+    },
+    {
+      "key": "style.ivory",
+      "en": "TEAMFHO · Ivory",
+      "es": "TEAMFHO · Marfil"
+    },
+    {
+      "key": "style.blue",
+      "en": "Cuba · Blue",
+      "es": "Cuba · Azul"
+    },
+    {
+      "key": "style.white",
+      "en": "TEAMFHO · White",
+      "es": "TEAMFHO · Blanco"
+    },
+    {
+      "key": "style.saved",
+      "en": "Applied instantly and saved",
+      "es": "Se aplica al instante y se guarda"
+    },
+    {
+      "key": "style.choice",
+      "en": "{0}{1}",
+      "es": "{0}{1}"
+    },
+    {
+      "key": "settings.language",
+      "en": "Language",
+      "es": "Idioma"
+    },
+    {
+      "key": "settings.english",
+      "en": "English",
+      "es": "English"
+    },
+    {
+      "key": "settings.spanish",
+      "en": "Español",
+      "es": "Español"
+    },
+    {
+      "key": "system.loading",
+      "en": "Loading…",
+      "es": "Cargando…"
+    },
+    {
+      "key": "system.connecting",
+      "en": "Connecting…",
+      "es": "Conectando…"
+    },
+    {
+      "key": "system.offline",
+      "en": "Offline",
+      "es": "Sin conexión"
+    },
+    {
+      "key": "system.retry",
+      "en": "Retry",
+      "es": "Reintentar"
+    },
+    {
+      "key": "system.cancel",
+      "en": "Cancel",
+      "es": "Cancelar"
+    },
+    {
+      "key": "system.confirm",
+      "en": "Confirm",
+      "es": "Confirmar"
+    },
+    {
+      "key": "system.unavailable",
+      "en": "Unavailable",
+      "es": "No disponible"
+    },
+    {
+      "key": "game.your_turn_named",
+      "en": "Your turn, {0}",
+      "es": "Tu turno, {0}"
+    },
+    {
+      "key": "game.turn_named",
+      "en": "{0}’s turn",
+      "es": "Turno de {0}"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "friendlyName": "Domino Android_20x9_Standard_Synthetic",
+  "systemInfo": {
+    "operatingSystem": "Android"
+  },
+  "screens": [
+    {
+      "height": 2400,
+      "dpi": 420,
+      "navigationBarHeight": 0,
+      "orientations": [
+        {
+          "orientation": 1,
+          "safeArea": {
+            "y": 48,
+            "x": 0,
+            "width": 1080,
+            "height": 2262
+          },
+          "cutouts": [
+            {
+              "y": 2340,
+              "x": 510,
+              "width": 60,
+              "height": 60
+            }
+          ]
+        },
+        {
+          "orientation": 2,
+          "safeArea": {
+            "y": 90,
+            "x": 0,
+            "width": 1080,
+            "height": 2262
+          },
+          "cutouts": [
+            {
+              "y": 0,
+              "x": 510,
+              "width": 60,
+              "height": 60
+            }
+          ]
+        },
+        {
+          "orientation": 3,
+          "safeArea": {
+            "y": 48,
+            "x": 90,
+            "width": 2220,
+            "height": 1032
+          },
+          "cutouts": [
+            {
+              "y": 510,
+              "x": 0,
+              "width": 60,
+              "height": 60
+            }
+          ]
+        },
+        {
+          "orientation": 4,
+          "safeArea": {
+            "y": 48,
+            "x": 90,
+            "width": 2220,
+            "height": 1032
+          },
+          "cutouts": [
+            {
+              "y": 510,
+              "x": 2340,
+              "width": 60,
+              "height": 60
+            }
+          ]
+        }
+      ],
+      "width": 1080
+    }
+  ],
+  "version": 1
+}

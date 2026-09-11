@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Localization-Assets-Shared
+  m_EditorClassIdentifier: 
+  m_GroupName: Localization-Assets-Shared
+  m_GUID: a0f896dadfdf3fd4d891e9d15aee57e0
+  m_SerializeEntries:
+  - m_GUID: b787000c94add624d8c3529bf807766f
+    m_Address: Assets/_Domino/Localization/Tables/Domino UI Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 1
+  m_Settings: {fileID: 11400000, guid: 3992ae2ca19b50c438d0f94cc7240961, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: fa37021e92999c24d9f4552454c41ec7, type: 2}
+    - {fileID: 11400000, guid: b2f6c0e8e6c696f45851b764f8546c24, type: 2}
+    - {fileID: 11400000, guid: a1d85f5405b89944699a7e6175683fd1, type: 2}

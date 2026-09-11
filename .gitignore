@@ -24,4 +24,5 @@
 *.log
 .DS_Store
 Thumbs.db
-Validation/Generated/
+**/Validation/Generated/
+server/domino.zip
