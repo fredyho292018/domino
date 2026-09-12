@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a187246822bbb47529482707f3e0eff8, type: 3}
+  m_Name: GoogleMobileAdsSettings
+  adMobAndroidAppId: ca-app-pub-7056509932640197~5069612352
+  adMobIOSAppId: 
+  enableKotlinXCoroutinesPackagingOption: 1
+  enableGradleBuildPreProcessor: 1
+  disableOptimizeInitialization: 0
+  disableOptimizeAdLoading: 0
+  userLanguage: en
+  overrideDefaultGmaAndroidSdk: 1
+  selectedGmaAndroidSdk: 0

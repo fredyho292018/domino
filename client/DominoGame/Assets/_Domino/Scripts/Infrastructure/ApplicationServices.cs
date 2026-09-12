@@ -6,6 +6,7 @@ using Domino.Infrastructure.Firebase;
 using Domino.Infrastructure.Api;
 using Domino.Player;
 using Domino.Realtime;
+using Domino.Ads;
 using Domino.UI;
 using UnityEngine.Localization.Settings;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace Domino.Infrastructure
         public static FirebaseBootstrap Firebase { get; private set; }
         public static PlayerService Player { get; private set; }
         public static IRealtimeConnectionService Realtime { get; private set; }
+        public static IAdsService Ads { get; private set; }
 #if UNITY_EDITOR
         // Opt-in editor validation only; never compiled into a player build.
         public static Func<IFirebaseClient> ValidationFirebaseFactory;
@@ -31,13 +33,18 @@ namespace Domino.Infrastructure
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
-            Identity = null; Firebase = null; Player = null; Realtime = null;
+            Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
         {
             if (Identity != null) return;
             lifetime = new CancellationTokenSource();
+            var adsAsset = Resources.Load<DominoAdsSettings>("AdsSettings");
+            var adsConfiguration = adsAsset ? adsAsset.Configuration :
+                new AdsConfiguration(false, AdsEnvironment.DEVELOPMENT, AdsPlatform.Unsupported, false);
+            Ads = new GoogleMobileAdsService(adsConfiguration, new PendingAdsConsent(), new UnityGoogleAdsSdk(), Debug.Log);
+            _ = Ads.InitializeAsync();
             IFirebaseClient client = new FirebaseSdkClient(() => Identity?.Current);
 #if UNITY_EDITOR
             client = ValidationFirebaseFactory?.Invoke() ?? client;
@@ -78,6 +85,7 @@ namespace Domino.Infrastructure
         static void Shutdown()
         {
             Player?.Dispose();
+            Ads?.Dispose();
             Realtime?.Dispose();
             lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null;
             // Firebase owns persistence. Never SignOut or delete its cache here.

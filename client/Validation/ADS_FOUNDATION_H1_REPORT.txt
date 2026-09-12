@@ -1,0 +1,143 @@
+DOMINO MONETIZATION — PHASE H1 REPORT
+=====================================
+
+BRANCH=main
+SOURCE_SHA_BEFORE=6907aef147d478d8a7fb2b7b69174728e0210ed1
+SOURCE_SHA_AFTER=6907aef147d478d8a7fb2b7b69174728e0210ed1
+WORKTREE_CLEAN_BEFORE=YES
+WORKTREE_CLEAN_AFTER=NO (H1 changes intentionally uncommitted)
+
+GOOGLE MOBILE ADS
+--------------------------------
+PLUGIN_INSTALLED=YES
+PLUGIN_VERSION=11.5.0
+INSTALL_METHOD=Official unitypackage; existing EDM4U retained
+OFFICIAL_PLUGIN_SOURCE=YES
+EDM4U_DUPLICATE=NO
+EDM4U=PASS (1.2.188, unchanged)
+ANDROID_DEPENDENCY_RESOLUTION=PASS
+
+ANDROID
+--------------------------------
+ANDROID_PACKAGE=com.teamfho.domino
+ANDROID_MIN_API=26
+ANDROID_TARGET_API=35 (automatic source setting, confirmed in merged APK manifest)
+ANDROID_REQUIREMENTS_PASS=YES
+ADMOB_ANDROID_APP_ID_CONFIGURED=YES
+ADMOB_ANDROID_APP_ID_METADATA=PASS (single entry, matches supplied App ID)
+
+CONFIGURATION
+--------------------------------
+ADMOB_SETTINGS_IMPLEMENTED=YES
+ENVIRONMENTS=DEVELOPMENT,PRODUCTION
+DEVELOPMENT_ANDROID_REWARDED_ID=ca-app-pub-3940256099942544/5224354917
+DEVELOPMENT_IOS_REWARDED_ID=ca-app-pub-3940256099942544/1712485313
+PRODUCTION_ANDROID_REWARDED_CONFIGURED=YES (configuration only; no requests in H1/H2)
+PRODUCTION_IOS_REWARDED_CONFIGURED=NO
+SOURCE_ADS_ENABLED=false
+
+INITIALIZATION
+--------------------------------
+ADS_SERVICE_IMPLEMENTED=YES
+INITIALIZATION_STATES=DISABLED,NOT_INITIALIZED,INITIALIZING,READY,FAILED
+INITIALIZE_ONCE=PASS
+SINGLE_FLIGHT=PASS
+FAILURE_NON_FATAL=PASS
+CONSENT_BOUNDARY_PREPARED=YES (closed by default, before SDK initialization)
+UMP_IMPLEMENTED=NO (SDK dependency bundled; no consent flow)
+
+ECONOMY
+--------------------------------
+WALLET_CHANGED=NO
+COINS_CHANGED=NO
+REWARD_BACKEND_IMPLEMENTED=NO
+LEDGER_IMPLEMENTED=NO
+REWARD_COINS_PREVIEW=10
+REWARD_COINS_PREVIEW_AUTHORITATIVE=NO
+ECONOMY_VERIFICATION=No H1 wallet/Firestore operations; domain code unchanged and existing tests pass.
+
+ADS
+--------------------------------
+REWARDED_LOAD_IMPLEMENTED=NO
+REWARDED_SHOW_IMPLEMENTED=NO
+REAL_AD_REQUESTS=0
+TEST_AD_REQUESTS=0
+
+TESTS
+--------------------------------
+ADMOB_SETTINGS_TESTS=PASS
+ADS_INITIALIZATION_TESTS=PASS
+ENVIRONMENT_GUARD_TESTS=PASS
+ADS_FOUNDATION_CHECKS=31 PASS
+EDITOR_SDK_INITIALIZATION=PASS (official placeholder client in Play Mode)
+EXISTING_UNITY_TESTS=PASS
+GUEST_AUTH=PASS (43 checks)
+PLAYER_FOUNDATION=PASS (469 client checks including Retry/Alias/G2.1/G3)
+PLAYER_PROFILE_UI_ALIAS_EN_ES=PASS
+REALTIME_G3=PASS (client and UI regression; real outage tests not repeated in H1)
+PORTRAIT=PASS (139406 checks, nine sizes, four local seats, complete round)
+GAMEPLAY=PASS (82 configuration + 32679 scoring + 2981089 domain/geometry checks)
+UNITY_COMPILATION=PASS (Editor and Android)
+CONSOLE_ERRORS=0 (H1 Play Mode, profile and complete-round validation)
+ANDROID_BUILD=PASS (Development, ARM64 IL2CPP, 39871122 bytes)
+ANDROID_BUILD_ARTIFACT=client/Validation/Generated/H1/Domino-development.apk
+
+EXTERNAL
+--------------------------------
+ADMOB_APP_STATUS=Debe revisarse (user-provided external status; console not accessed)
+FIREBASE_CHANGED=NO
+FIRESTORE_CHANGED=NO
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+BACKEND_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+
+FILES CREATED
+--------------------------------
+- client/DominoGame/Assets/GoogleMobileAds/ (official SDK, Editor tools, resources, settings)
+- client/DominoGame/Assets/Plugins/Android/ (official GMA plugin)
+- client/DominoGame/Assets/Plugins/iOS/GADUAdNetworkExtras.h
+- client/DominoGame/Assets/Plugins/iOS/NativeTemplates/
+- client/DominoGame/Assets/Plugins/iOS/unity-plugin-library.xcframework/
+- client/DominoGame/Assets/_Domino/Resources/AdsSettings.asset
+- client/DominoGame/Assets/_Domino/Scripts/Ads/AdsConfiguration.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/DominoAdsSettings.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/GoogleMobileAdsService.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/UnityGoogleAdsSdk.cs
+- client/DominoGame/Assets/_Domino/Scripts/Client/Editor/AdsFoundationValidation.cs
+- Unity .meta files for new assets/folders
+- client/Validation/AdsFoundationTests.cs
+- client/Validation/RunAdsFoundationTests.ps1
+- client/Validation/ADS_FOUNDATION_H1.md
+- client/Validation/ADS_FOUNDATION_H1_REPORT.txt
+
+FILES MODIFIED
+--------------------------------
+- client/DominoGame/Assets/_Domino/Scripts/Infrastructure/ApplicationServices.cs
+- client/DominoGame/Packages/manifest.json (built-in Android JNI)
+- client/DominoGame/Packages/packages-lock.json (built-in Android JNI)
+- client/Validation/Compile.ps1 (official SDK assembly references)
+
+KNOWN LIMITATIONS
+--------------------------------
+- No rewarded load/show. Android production rewarded unit configured only; iOS unit pending.
+- Android APK built, not installed or tested on a physical device in H1.
+- iOS production App ID and native build remain pending.
+- Consent/UMP production flow and AdMob application review remain pending.
+- Source initialization is disabled and the consent gate remains closed.
+- Editor SDK is a placeholder, not a native mobile ad test.
+- Initial Edit Mode SDK diagnostic timed out; Play Mode validation passes.
+- Initial Android build exposed missing JNI; fixed with Unity's built-in module, final build passes.
+- Profile validator needs Windows target for its Game View resize helper; Android-target attempt failed size assertion, Windows run passes.
+- SDK asset payloads match official package; Unity/EDM normalizes metadata on two UMP resources.
+- Existing three CS0649 serialized-field warnings remain; no new Domino compiler warnings.
+- Follow-up: confirmed Android production unit saved with Enabled=false and DEVELOPMENT unchanged; Ads tests rerun. Prior APK predates this configuration-only update.
+
+GIT
+--------------------------------
+COMMIT=NONE
+PUSH=NONE
+
+RECOMMENDED NEXT TASK
+--------------------------------
+PHASE H2: TEST rewarded load/show lifecycle and reward callback, NO wallet mutation.

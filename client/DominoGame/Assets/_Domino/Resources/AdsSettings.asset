@@ -1,0 +1,14 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110e83b80ede4afa918a9479534fda51, type: 3}
+  m_Name: AdsSettings
+  enabled: 0
+  environment: 0
+  androidRewardedAdUnitIdDevelopment: ca-app-pub-3940256099942544/5224354917
+  androidRewardedAdUnitIdProduction: ca-app-pub-7056509932640197/8685423732
+  iosRewardedAdUnitIdDevelopment: ca-app-pub-3940256099942544/1712485313
+  iosRewardedAdUnitIdProduction: 
+  rewardCoinsPreview: 10

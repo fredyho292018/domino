@@ -14,6 +14,7 @@ foreach ($packageAssembly in @('Unity.Localization.dll','Unity.Localization.Edit
     $references += Get-Item $assemblyPath
 }
 $references += Get-Item "$PSScriptRoot/../DominoGame/Assets/Firebase/Plugins/Firebase.App.dll", "$PSScriptRoot/../DominoGame/Assets/Firebase/Plugins/Firebase.Auth.dll"
+$references += Get-Item "$PSScriptRoot/../DominoGame/Assets/GoogleMobileAds/GoogleMobileAds.dll", "$PSScriptRoot/../DominoGame/Assets/GoogleMobileAds/GoogleMobileAds.Core.dll"
 $references += Get-ChildItem "$PSScriptRoot/../DominoGame/Library/PackageCache/com.unity.nuget.newtonsoft-json*/Runtime/Newtonsoft.Json.dll"
 $common = @('-nologo', '-target:library', '-langversion:9', '-nostdlib+', '-define:UNITY_6000_0_OR_NEWER;UNITY_2023_2_OR_NEWER;UNITY_2022_2_OR_NEWER;UNITY_2021_2_OR_NEWER;UNITY_2020_1_OR_NEWER;UNITY_2019_1_OR_NEWER;UNITY_2018_1_OR_NEWER;ENABLE_LEGACY_INPUT_MANAGER')
 $common += $references | ForEach-Object { '-r:"' + $_.FullName + '"' }
