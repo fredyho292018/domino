@@ -1,0 +1,3 @@
+firebase:
+  enabled: false
+  project-id: domino-test
