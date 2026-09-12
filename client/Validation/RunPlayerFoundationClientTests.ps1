@@ -6,6 +6,7 @@ $project = @'
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
   <ItemGroup>
     <Compile Include="../PlayerFoundationClientTests.cs" />
+    <Compile Include="../PlayerRetryTests.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Identity/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Player/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Infrastructure/CancellableTask.cs" />

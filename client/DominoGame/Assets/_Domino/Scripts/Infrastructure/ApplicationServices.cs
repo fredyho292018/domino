@@ -70,6 +70,7 @@ namespace Domino.Infrastructure
         }
         static void Shutdown()
         {
+            Player?.Dispose();
             lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null;
             // Firebase owns persistence. Never SignOut or delete its cache here.
         }

@@ -7,7 +7,7 @@ using Domino.Infrastructure.Api;
 using Domino.Infrastructure.Firebase;
 using Domino.Player;
 
-static class PlayerFoundationClientTests
+static partial class PlayerFoundationClientTests
 {
     static int checks;
     static void Check(bool ok, string name) { checks++; if (!ok) throw new Exception(name); }
@@ -92,6 +92,7 @@ static class PlayerFoundationClientTests
     {
         await TokenTests();
         await LocalHttpTests();
+        await RetryTests();
         foreach (string url in new[] { "", "http://localhost:8080", "https://user:pass@example.invalid", "https://example.invalid?q=1", "bad" })
             Check(!new DominoApiConfiguration(true, url).IsAvailable, "Unsafe config rejected");
         var tokens = new Tokens(); var http = new Transport(); var api = Api(tokens, http);
@@ -166,7 +167,7 @@ static class PlayerFoundationClientTests
         http = new Transport(); http.Responses.Enqueue(new ApiHttpResponse(401, "{}")); http.Responses.Enqueue(new ApiHttpResponse(401, "{}"));
         service = new PlayerService(auth, Api(new Tokens(), http), () => Task.FromResult("es"), default);
         await service.InitializeAsync(); Check(service.State == PlayerSyncState.FAILED && sdk.Signs == 1, "Persistent 401 never creates another guest");
-        await service.InitializeAsync(); Check(service.State == PlayerSyncState.SYNCED && sdk.Signs == 1, "Explicit retry reuses guest");
+        await service.RetryAsync(); Check(service.State == PlayerSyncState.FAILED && !service.CanRetry && sdk.Signs == 1, "Persistent 401 requires auth repair, never another guest");
         Console.WriteLine("PLAYER_FOUNDATION_CLIENT_CHECKS=" + checks + " PASS; REAL_NETWORK_CALLS=0");
     }
     static async Task LocalHttpTests()
