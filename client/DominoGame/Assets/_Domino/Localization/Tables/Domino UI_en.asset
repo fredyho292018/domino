@@ -519,6 +519,41 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 2482107136634880
+    m_Localized: Not synced
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189312
+    m_Localized: Synced
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189313
+    m_Localized: Sync unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189314
+    m_Localized: Authentication required
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189315
+    m_Localized: Service unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189316
+    m_Localized: Sync failed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2482107170189317
+    m_Localized: "{0} \xB7 last known data"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -627,3 +662,10 @@ MonoBehaviour:
         - id: 2269804856373261
         - id: 2269804856373262
         - id: 2269804856373263
+        - id: 2482107136634880
+        - id: 2482107170189312
+        - id: 2482107170189313
+        - id: 2482107170189314
+        - id: 2482107170189315
+        - id: 2482107170189316
+        - id: 2482107170189317

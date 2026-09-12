@@ -24,10 +24,15 @@ namespace Domino.UI
         public string DisplayedName => service?.Player == null ? DominoLocalization.Get("profile.title") :
             DisplayNameRules.IsGenerated(service.Player.DisplayName) ? DominoLocalization.Get("profile.choose") : service.Player.DisplayName;
         public string DisplayedCoins => service?.Wallet == null ? "--" : DominoLocalization.Get("profile.coins", service.Wallet.Coins);
-        string StateKey => service == null || service.State == PlayerSyncState.NOT_SYNCED ? "profile.connecting" :
-            service.State == PlayerSyncState.SYNCING ? "profile.syncing" :
-            service.State == PlayerSyncState.SYNCED && service.Availability == BackendAvailability.AVAILABLE ? "profile.online" :
-            service.HasConfirmedSnapshots ? "profile.offline_cached" : "profile.offline";
+        public string DisplayedStatus
+        {
+            get {
+                var key = PlayerSyncPresentation.Key(service?.State ?? PlayerSyncState.NOT_SYNCED, service?.Error?.Category, service?.Error?.HttpStatus ?? 0);
+                var label = DominoLocalization.Get(key);
+                return service != null && service.State == PlayerSyncState.FAILED && service.HasConfirmedSnapshots
+                    ? DominoLocalization.Get("profile.cached_status", label) : label;
+            }
+        }
 
         public void Initialize(PlayerService playerService, Transform parent)
         {
@@ -36,7 +41,7 @@ namespace Domino.UI
             OpenButton = UiKit.Button("Profile", parent, "", new Vector2(720,110), new Vector2(0,400), UiKit.Hex("1D403E"), Open);
             summary = OpenButton.GetComponentInChildren<Text>();
             summary.rectTransform.sizeDelta = new Vector2(680,96); summary.fontSize = 24;
-            DominoLocalization.Bind(summary, () => DisplayedName + "\n" + DominoLocalization.Get(StateKey));
+            DominoLocalization.Bind(summary, () => DisplayedName + "\n" + DisplayedStatus);
             overlay = UiKit.Panel("Profile overlay", parent, new Vector2(2600,3400), Vector2.zero, new Color(0,0,0,.78f)).gameObject;
             overlay.GetComponent<Image>().raycastTarget = true;
             panel = UiKit.Panel("Player profile", overlay.transform, new Vector2(880,690), Vector2.zero, UiKit.Hex("1D403E")).rectTransform;
@@ -46,7 +51,7 @@ namespace Domino.UI
             account = UiKit.Label("Account", panel, "", new Vector2(750,40), new Vector2(0,170), 22, UiKit.Muted);
             DominoLocalization.Bind(account, () => service?.Player == null ? "" : DominoLocalization.Get(service.Player.AccountType == PlayerAccountType.Guest ? "profile.guest" : "profile.registered"));
             status = UiKit.Label("Status", panel, "", new Vector2(750,54), new Vector2(0,113), 23, UiKit.Muted);
-            DominoLocalization.Bind(status, () => DominoLocalization.Get(StateKey));
+            DominoLocalization.Bind(status, () => DisplayedStatus);
             UiKit.LLabel("Alias label", panel, "profile.alias", new Vector2(750,40), new Vector2(0,45), 24, UiKit.Cream);
             var input = UiKit.Panel("Alias input", panel, new Vector2(740,76), new Vector2(0,-18), UiKit.Hex("102C2C"));
             input.raycastTarget = true;
@@ -83,10 +88,10 @@ namespace Domino.UI
         void OnSnapshot(PlayerSnapshot _) => Refresh();
         void Refresh()
         {
-            summary.text = DisplayedName + "\n" + DominoLocalization.Get(StateKey);
+            summary.text = DisplayedName + "\n" + DisplayedStatus;
             balance.text = DisplayedCoins;
             account.text = service?.Player == null ? "" : DominoLocalization.Get(service.Player.AccountType == PlayerAccountType.Guest ? "profile.guest" : "profile.registered");
-            status.text = DominoLocalization.Get(StateKey);
+            status.text = DisplayedStatus;
             AliasInput.interactable = !saving && service != null && service.CanEdit;
             SaveButton.interactable = !saving && service != null && service.CanEdit && DisplayNameRules.IsValid(AliasInput.text) && AliasInput.text != service.Player.DisplayName;
             RetryButton.gameObject.SetActive(service != null && service.CanRetry);

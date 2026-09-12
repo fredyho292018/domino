@@ -499,6 +499,41 @@
       "key": "profile.save_failed",
       "en": "Could not save. Please try again.",
       "es": "No se pudo guardar. Inténtalo de nuevo."
+    },
+    {
+      "key": "profile.not_synced",
+      "en": "Not synced",
+      "es": "Sin sincronizar"
+    },
+    {
+      "key": "profile.synced",
+      "en": "Synced",
+      "es": "Sincronizado"
+    },
+    {
+      "key": "profile.sync_unavailable",
+      "en": "Sync unavailable",
+      "es": "Sincronización no disponible"
+    },
+    {
+      "key": "profile.auth_required",
+      "en": "Authentication required",
+      "es": "Autenticación necesaria"
+    },
+    {
+      "key": "profile.service_unavailable",
+      "en": "Service unavailable",
+      "es": "Servicio no disponible"
+    },
+    {
+      "key": "profile.sync_failed",
+      "en": "Sync failed",
+      "es": "Error de sincronización"
+    },
+    {
+      "key": "profile.cached_status",
+      "en": "{0} · last known data",
+      "es": "{0} · últimos datos"
     }
   ]
 }

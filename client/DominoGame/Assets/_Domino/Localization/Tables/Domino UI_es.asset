@@ -519,6 +519,41 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 2482107136634880
+    m_Localized: Sin sincronizar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189312
+    m_Localized: Sincronizado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189313
+    m_Localized: "Sincronizaci\xF3n no disponible"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189314
+    m_Localized: "Autenticaci\xF3n necesaria"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189315
+    m_Localized: Servicio no disponible
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189316
+    m_Localized: "Error de sincronizaci\xF3n"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2482107170189317
+    m_Localized: "{0} \xB7 \xFAltimos datos"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -627,3 +662,10 @@ MonoBehaviour:
         - id: 2269804856373261
         - id: 2269804856373262
         - id: 2269804856373263
+        - id: 2482107136634880
+        - id: 2482107170189312
+        - id: 2482107170189313
+        - id: 2482107170189314
+        - id: 2482107170189315
+        - id: 2482107170189316
+        - id: 2482107170189317

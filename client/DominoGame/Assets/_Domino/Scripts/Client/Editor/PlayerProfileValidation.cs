@@ -45,9 +45,10 @@ namespace Domino.Editor
             public bool Offline, Reserved;
             public string Alias = "Guest-ABCDEFGH";
             public int Writes;
+            public TaskCompletionSource<bool> Gate;
             public async Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int seconds, CancellationToken ct)
             {
-                await Task.Delay(100, ct);
+                if (Gate != null) await Gate.Task; else await Task.Delay(100, ct);
                 if (Offline) throw new DominoApiException(ApiFailure.Transport);
                 if (method == "PUT") {
                     Writes++;
@@ -64,7 +65,7 @@ namespace Domino.Editor
             deadline = EditorApplication.timeSinceStartup + 600;
             EditorApplication.update -= Tick; EditorApplication.update += Tick;
             Application.logMessageReceived += (message, stack, type) => {
-                if (SessionState.GetInt(ModeKey, 0) != 0 && (type == LogType.Error || type == LogType.Exception || type == LogType.Assert)) Finish(false, "CONSOLE_ERROR");
+                if (SessionState.GetInt(ModeKey, 0) != 0 && (type == LogType.Error || type == LogType.Exception || type == LogType.Assert)) EditorApplication.delayCall += () => { if (SessionState.GetInt(ModeKey, 0) != 0) Finish(false, "CONSOLE_ERROR"); };
             };
         }
         public static void RunFake() => Run(1);
@@ -127,8 +128,23 @@ namespace Domino.Editor
             var http = new Transport();
             using var service = new PlayerService(ApplicationServices.Identity, new DominoApiClient(new DominoApiConfiguration(true,"https://example.invalid"), new Auth(false), http,new UnityApiJsonCodec()), () => Task.FromResult("es"), default);
             profile.Bind(service); profile.Open();
+            foreach (var language in new[]{"es","en"}) {
+                await SelectLanguage(language);
+                Check(profile.DisplayedStatus == (language == "es" ? "Sin sincronizar" : "Not synced"), "Localized NOT_SYNCED");
+            }
             Check(profile.DisplayedCoins == "--" && !profile.SaveButton.interactable, "No fabricated wallet");
-            await service.InitializeAsync();
+            http.Gate = new TaskCompletionSource<bool>();
+            var initialization = service.InitializeAsync();
+            foreach (var language in new[]{"es","en"}) {
+                await SelectLanguage(language);
+                Check(profile.DisplayedStatus == DominoLocalization.Get("profile.syncing"), "Localized SYNCING");
+            }
+            http.Gate.SetResult(true); await initialization; http.Gate = null;
+            foreach (var language in new[]{"es","en"}) {
+                await SelectLanguage(language);
+                Check(profile.DisplayedStatus == (language == "es" ? "Sincronizado" : "Synced"), "Localized SYNCED");
+                await Task.Delay(50); Check(profile.AliasInput.transform.parent.Find("Status").GetComponent<Text>().text == profile.DisplayedStatus, "Rendered synced label updates on locale change");
+            }
             Check(profile.DisplayedName != service.Player.DisplayName && profile.DisplayedCoins.Contains("1234"), "Generated name prompt or coins");
             int[,] sizes = { {1080,1920},{1080,2160},{1080,2340},{1080,2400},{1080,2520},{1170,2532},{1284,2778},{1600,2560},{1536,2048} };
             var resize = typeof(Phase1Validation).GetMethod("ResizeGameView",BindingFlags.Static | BindingFlags.NonPublic);
@@ -152,8 +168,19 @@ namespace Domino.Editor
             http.Offline=true;
             await (Task)typeof(PlayerService).GetMethod("RefreshConfirmedAsync",BindingFlags.Instance | BindingFlags.NonPublic).Invoke(service,new object[]{CancellationToken.None});
             profile.Open(); Check(profile.DisplayedName=="Fredy92" && profile.DisplayedCoins.Contains("1234") && profile.RetryButton.gameObject.activeSelf,"Offline cached UI");
+            foreach (var language in new[]{"es","en"}) {
+                await SelectLanguage(language);
+                Check(profile.DisplayedStatus == DominoLocalization.Get("profile.cached_status",language == "es" ? "Sin conexión" : "Offline"), "Localized stale offline");
+                await Task.Delay(50); Check(profile.AliasInput.transform.parent.Find("Status").GetComponent<Text>().text == profile.DisplayedStatus, "Rendered offline label updates on locale change");
+            }
             http.Offline=false; profile.RetryButton.onClick.Invoke(); await Settled(service);
             Check(service.IsFresh && profile.DisplayedName=="Fredy92","Retry UI");
+        }
+        static async Task SelectLanguage(string language)
+        {
+            DominoLocalization.Select(language);
+            await UnityEngine.Localization.Settings.LocalizationSettings.InitializationOperation.Task;
+            await Task.Delay(50);
         }
         static bool Signal(string name) => File.Exists(Path.Combine(Output,name+".signal"));
         static void State(string value) => File.WriteAllText(Path.Combine(Output,"state.txt"),value);

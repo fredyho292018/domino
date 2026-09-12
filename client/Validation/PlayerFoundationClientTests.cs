@@ -94,6 +94,7 @@ static partial class PlayerFoundationClientTests
         await LocalHttpTests();
         await RetryTests();
         await AliasTests();
+        ConnectionTests();
         foreach (string url in new[] { "", "http://localhost:8080", "https://user:pass@example.invalid", "https://example.invalid?q=1", "bad" })
             Check(!new DominoApiConfiguration(true, url).IsAvailable, "Unsafe config rejected");
         var tokens = new Tokens(); var http = new Transport(); var api = Api(tokens, http);
