@@ -8,6 +8,7 @@ namespace Domino.Infrastructure.Api
     // Reuses Unity Localization's installed Newtonsoft package; no coercion of wallet amounts.
     public sealed class UnityApiJsonCodec : IApiJsonCodec
     {
+        public string SerializeDisplayName(string displayName) => new JObject { ["displayName"] = displayName }.ToString(Formatting.None);
         public string Serialize(PlayerBootstrapRequestDto request) =>
             new JObject { ["language"] = request.language }.ToString(Formatting.None);
         public PlayerBootstrapResponseDto ReadSuccess(string json)

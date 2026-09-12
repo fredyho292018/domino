@@ -414,6 +414,91 @@
       "key": "game.turn_named",
       "en": "{0}’s turn",
       "es": "Turno de {0}"
+    },
+    {
+      "key": "profile.title",
+      "en": "Player profile",
+      "es": "Perfil de jugador"
+    },
+    {
+      "key": "profile.choose",
+      "en": "Choose your name",
+      "es": "Elige tu alias"
+    },
+    {
+      "key": "profile.coins",
+      "en": "Coins: {0}",
+      "es": "Monedas: {0}"
+    },
+    {
+      "key": "profile.guest",
+      "en": "Guest",
+      "es": "Invitado"
+    },
+    {
+      "key": "profile.registered",
+      "en": "Account",
+      "es": "Cuenta"
+    },
+    {
+      "key": "profile.connecting",
+      "en": "Connecting…",
+      "es": "Conectando…"
+    },
+    {
+      "key": "profile.syncing",
+      "en": "Syncing…",
+      "es": "Sincronizando…"
+    },
+    {
+      "key": "profile.online",
+      "en": "Online",
+      "es": "En línea"
+    },
+    {
+      "key": "profile.offline",
+      "en": "Offline",
+      "es": "Sin conexión"
+    },
+    {
+      "key": "profile.offline_cached",
+      "en": "Offline · last known data",
+      "es": "Sin conexión · últimos datos"
+    },
+    {
+      "key": "profile.alias",
+      "en": "Alias",
+      "es": "Alias"
+    },
+    {
+      "key": "profile.save",
+      "en": "Save",
+      "es": "Guardar"
+    },
+    {
+      "key": "profile.saving",
+      "en": "Saving…",
+      "es": "Guardando…"
+    },
+    {
+      "key": "profile.help",
+      "en": "3–16 letters, numbers, _ or -. No spaces.",
+      "es": "3–16 letras, números, _ o -. Sin espacios."
+    },
+    {
+      "key": "profile.invalid",
+      "en": "Invalid alias.",
+      "es": "Alias no válido."
+    },
+    {
+      "key": "profile.reserved",
+      "en": "That alias is not available.",
+      "es": "Ese alias no está disponible."
+    },
+    {
+      "key": "profile.save_failed",
+      "en": "Could not save. Please try again.",
+      "es": "No se pudo guardar. Inténtalo de nuevo."
     }
   ]
 }

@@ -27,7 +27,7 @@ namespace Domino.Editor
         sealed class FakeTransport : IApiTransport
         {
             public string Body;
-            public Task<ApiHttpResponse> PostAsync(Uri uri, string json, string token, int seconds, CancellationToken ct)
+            public Task<ApiHttpResponse> SendAsync(string method, Uri uri, string json, string token, int seconds, CancellationToken ct)
                 => Task.FromResult(new ApiHttpResponse(200, Body));
         }
         [InitializeOnLoadMethod]

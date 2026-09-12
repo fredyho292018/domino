@@ -12,5 +12,6 @@ enum class FoundationError {
 class PlayerFoundationException(val code: FoundationError) : RuntimeException(code.name)
 
 interface PlayerFoundationRepository {
+    fun updateDisplayName(identity: FirebaseIdentity, displayName: String): BootstrapResult
     fun ensure(identity: FirebaseIdentity, initialLanguage: String, candidateDisplayName: String): BootstrapResult
 }

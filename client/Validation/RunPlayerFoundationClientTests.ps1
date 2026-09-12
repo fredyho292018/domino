@@ -7,6 +7,7 @@ $project = @'
   <ItemGroup>
     <Compile Include="../PlayerFoundationClientTests.cs" />
     <Compile Include="../PlayerRetryTests.cs" />
+    <Compile Include="../PlayerAliasTests.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Identity/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Player/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Infrastructure/CancellableTask.cs" />

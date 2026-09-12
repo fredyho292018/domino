@@ -10,10 +10,11 @@ namespace Domino.Infrastructure.Api
     // Called on Unity's main thread; Task.Yield resumes on its synchronization context.
     public sealed class UnityApiTransport : IApiTransport
     {
-        public async Task<ApiHttpResponse> PostAsync(Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken)
+        public async Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var request = new UnityWebRequest(url, "POST");
+            if (method != "POST" && method != "PUT") throw new ArgumentException(nameof(method));
+            using var request = new UnityWebRequest(url, method);
             request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");

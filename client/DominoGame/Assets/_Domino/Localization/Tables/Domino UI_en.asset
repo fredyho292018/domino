@@ -434,6 +434,91 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 2269804818624512
+    m_Localized: Player profile
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373248
+    m_Localized: Choose your name
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373249
+    m_Localized: 'Coins: {0}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373250
+    m_Localized: Guest
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373251
+    m_Localized: Account
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373252
+    m_Localized: "Connecting\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373253
+    m_Localized: "Syncing\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373254
+    m_Localized: Online
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373255
+    m_Localized: Offline
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373256
+    m_Localized: "Offline \xB7 last known data"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373257
+    m_Localized: Alias
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373258
+    m_Localized: Save
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373259
+    m_Localized: "Saving\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373260
+    m_Localized: "3\u201316 letters, numbers, _ or -. No spaces."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373261
+    m_Localized: Invalid alias.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373262
+    m_Localized: That alias is not available.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2269804856373263
+    m_Localized: Could not save. Please try again.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -525,3 +610,20 @@ MonoBehaviour:
         - id: 745304142
         - id: 338098959884288
         - id: 338099018604544
+        - id: 2269804818624512
+        - id: 2269804856373248
+        - id: 2269804856373249
+        - id: 2269804856373250
+        - id: 2269804856373251
+        - id: 2269804856373252
+        - id: 2269804856373253
+        - id: 2269804856373254
+        - id: 2269804856373255
+        - id: 2269804856373256
+        - id: 2269804856373257
+        - id: 2269804856373258
+        - id: 2269804856373259
+        - id: 2269804856373260
+        - id: 2269804856373261
+        - id: 2269804856373262
+        - id: 2269804856373263

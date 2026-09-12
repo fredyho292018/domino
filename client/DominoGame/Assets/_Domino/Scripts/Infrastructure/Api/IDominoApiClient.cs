@@ -32,10 +32,12 @@ namespace Domino.Infrastructure.Api
     {
         bool IsAvailable { get; }
         Task<PlayerBootstrapResponseDto> BootstrapAsync(string language, CancellationToken cancellationToken);
+        Task<PlayerBootstrapResponseDto> UpdateDisplayNameAsync(string displayName, CancellationToken cancellationToken);
     }
     public interface IApiJsonCodec
     {
         string Serialize(PlayerBootstrapRequestDto request);
+        string SerializeDisplayName(string displayName);
         PlayerBootstrapResponseDto ReadSuccess(string json);
         ApiErrorDto ReadError(string json);
     }
@@ -47,6 +49,6 @@ namespace Domino.Infrastructure.Api
     }
     public interface IApiTransport
     {
-        Task<ApiHttpResponse> PostAsync(Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken);
+        Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken);
     }
 }

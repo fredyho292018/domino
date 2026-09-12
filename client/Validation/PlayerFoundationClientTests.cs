@@ -25,7 +25,7 @@ static partial class PlayerFoundationClientTests
         public TaskCompletionSource<ApiHttpResponse> Pending;
         public Exception Failure;
         public string ExpectedScheme = "https";
-        public Task<ApiHttpResponse> PostAsync(Uri url, string json, string token, int seconds, CancellationToken ct)
+        public Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int seconds, CancellationToken ct)
         {
             Calls++; Check(url.Scheme == ExpectedScheme && url.AbsolutePath == "/api/v1/player/bootstrap", "Exact secure endpoint");
             Check(token == "fake-token" && seconds > 0, "Token passed transiently");
@@ -93,6 +93,7 @@ static partial class PlayerFoundationClientTests
         await TokenTests();
         await LocalHttpTests();
         await RetryTests();
+        await AliasTests();
         foreach (string url in new[] { "", "http://localhost:8080", "https://user:pass@example.invalid", "https://example.invalid?q=1", "bad" })
             Check(!new DominoApiConfiguration(true, url).IsAvailable, "Unsafe config rejected");
         var tokens = new Tokens(); var http = new Transport(); var api = Api(tokens, http);

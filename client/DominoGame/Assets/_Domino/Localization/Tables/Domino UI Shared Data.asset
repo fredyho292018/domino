@@ -347,6 +347,74 @@ MonoBehaviour:
     m_Key: game.turn_named
     m_Metadata:
       m_Items: []
+  - m_Id: 2269804818624512
+    m_Key: profile.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373248
+    m_Key: profile.choose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373249
+    m_Key: profile.coins
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373250
+    m_Key: profile.guest
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373251
+    m_Key: profile.registered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373252
+    m_Key: profile.connecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373253
+    m_Key: profile.syncing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373254
+    m_Key: profile.online
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373255
+    m_Key: profile.offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373256
+    m_Key: profile.offline_cached
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373257
+    m_Key: profile.alias
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373258
+    m_Key: profile.save
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373259
+    m_Key: profile.saving
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373260
+    m_Key: profile.help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373261
+    m_Key: profile.invalid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373262
+    m_Key: profile.reserved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2269804856373263
+    m_Key: profile.save_failed
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

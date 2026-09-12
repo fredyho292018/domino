@@ -14,6 +14,32 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 class FirestorePlayerFoundationRepository(private val firestore: Firestore, private val clock: Clock) : PlayerFoundationRepository {
+    override fun updateDisplayName(identity: FirebaseIdentity, displayName: String): BootstrapResult {
+        require(identity.uid.isNotBlank() && identity.uid.length <= 128 && !identity.uid.contains('/') && identity.uid !in setOf(".", ".."))
+        DisplayNameRules.validate(displayName)
+        val playerRef = firestore.document("players/${identity.uid}")
+        val walletRef = firestore.document("players/${identity.uid}/wallet/main")
+        try {
+            return firestore.runTransaction({ tx ->
+                val playerDoc = tx.get(playerRef).get()
+                val walletDoc = tx.get(walletRef).get()
+                if (!playerDoc.exists()) throw PlayerFoundationException(FoundationError.PLAYER_STATE_CONFLICT)
+                if (!walletDoc.exists()) throw PlayerFoundationException(FoundationError.WALLET_STATE_INVALID)
+                val player = FirestoreFoundationMapping.player(playerDoc.data ?: emptyMap(), identity.uid)
+                val wallet = FirestoreFoundationMapping.wallet(walletDoc.data ?: emptyMap())
+                if (player.displayName == displayName) BootstrapResult(player, wallet)
+                else {
+                    tx.update(playerRef, mapOf("displayName" to displayName, "updatedAt" to FieldValue.serverTimestamp()))
+                    BootstrapResult(player.copy(displayName = displayName, updatedAt = FoundationTimestamp.ServerAssigned), wallet)
+                }
+            }, TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(5).build()).get(30, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw PlayerFoundationException(FoundationError.FIRESTORE_UNAVAILABLE)
+        } catch (_: TimeoutException) { throw PlayerFoundationException(FoundationError.FIRESTORE_UNAVAILABLE)
+        } catch (error: ExecutionException) { throw classify(error)
+        } catch (error: ApiException) { throw classify(error) }
+    }
     override fun ensure(identity: FirebaseIdentity, initialLanguage: String, candidateDisplayName: String): BootstrapResult {
         require(identity.uid.isNotBlank() && identity.uid.length <= 128 && !identity.uid.contains('/') &&
             identity.uid !in setOf(".", "..")) { "Invalid document identity" }

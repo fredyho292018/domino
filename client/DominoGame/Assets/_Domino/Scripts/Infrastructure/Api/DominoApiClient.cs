@@ -11,7 +11,7 @@ namespace Domino.Infrastructure.Api
     {
         static readonly HashSet<string> KnownCodes = new HashSet<string> {
             "AUTH_TOKEN_MISSING", "AUTH_TOKEN_INVALID", "AUTH_TOKEN_EXPIRED", "AUTH_SESSION_INVALID", "ACCESS_DENIED",
-            "REQUEST_INVALID", "LANGUAGE_UNSUPPORTED", "PLAYER_STATE_CONFLICT", "WALLET_STATE_INVALID",
+            "REQUEST_INVALID", "DISPLAY_NAME_INVALID", "DISPLAY_NAME_RESERVED", "LANGUAGE_UNSUPPORTED", "PLAYER_STATE_CONFLICT", "WALLET_STATE_INVALID",
             "DEPENDENCY_UNAVAILABLE", "FIRESTORE_CONTENTION_EXHAUSTED", "INTERNAL_ERROR" };
         readonly DominoApiConfiguration settings;
         readonly IAuthTokenProvider tokens;
@@ -20,11 +20,21 @@ namespace Domino.Infrastructure.Api
         public bool IsAvailable => settings.IsAvailable;
         public DominoApiClient(DominoApiConfiguration settings, IAuthTokenProvider tokens, IApiTransport transport, IApiJsonCodec codec)
         { this.settings = settings; this.tokens = tokens; this.transport = transport; this.codec = codec; }
-        public async Task<PlayerBootstrapResponseDto> BootstrapAsync(string language, CancellationToken cancellationToken)
+        public Task<PlayerBootstrapResponseDto> BootstrapAsync(string language, CancellationToken cancellationToken)
         {
             if (!IsAvailable) throw new DominoApiException(ApiFailure.Configuration);
             if (language != "en" && language != "es") throw new DominoApiException(ApiFailure.Contract);
             var json = codec.Serialize(new PlayerBootstrapRequestDto { language = language });
+            return SendAsync("POST", settings.Endpoint, json, cancellationToken);
+        }
+        public Task<PlayerBootstrapResponseDto> UpdateDisplayNameAsync(string displayName, CancellationToken cancellationToken)
+        {
+            if (!IsAvailable) throw new DominoApiException(ApiFailure.Configuration);
+            if (!DisplayNameRules.IsValid(displayName)) throw new DominoApiException(ApiFailure.Server, 400, "DISPLAY_NAME_INVALID");
+            return SendAsync("PUT", new Uri(settings.Endpoint, "display-name"), codec.SerializeDisplayName(displayName), cancellationToken);
+        }
+        async Task<PlayerBootstrapResponseDto> SendAsync(string method, Uri endpoint, string json, CancellationToken cancellationToken)
+        {
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -38,7 +48,7 @@ namespace Domino.Infrastructure.Api
                     catch { throw new DominoApiException(ApiFailure.Authentication); }
                     if (string.IsNullOrWhiteSpace(token) || token.IndexOfAny(new[] { '\r', '\n' }) >= 0)
                         throw new DominoApiException(ApiFailure.Authentication);
-                    response = await CancellableTask.Wait(transport.PostAsync(settings.Endpoint, json, token, settings.TimeoutSeconds, timeout.Token), timeout.Token);
+                    response = await CancellableTask.Wait(transport.SendAsync(method, endpoint, json, token, settings.TimeoutSeconds, timeout.Token), timeout.Token);
                     timeout.Token.ThrowIfCancellationRequested();
                 }
                 catch (OperationCanceledException)

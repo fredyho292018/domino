@@ -8,6 +8,11 @@ import java.time.Instant
 import java.time.ZoneOffset
 
 class FakePlayerFoundationRepository : PlayerFoundationRepository {
+    override fun updateDisplayName(identity: FirebaseIdentity, displayName: String): BootstrapResult {
+        calls++
+        failure?.let { throw it }
+        return FirestorePlayerFoundationRepository(store.firestore, Clock.fixed(now, ZoneOffset.UTC)).updateDisplayName(identity, displayName)
+    }
     private val now = Instant.parse("2026-09-11T12:00:00Z")
     internal var store = InMemoryFirestoreTransactions(now)
         private set

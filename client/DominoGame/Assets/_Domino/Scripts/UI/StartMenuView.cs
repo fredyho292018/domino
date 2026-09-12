@@ -17,6 +17,7 @@ namespace Domino.UI
         public Button Back { get; private set; }
         public RectTransform Card { get; private set; }
         public LanguageSettingsPanel Settings { get; private set; }
+        public PlayerProfileView Profile { get; private set; }
         public event Action<GameModeDefinition> StartRequested;
 
         public void Initialize(GameModeDefinition mode, GameConfigurationSnapshot configuration)
@@ -52,6 +53,8 @@ namespace Domino.UI
             DominoLocalization.Bind(rules, () => DominoLocalization.Get("rules.summary", DominoLocalization.Get("rules.double_nine", configuration.MaxPip), DominoLocalization.Get("rules.tiles", configuration.TilesPerPlayer), DominoLocalization.Get("rules.no_draw"), DominoLocalization.Get("rules.target_score", configuration.TargetScore)));
             ModePlay = UiKit.LButton("Start match", Card, "menu.play", new Vector2(320,58), new Vector2(0,-145), UiKit.Hex("397566"), () => StartRequested?.Invoke(mode));
             Settings = LanguageSettingsPanel.Create(composition);
+            Profile = gameObject.AddComponent<PlayerProfileView>();
+            Profile.Initialize(Domino.Infrastructure.ApplicationServices.Player, composition);
             UiKit.LButton("Settings", composition, "menu.settings", new Vector2(180,44), new Vector2(450,310), Color.clear, Settings.Open);
             UiKit.LButton("Exit", main.transform, "menu.exit", new Vector2(150,38), new Vector2(0,-266), Color.clear, Application.Quit);
             Show(StartScreen.MainMenu);
@@ -64,6 +67,7 @@ namespace Domino.UI
         public void Show(StartScreen screen)
         {
             Screen = screen;
+            if (Profile) Profile.Close();
             if (Settings) Settings.gameObject.SetActive(false);
             gameObject.SetActive(screen != StartScreen.Match);
             main.SetActive(screen == StartScreen.MainMenu);
@@ -75,6 +79,11 @@ namespace Domino.UI
             float scale = portrait ? Mathf.Min(safe.rect.width / 1040, safe.rect.height / 1280) : Mathf.Min(safe.rect.width / 1160, safe.rect.height / 740);
             composition.localScale = Vector3.one * Mathf.Max(.01f, scale);
             composition.sizeDelta = portrait ? new Vector2(1000, 1240) : new Vector2(1120, 700);
+            Profile.OpenButton.gameObject.SetActive(Screen == StartScreen.MainMenu);
+            var profileRect = Profile.OpenButton.GetComponent<RectTransform>();
+            profileRect.anchoredPosition = portrait ? new Vector2(0,400) : new Vector2(-395,285);
+            profileRect.sizeDelta = portrait ? new Vector2(720,110) : new Vector2(320,95);
+            Profile.OpenButton.GetComponentInChildren<Text>().rectTransform.sizeDelta = profileRect.sizeDelta - new Vector2(30,12);
             ((RectTransform)composition.Find("Brand")).anchoredPosition = new Vector2(0, portrait ? 530 : 310);
             ((RectTransform)composition.Find("Settings")).anchoredPosition = portrait ? new Vector2(0,-540) : new Vector2(450,310);
             Back.GetComponent<RectTransform>().anchoredPosition = portrait ? new Vector2(-365,435) : new Vector2(-460,245);

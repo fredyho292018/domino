@@ -1,6 +1,8 @@
 package com.teamfho.domino.common
 
 enum class ApiErrorCode(val status: Int, val publicMessage: String) {
+    DISPLAY_NAME_INVALID(400, "Display name is invalid."),
+    DISPLAY_NAME_RESERVED(400, "Display name is unavailable."),
     REQUEST_INVALID(400, "Request body is invalid."),
     LANGUAGE_UNSUPPORTED(400, "Supported languages are en and es."),
     AUTH_TOKEN_MISSING(401, "Authentication is required."),
