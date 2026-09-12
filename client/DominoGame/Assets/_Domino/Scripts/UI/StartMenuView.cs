@@ -55,6 +55,7 @@ namespace Domino.UI
             Settings = LanguageSettingsPanel.Create(composition);
             Profile = gameObject.AddComponent<PlayerProfileView>();
             Profile.Initialize(Domino.Infrastructure.ApplicationServices.Player, composition);
+            gameObject.AddComponent<RealtimeStatusView>().Initialize(Domino.Infrastructure.ApplicationServices.Realtime, main.transform);
             UiKit.LButton("Settings", composition, "menu.settings", new Vector2(180,44), new Vector2(450,310), Color.clear, Settings.Open);
             UiKit.LButton("Exit", main.transform, "menu.exit", new Vector2(150,38), new Vector2(0,-266), Color.clear, Application.Quit);
             Show(StartScreen.MainMenu);

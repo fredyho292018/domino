@@ -90,7 +90,7 @@ namespace Domino.Editor
             var profile = menu.Profile; var service = ApplicationServices.Player;
             busy = true;
             try {
-                if (mode == 1) { await Fake(profile); Finish(true, "UI_ALIAS_EN_ES=PASS\nPORTRAIT_NINE_SIZES=PASS\nCONSOLE_ERRORS=0"); return; }
+                if (mode == 1) { await Fake(profile); Finish(true, "UI_ALIAS_EN_ES=PASS\nREALTIME_UI_EN_ES=PASS\nPORTRAIT_NINE_SIZES=PASS\nCONSOLE_ERRORS=0"); return; }
                 if (phase == 0 && service.IsFresh) {
                     if (mode == 3) { Check(service.Player.DisplayName == "Fredy92" && profile.DisplayedName == "Fredy92", "Restart alias mismatch"); Finish(true, "RESTART_ALIAS_PERSISTED=PASS\nCONSOLE_ERRORS=0"); return; }
                     File.WriteAllText(Path.Combine(Output,"uid.txt"), service.Player.Uid);
@@ -175,12 +175,34 @@ namespace Domino.Editor
             }
             http.Offline=false; profile.RetryButton.onClick.Invoke(); await Settled(service);
             Check(service.IsFresh && profile.DisplayedName=="Fredy92","Retry UI");
+            profile.Close();
+            var realtime = UnityEngine.Object.FindFirstObjectByType<RealtimeStatusView>();
+            var realtimeFake = new RealtimeUiFake(); realtime.Bind(realtimeFake);
+            for (int i=0;i<sizes.GetLength(0);i++) {
+                resize.Invoke(null,new object[]{sizes[i,0],sizes[i,1]});
+                foreach(var language in new[]{"es","en"}) {
+                    await SelectLanguage(language); Canvas.ForceUpdateCanvases();
+                    Check(realtime.DisplayedStatus.Contains(language=="es"?"Conectado":"Connected"),"Realtime EN ES label");
+                    Check(realtime.DisplayedStatus.Contains("2"),"Aggregate count shown");
+                }
+            }
+            await SelectLanguage("es"); Capture("realtime-es"); await Task.Delay(300);
+            realtimeFake.Activity=new Domino.Realtime.GlobalActivitySnapshot(1,1,0,0);realtime.Bind(realtimeFake);
+            Check(realtime.DisplayedStatus.Contains("1 conectado")&&!realtime.DisplayedStatus.Contains("1 conectados"),"Spanish singular");
+            await SelectLanguage("en");Check(realtime.DisplayedStatus.Contains("1 match ·"),"English singular");
         }
         static async Task SelectLanguage(string language)
         {
             DominoLocalization.Select(language);
             await UnityEngine.Localization.Settings.LocalizationSettings.InitializationOperation.Task;
             await Task.Delay(50);
+        }
+        sealed class RealtimeUiFake : Domino.Realtime.IRealtimeConnectionService
+        {
+            public Domino.Realtime.RealtimeConnectionState State {get;set;} = Domino.Realtime.RealtimeConnectionState.CONNECTED;
+            public Domino.Realtime.GlobalActivitySnapshot Activity {get;set;} = new Domino.Realtime.GlobalActivitySnapshot(2,0,0,0);
+            public event Action Changed {add{} remove{}}
+            public void Start(){} public void SetBackground(bool background){} public void Dispose(){}
         }
         static bool Signal(string name) => File.Exists(Path.Combine(Output,name+".signal"));
         static void State(string value) => File.WriteAllText(Path.Combine(Output,"state.txt"),value);

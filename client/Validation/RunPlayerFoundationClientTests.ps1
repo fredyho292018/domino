@@ -9,6 +9,8 @@ $project = @'
     <Compile Include="../PlayerRetryTests.cs" />
     <Compile Include="../PlayerAliasTests.cs" />
     <Compile Include="../PlayerConnectionTests.cs" />
+    <Compile Include="../RealtimeClientTests.cs" />
+    <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Realtime/*.cs" Exclude="../../DominoGame/Assets/_Domino/Scripts/Realtime/RealtimeLifecycle.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/UI/PlayerSyncPresentation.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Identity/*.cs" />
     <Compile Include="../../DominoGame/Assets/_Domino/Scripts/Player/*.cs" />

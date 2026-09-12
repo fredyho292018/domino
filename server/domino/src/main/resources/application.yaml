@@ -1,6 +1,12 @@
 spring:
   application:
     name: domino
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 1s
+      timeout: 1s
 
 firebase:
   project-id: ${FIREBASE_PROJECT_ID:teamfho-domino}
@@ -17,3 +23,13 @@ management:
     health:
       show-details: never
       show-components: never
+      group:
+        realtime:
+          include: redis
+
+realtime:
+  auth-timeout-seconds: 5
+  heartbeat-interval-seconds: 20
+  heartbeat-timeout-seconds: 45
+  presence-ttl-seconds: 60
+  messages-per-second: 10

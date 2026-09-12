@@ -5,6 +5,7 @@ using Domino.Identity;
 using Domino.Infrastructure.Firebase;
 using Domino.Infrastructure.Api;
 using Domino.Player;
+using Domino.Realtime;
 using Domino.UI;
 using UnityEngine.Localization.Settings;
 using UnityEngine;
@@ -18,6 +19,7 @@ namespace Domino.Infrastructure
         public static IPlayerIdentityService Identity { get; private set; }
         public static FirebaseBootstrap Firebase { get; private set; }
         public static PlayerService Player { get; private set; }
+        public static IRealtimeConnectionService Realtime { get; private set; }
 #if UNITY_EDITOR
         // Opt-in editor validation only; never compiled into a player build.
         public static Func<IFirebaseClient> ValidationFirebaseFactory;
@@ -29,7 +31,7 @@ namespace Domino.Infrastructure
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
-            Identity = null; Firebase = null; Player = null;
+            Identity = null; Firebase = null; Player = null; Realtime = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -46,6 +48,11 @@ namespace Domino.Infrastructure
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
             var api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
             Player = new PlayerService(Identity, api, CurrentLanguageAsync, lifetime.Token, Debug.Log);
+            Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
+            var lifecycle = new GameObject("Realtime lifecycle");
+            UnityEngine.Object.DontDestroyOnLoad(lifecycle);
+            lifecycle.AddComponent<RealtimeLifecycle>();
+            Realtime.Start();
             Application.quitting += Shutdown;
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged += OnEditorPlayMode;
@@ -71,6 +78,7 @@ namespace Domino.Infrastructure
         static void Shutdown()
         {
             Player?.Dispose();
+            Realtime?.Dispose();
             lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null;
             // Firebase owns persistence. Never SignOut or delete its cache here.
         }

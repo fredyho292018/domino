@@ -1,5 +1,10 @@
 {
   "entries": [
+    { "key": "realtime.connected", "en": "Connected", "es": "Conectado" },
+    { "key": "realtime.connecting", "en": "Connecting…", "es": "Conectando…" },
+    { "key": "realtime.reconnecting", "en": "Reconnecting…", "es": "Reconectando…" },
+    { "key": "realtime.disconnected", "en": "Realtime offline", "es": "Sin conexión en tiempo real" },
+    { "key": "realtime.activity", "en": "{0} online · {1} {1:plural:match|matches} · {2} waiting", "es": "{0} {0:plural:conectado|conectados} · {1} {1:plural:partida|partidas} · {2} esperando" },
     {
       "key": "menu.play",
       "en": "Play",
@@ -32,8 +37,8 @@
     },
     {
       "key": "menu.offline",
-      "en": "Offline · Play at your own pace",
-      "es": "Sin conexión · Juega a tu ritmo"
+      "en": "Offline mode · Play at your own pace",
+      "es": "Modo local · Juega a tu ritmo"
     },
     {
       "key": "menu.choose",

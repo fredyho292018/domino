@@ -443,6 +443,26 @@ MonoBehaviour:
     m_Key: profile.cached_status
     m_Metadata:
       m_Items: []
+  - m_Id: 2496881777995776
+    m_Key: realtime.connected
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2496881836716032
+    m_Key: realtime.connecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2496881836716033
+    m_Key: realtime.reconnecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2496881840910336
+    m_Key: realtime.disconnected
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2496881840910337
+    m_Key: realtime.activity
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

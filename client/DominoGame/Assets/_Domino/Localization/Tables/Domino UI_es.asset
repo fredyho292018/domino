@@ -50,7 +50,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 745304068
-    m_Localized: "Sin conexi\xF3n \xB7 Juega a tu ritmo"
+    m_Localized: "Modo local \xB7 Juega a tu ritmo"
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
@@ -554,6 +554,32 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 2496881777995776
+    m_Localized: Conectado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2496881836716032
+    m_Localized: "Conectando\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2496881836716033
+    m_Localized: "Reconectando\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2496881840910336
+    m_Localized: "Sin conexi\xF3n en tiempo real"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2496881840910337
+    m_Localized: "{0} {0:plural:conectado|conectados} \xB7 {1} {1:plural:partida|partidas}
+      \xB7 {2} esperando"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -669,3 +695,8 @@ MonoBehaviour:
         - id: 2482107170189315
         - id: 2482107170189316
         - id: 2482107170189317
+        - id: 2496881777995776
+        - id: 2496881836716032
+        - id: 2496881836716033
+        - id: 2496881840910336
+        - id: 2496881840910337

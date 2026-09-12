@@ -27,6 +27,9 @@ class SecurityConfiguration {
             .exceptionHandling { it.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler) }
             .authorizeHttpRequests {
                 it.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                    // Upgrade only; the socket grants no capability until Firebase AUTH succeeds.
+                    .requestMatchers(HttpMethod.GET, "/ws/v1/realtime").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/actuator/health/realtime").authenticated()
                     .requestMatchers("/api/**").authenticated()
                     .anyRequest().denyAll()
             }
