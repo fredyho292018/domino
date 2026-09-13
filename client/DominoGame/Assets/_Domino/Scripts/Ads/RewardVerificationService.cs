@@ -15,6 +15,7 @@ namespace Domino.Ads
         bool clientEarned;
         public RewardIntentReceipt Current { get; private set; }
         public RewardVerificationState State { get; private set; }
+        public long LastConfirmedAmount { get; private set; }
         public event Action<RewardVerificationState> Changed;
         public RewardVerificationService(IRewardIntentApi api, CancellationToken lifetime, IRewardWalletReceiver wallet = null)
         { this.api = api; this.lifetime = lifetime; this.wallet = wallet; }
@@ -89,14 +90,16 @@ namespace Domino.Ads
             Set(RewardVerificationState.CONSUMING);
             try
             {
+                long confirmedAmount = 0;
                 bool applied = await wallet.ApplyAsync(async token =>
                 {
                     var response = await ((IRewardConsumptionApi)api).ConsumeRewardAsync(captured.IntentId, token);
                     if (response.IntentId != captured.IntentId) throw new FormatException("CONSUME_CONTRACT");
+                    confirmedAmount = response.Amount;
                     return response.Coins; // Absolute backend balance; never local addition.
                 }, lifetime);
                 if (lifetime.IsCancellationRequested) { completion.TrySetResult(false); return; }
-                if (applied) Current = new RewardIntentReceipt(captured.IntentId, "CONSUMED", captured.ExpiresAt);
+                if (applied) { LastConfirmedAmount = confirmedAmount; Current = new RewardIntentReceipt(captured.IntentId, "CONSUMED", captured.ExpiresAt, confirmedAmount); }
                 Set(applied ? RewardVerificationState.CONSUMED : RewardVerificationState.FAILED);
                 completion.TrySetResult(applied);
             }

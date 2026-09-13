@@ -24,11 +24,14 @@ namespace Domino.Infrastructure
         public static IAdsService Ads { get; private set; }
         public static IRewardedAdsService Rewarded { get; private set; }
         public static RewardVerificationService RewardVerification { get; private set; }
+        public static Domino.Rewards.RoundRewardFlow RoundRewards { get; private set; }
 #if UNITY_EDITOR
         public static EditorMockAdsConsent EditorAdsConsent { get; private set; }
         // Opt-in editor validation only; never compiled into a player build.
         public static Func<IFirebaseClient> ValidationFirebaseFactory;
         public static Func<IRewardIntentApi> ValidationRewardIntentApiFactory;
+        public static Func<IDominoApiClient> ValidationPlayerApiFactory;
+        public static Func<RewardVerificationService, IRewardedAdsService> ValidationRewardedFactory;
 #endif
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset()
@@ -39,6 +42,7 @@ namespace Domino.Infrastructure
 #endif
             Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null; Rewarded = null;
             RewardVerification = null;
+            RoundRewards = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -62,20 +66,28 @@ namespace Domino.Infrastructure
             Identity = new FirebaseAuthService(Firebase, client, Debug.Log, lifetime.Token);
             var asset = Resources.Load<DominoApiSettings>("ApiSettings");
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
-            var api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
+            IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
             IRewardIntentApi rewardApi = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
 #if UNITY_EDITOR
             rewardApi = ValidationRewardIntentApiFactory?.Invoke() ?? rewardApi;
+            api = ValidationPlayerApiFactory?.Invoke() ?? api;
 #endif
             Player = new PlayerService(Identity, api, CurrentLanguageAsync, lifetime.Token, Debug.Log);
             RewardVerification = new RewardVerificationService(rewardApi, lifetime.Token, new PlayerRewardWalletReceiver(Player));
             Rewarded = new GoogleRewardedAdsService(adsConfiguration, Ads, adsConsent, new UnityRewardedAdLoader(), Debug.Log,
                 intents: RewardVerification);
+#if UNITY_EDITOR
+            if (ValidationRewardedFactory != null) { Rewarded.Dispose(); Rewarded = ValidationRewardedFactory(RewardVerification); }
+#endif
+            RoundRewards = new Domino.Rewards.RoundRewardFlow(Rewarded, RewardVerification,
+                () => Player.HasConfirmedSnapshots && Player.State == PlayerSyncState.SYNCED, lifetime.Token,
+                recoveryReady: () => Player.HasConfirmedSnapshots);
             _ = Rewarded.InitializeAsync();
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
             var lifecycle = new GameObject("Realtime lifecycle");
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);
             lifecycle.AddComponent<RealtimeLifecycle>();
+            lifecycle.AddComponent<RewardConfirmationToast>().Initialize(RoundRewards);
             Realtime.Start();
             Application.quitting += Shutdown;
 #if UNITY_EDITOR
@@ -84,7 +96,12 @@ namespace Domino.Infrastructure
             // Unity's main-thread entry point and captured UnitySynchronizationContext
             // keep SDK continuations/logging on main. Offline presentation proceeds independently.
             _ = ObserveAsync(Identity, lifetime.Token);
-            _ = Player.InitializeAsync();
+            _ = InitializePlayerAndRecoverAsync();
+        }
+        static async Task InitializePlayerAndRecoverAsync()
+        {
+            await Player.InitializeAsync();
+            if (lifetime != null && !lifetime.IsCancellationRequested) await RoundRewards.RecoverAsync();
         }
         static async Task<string> CurrentLanguageAsync()
         {
@@ -101,6 +118,7 @@ namespace Domino.Infrastructure
         }
         static void Shutdown()
         {
+            RoundRewards?.Dispose();
             Player?.Dispose();
             Rewarded?.Dispose();
             Ads?.Dispose();

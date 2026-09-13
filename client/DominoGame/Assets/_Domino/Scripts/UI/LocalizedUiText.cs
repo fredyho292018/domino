@@ -21,6 +21,7 @@ namespace Domino.UI
         }
         void OnEnable() { LocalizationSettings.SelectedLocaleChanged += Refresh; Refresh(null); }
         void OnDisable() => LocalizationSettings.SelectedLocaleChanged -= Refresh;
+        public void Refresh() => Refresh(null);
         void Refresh(Locale _) { if (value != null) GetComponent<Text>().text = value(); }
     }
 }

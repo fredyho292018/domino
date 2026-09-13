@@ -19,6 +19,91 @@ MonoBehaviour:
     m_Items:
     - rid: 7246862583952572445
   m_TableData:
+  - m_Id: 3500000000000000
+    m_Localized: "Round complete"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000001
+    m_Localized: "Watch ad"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000002
+    m_Localized: "+{0} coins"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000003
+    m_Localized: "Preparing reward..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000004
+    m_Localized: "Verifying reward..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000005
+    m_Localized: "Confirming balance..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000006
+    m_Localized: "Reward received"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000007
+    m_Localized: "Reward unavailable"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000008
+    m_Localized: "Ad not completed"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000009
+    m_Localized: "Reward could not be prepared."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000010
+    m_Localized: "Reward pending. You can continue or retry."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000011
+    m_Localized: "Retry reward"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000012
+    m_Localized: "Optional reward"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000013
+    m_Localized: "Ad in progress"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000014
+    m_Localized: "Balance: {0} coins"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000015
+    m_Localized: "Balance: --"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3500000000000016
+    m_Localized: "Reward received: +{0} coins"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   - m_Id: 644640768
     m_Localized: Play
     m_Metadata:
@@ -587,6 +672,23 @@ MonoBehaviour:
       data:
         m_Entries: 
         m_SharedEntries:
+        - id: 3500000000000000
+        - id: 3500000000000001
+        - id: 3500000000000002
+        - id: 3500000000000003
+        - id: 3500000000000004
+        - id: 3500000000000005
+        - id: 3500000000000006
+        - id: 3500000000000007
+        - id: 3500000000000008
+        - id: 3500000000000009
+        - id: 3500000000000010
+        - id: 3500000000000011
+        - id: 3500000000000012
+        - id: 3500000000000013
+        - id: 3500000000000014
+        - id: 3500000000000015
+        - id: 3500000000000016
         - id: 644640768
         - id: 741109760
         - id: 745304064

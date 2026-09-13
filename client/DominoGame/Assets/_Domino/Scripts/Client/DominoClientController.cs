@@ -200,6 +200,7 @@ namespace Domino.Client
                         if (!result.Tie) yield return board.ShowWinner(winnerName, game.Match.Finished, localWon);
                         // Wash after every round, including a tied block, before allowing the next deal.
                         yield return board.WashDominoes(game.Reserve);
+                        Domino.Infrastructure.ApplicationServices.RoundRewards?.PresentRound(result);
                         board.Finish(summary, game.Match.Finished);
                         break;
                 }

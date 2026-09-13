@@ -126,6 +126,7 @@ namespace Domino.UI
             localHandLayer.SetAsLastSibling();
             if (content.Find("Table effects")) content.Find("Table effects").SetAsLastSibling();
             if (content.Find("Feedback particles")) content.Find("Feedback particles").SetAsLastSibling();
+            if (RoundRewardPanel) RoundRewardPanel.transform.SetAsLastSibling();
             menu.transform.SetAsLastSibling();
             Settings.transform.SetAsLastSibling();
         }

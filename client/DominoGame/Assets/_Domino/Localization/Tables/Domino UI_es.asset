@@ -19,6 +19,91 @@ MonoBehaviour:
     m_Items:
     - rid: 7246862583952572444
   m_TableData:
+  - m_Id: 3500000000000000
+    m_Localized: "Ronda terminada"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000001
+    m_Localized: "Ver anuncio"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000002
+    m_Localized: "+{0} monedas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000003
+    m_Localized: "Preparando recompensa..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000004
+    m_Localized: "Verificando recompensa..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000005
+    m_Localized: "Confirmando saldo..."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000006
+    m_Localized: "Recompensa recibida"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000007
+    m_Localized: "Recompensa no disponible"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000008
+    m_Localized: "Anuncio no completado"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000009
+    m_Localized: "No se pudo preparar la recompensa."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000010
+    m_Localized: "Recompensa pendiente. Puedes continuar o reintentar."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000011
+    m_Localized: "Reintentar recompensa"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000012
+    m_Localized: "Recompensa opcional"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000013
+    m_Localized: "Anuncio en curso"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000014
+    m_Localized: "Saldo: {0} monedas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000015
+    m_Localized: "Saldo: --"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3500000000000016
+    m_Localized: "Recompensa recibida: +{0} monedas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   - m_Id: 644640768
     m_Localized: Jugar
     m_Metadata:
@@ -588,6 +673,23 @@ MonoBehaviour:
       data:
         m_Entries: 
         m_SharedEntries:
+        - id: 3500000000000000
+        - id: 3500000000000001
+        - id: 3500000000000002
+        - id: 3500000000000003
+        - id: 3500000000000004
+        - id: 3500000000000005
+        - id: 3500000000000006
+        - id: 3500000000000007
+        - id: 3500000000000008
+        - id: 3500000000000009
+        - id: 3500000000000010
+        - id: 3500000000000011
+        - id: 3500000000000012
+        - id: 3500000000000013
+        - id: 3500000000000014
+        - id: 3500000000000015
+        - id: 3500000000000016
         - id: 644640768
         - id: 741109760
         - id: 745304064

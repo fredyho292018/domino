@@ -10,12 +10,14 @@ namespace Domino.Ads
         public string IntentId { get; }
         public string Status { get; }
         public DateTimeOffset ExpiresAt { get; }
-        public RewardIntentReceipt(string id, string status, DateTimeOffset expiresAt)
+        public long PreviewAmount { get; }
+        public RewardIntentReceipt(string id, string status, DateTimeOffset expiresAt, long previewAmount = 10)
         {
             if (!Guid.TryParseExact(id, "D", out var guid) || guid == Guid.Empty ||
                 (status != "ISSUED" && status != "VERIFIED" && status != "EXPIRED" && status != "REJECTED" && status != "CONSUMED"))
                 throw new FormatException("INTENT_CONTRACT");
-            IntentId = id; Status = status; ExpiresAt = expiresAt;
+            if (previewAmount < 1 || previewAmount > 9007199254740991L) throw new FormatException("INTENT_CONTRACT");
+            IntentId = id; Status = status; ExpiresAt = expiresAt; PreviewAmount = previewAmount;
         }
     }
     public interface IRewardIntentApi

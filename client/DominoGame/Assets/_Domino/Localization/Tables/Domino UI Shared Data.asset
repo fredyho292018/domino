@@ -15,6 +15,74 @@ MonoBehaviour:
   m_TableCollectionName: Domino UI
   m_TableCollectionNameGuidString: b787000c94add624d8c3529bf807766f
   m_Entries:
+  - m_Id: 3500000000000000
+    m_Key: reward.round_end
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000001
+    m_Key: reward.watch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000002
+    m_Key: reward.amount
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000003
+    m_Key: reward.preparing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000004
+    m_Key: reward.verifying
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000005
+    m_Key: reward.crediting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000006
+    m_Key: reward.received
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000007
+    m_Key: reward.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000008
+    m_Key: reward.incomplete
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000009
+    m_Key: reward.prepare_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000010
+    m_Key: reward.pending
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000011
+    m_Key: reward.retry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000012
+    m_Key: reward.optional
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000013
+    m_Key: reward.watching
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000014
+    m_Key: reward.balance
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000015
+    m_Key: reward.balance_unknown
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3500000000000016
+    m_Key: reward.toast
+    m_Metadata:
+      m_Items: []
   - m_Id: 644640768
     m_Key: menu.play
     m_Metadata:

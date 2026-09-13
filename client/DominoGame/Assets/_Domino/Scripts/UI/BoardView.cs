@@ -64,6 +64,7 @@ namespace Domino.UI
         public event Action ExitRequested;
         public bool RoundPresentationFinished => roundEnded;
         public event Action NextRoundRequested;
+        public RoundRewardView RoundRewardPanel { get; private set; }
         // Optional audio adapter can subscribe without changing gameplay or adding an audio dependency.
         public event Action TileLanded;
         public IReadOnlyList<DominoTileView> LocalTiles => hands[LocalPlayerSeat];
@@ -205,6 +206,9 @@ namespace Domino.UI
         }
         public void Clear()
         {
+            Domino.Infrastructure.ApplicationServices.RoundRewards?.LeaveRound();
+            if (RoundRewardPanel) { RoundRewardPanel.gameObject.SetActive(false); Destroy(RoundRewardPanel.gameObject); RoundRewardPanel = null; }
+            prompt.gameObject.SetActive(true);
             ResetEndpointZoom();
             effects.Clear();
             feedback.Clear();
@@ -745,6 +749,13 @@ namespace Domino.UI
             DominoLocalization.Set(playButton.GetComponentInChildren<Text>(), matchFinished ? "game.new_match" : "game.next_round");
             playButton.GetComponentInChildren<Text>().fontSize = 16;
             playButton.interactable = true;
+            prompt.gameObject.SetActive(false);
+            if (RoundRewardPanel) Destroy(RoundRewardPanel.gameObject);
+            var resultPanel = UiKit.Rect("Round result and optional reward", content, new Vector2(800,590), Vector2.zero);
+            RoundRewardPanel = resultPanel.gameObject.AddComponent<RoundRewardView>();
+            RoundRewardPanel.Initialize(Domino.Infrastructure.ApplicationServices.RoundRewards,
+                Domino.Infrastructure.ApplicationServices.Player, message, () => scoreA.text + "     ·     " + scoreB.text,
+                () => { if (matchEnded) RestartRequested?.Invoke(); else NextRoundRequested?.Invoke(); });
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Domino.Ads
                 reward["previewAmount"].Value<long>() < 1 || reward["previewAmount"].Value<long>() > 9007199254740991L) throw new FormatException();
             if (!DateTimeOffset.TryParse(Text("expiresAt"), CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal, out var expires)) throw new FormatException();
-            return new RewardIntentReceipt(Text("intentId"), Text("status"), expires);
+            return new RewardIntentReceipt(Text("intentId"), Text("status"), expires, reward["previewAmount"].Value<long>());
         }
         static JObject Parse(string json)
         {

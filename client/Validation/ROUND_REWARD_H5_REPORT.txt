@@ -1,0 +1,124 @@
+DOMINO MONETIZATION — PHASE H5 REPORT
+=====================================
+HISTORICAL_REPORT=implementation validation before checkpoint; see ROUND_REWARD_H5_CHECKPOINT.txt
+BRANCH=main
+SOURCE_SHA_BEFORE=fcf1b5739d01bfcc2e6954699b30ada7a85d0bf2
+SOURCE_SHA_AFTER=fcf1b5739d01bfcc2e6954699b30ada7a85d0bf2
+H4_COMMIT=fcf1b5739d01bfcc2e6954699b30ada7a85d0bf2
+WORKTREE_CLEAN_BEFORE=YES
+
+ROUND REWARD UI
+ROUND_REWARD_CTA=YES
+CONTINUE_ALWAYS_AVAILABLE=YES
+AUTOMATIC_AD_SHOW=NO
+REWARD_PREVIEW_COINS=10
+
+FLOW
+REWARD_INTENT_BEFORE_SHOW=PASS
+AD_SHOW=PASS (Editor fixture; existing H2 lifecycle regression)
+CLIENT_EARNED=PASS
+SSV_VERIFICATION_FLOW=TEST_DOUBLE
+CONSUME=PASS
+WALLET_RESPONSE_APPLIED=PASS
+
+WALLET UI
+BALANCE_BEFORE=0 (test fixture)
+BALANCE_AFTER=10 (test fixture)
+PROFILE_BALANCE_REFRESH=PASS
+ROUND_BALANCE_REFRESH=PASS
+LOCAL_COINS_INCREMENT=NO
+
+EXACTLY ONCE
+ONE_REWARD_PER_ROUND=PASS (application-session presentation eligibility)
+DOUBLE_TAP=PASS
+DUPLICATE_CALLBACK=PASS
+DUPLICATE_CONSUME=PASS
+ADDITIONAL_COINS_FROM_DUPLICATES=0
+
+FAILURES
+AD_UNAVAILABLE_CONTINUE=PASS
+BACKEND_OFFLINE_NO_SHOW=PASS
+CLOSE_WITHOUT_REWARD_COINS=0
+CONSUME_TIMEOUT_RECOVERY=PASS
+RESTART_PENDING_REWARD=PASS (test double)
+
+UX
+SPANISH=PASS
+ENGLISH=PASS
+PORTRAIT=PASS
+CONTINUE_NOT_HIDDEN=PASS (raycast validation at all 9 sizes, both locales)
+NO_DARK_PATTERN=PASS
+PLAYER_PANELS_VISIBLE=PASS
+ADS_DISABLED_CTA_HIDDEN=PASS
+SUCCESS_FEEDBACK_DURATION=2.4 seconds; Continue is not delayed
+LOCALIZED_KEYS_ADDED=17
+
+TESTS
+BACKEND_TEST_COUNT=259
+BACKEND_TESTS=258 PASS, 1 Redis real integration skipped, 0 failures/errors
+BACKEND_BUILD=PASS
+H5_TESTS=PASS (27 flow checks + 192 Unity UI checks)
+H4_REGRESSION=PASS (35 client checks; backend consume tests in full suite)
+H3_REGRESSION=PASS (30 client checks; backend verification tests in full suite)
+H2_REGRESSION=PASS (46 checks)
+PLAYER_FOUNDATION=PASS (469 checks)
+REALTIME_G3=PASS (client and backend unit regressions; real Redis test skipped)
+GAMEPLAY=PASS (2981089 checks, 1000 games)
+SCORING=PASS (32679 checks)
+RULE_CONFIGURATION=PASS (82 checks)
+PORTRAIT_REGRESSION=PASS (139398 checks, 9 sizes, 4 local seats, full round)
+UNITY_COMPILATION=PASS (Unity 6000.0.41f1)
+CONSOLE_ERRORS=0 (final validation runs)
+
+REAL
+REAL_FIRESTORE_REWARD_TEST=NOT_RUN
+REAL_SSV=NOT_RUN
+PRODUCTION_AD_USED=NO
+REAL_AD_REQUESTS=0
+REAL_WALLET_CREDITED=0
+ADS_ENABLED=false
+ADS_ENVIRONMENT=DEVELOPMENT
+
+EXTERNAL
+BACKEND_CHANGED=NO
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+
+GIT
+COMMIT=NONE
+PUSH=NONE
+WORKTREE_AFTER=H5 changes uncommitted on main for review
+EXISTING_API_OVERRIDE=unchanged in the named stash from the H4 checkpoint
+
+VALIDATION NOTES
+Unity validation used an isolated H5Source copy, with the final modified scripts copied
+from main. The fixture plays a real offline round and uses BoardView.Finish, the real
+RewardVerificationService, PlayerService receiver and profile. Identity, ad, verification
+and consume APIs are Editor-only doubles. It does not verify real SSV or credit Firestore.
+The unchanged H4 backend suite separately validates atomic ledger and credit behavior.
+Earlier compiler/event-signature and visual layering failures were fixed and rerun.
+The final UI run also verifies no player-panel overlap and unobstructed Continue.
+
+RECOVERY NOTES
+Application-lifetime work survives Continue or destruction of the round panel.
+Verification/retry is bounded; unresolved intent remains eligible for explicit retry.
+Startup recovery uses H4's latest VERIFIED pending reward after successful Player sync.
+The initial preview is informational; success amount and balance come from consume.
+One reward per round is a UI rule; server-side limits/anti-abuse are H6, not H5.
+
+MAIN FILES
+Assets/_Domino/Scripts/Rewards/RoundRewardFlow.cs
+Assets/_Domino/Scripts/UI/RoundRewardView.cs
+Assets/_Domino/Scripts/UI/RewardConfirmationToast.cs
+Assets/_Domino/Scripts/Infrastructure/ApplicationServices.cs
+Assets/_Domino/Scripts/Client/DominoClientController.cs
+Assets/_Domino/Scripts/UI/BoardView.cs
+Assets/_Domino/Scripts/UI/PortraitBoardPresentation.cs
+Assets/_Domino/Scripts/Client/Editor/RoundRewardValidation.cs
+Validation/RoundRewardTests.cs
+Validation/RunRoundRewardTests.ps1
+Validation/ROUND_REWARD_H5.md
+
+NEXT=PHASE H6 — reward limits, cooldowns and anti-abuse policy.
+THEN=PHASE H7 — physical Android, public backend and real AdMob SSV validation.
