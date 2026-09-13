@@ -9,9 +9,9 @@ import tools.jackson.databind.ObjectMapper
 import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(RewardPolicy::class)
+@EnableConfigurationProperties(RewardPolicy::class, MonetizationPolicy::class)
 class RewardConfiguration {
-    @Bean fun rewardIntentRepository(firestore: ObjectProvider<Firestore>, policy: RewardPolicy): RewardIntentRepository {
+    @Bean fun rewardIntentRepository(firestore: ObjectProvider<Firestore>, policy: RewardPolicy, monetization: MonetizationPolicy): RewardIntentRepository {
         // Firebase disabled (e.g. tests) must not introduce a verification bypass.
         val db = firestore.ifAvailable ?: return object : RewardIntentRepository {
             override fun consume(uid: String, intentId: String): RewardConsumeResponse = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
@@ -20,7 +20,7 @@ class RewardConfiguration {
             override fun status(uid: String, intentId: String): RewardIntent = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
             override fun verify(event: VerifiedAdMobEvent): Boolean = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
         }
-        return FirestoreRewardIntentRepository(db, Clock.systemUTC(), policy)
+        return FirestoreRewardIntentRepository(db, Clock.systemUTC(), policy, monetization)
     }
     @Bean fun adMobPublicKeyProvider(mapper: ObjectMapper, policy: RewardPolicy): AdMobPublicKeyProvider =
         CachedAdMobPublicKeyProvider(GoogleAdMobKeyFetcher(mapper), Clock.systemUTC(), policy.keyCacheTtl)

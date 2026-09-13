@@ -19,6 +19,51 @@ MonoBehaviour:
     m_Items:
     - rid: 7246862583952572444
   m_TableData:
+  - m_Id: 3600000000000000
+    m_Localized: "Anuncios no disponibles"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000001
+    m_Localized: "Recompensas no disponibles"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000002
+    m_Localized: "Recompensa de esta ronda recibida"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000003
+    m_Localized: "Disponible en {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000004
+    m_Localized: "Límite de recompensas por hora"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000005
+    m_Localized: "Límite diario de recompensas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000006
+    m_Localized: "Límite diario de monedas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000007
+    m_Localized: "Recompensas no disponibles para esta cuenta"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000008
+    m_Localized: "No se pudo comprobar. Inténtalo más tarde."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   - m_Id: 3500000000000000
     m_Localized: "Ronda terminada"
     m_Metadata:

@@ -16,6 +16,8 @@ namespace Domino.Ads
         public RewardIntentApiClient(DominoApiConfiguration settings, IAuthTokenProvider tokens, IApiTransport transport, IRewardIntentCodec codec)
         { this.settings = settings; this.tokens = tokens; this.transport = transport; this.codec = codec; }
         public Task<RewardIntentReceipt> CreateAsync(CancellationToken token) => Send("POST", "intents", token, codec.Read);
+        public Task<T> GetResourceAsync<T>(string resource,CancellationToken token,Func<string,T> read)=>Send("GET",resource,token,read);
+        public Task<T> PostResourceAsync<T>(string resource,CancellationToken token,Func<string,T> read)=>Send("POST",resource,token,read);
         public Task<RewardConsumeReceipt> ConsumeRewardAsync(string id, CancellationToken token)
         {
             if (!Guid.TryParseExact(id, "D", out var guid) || guid == Guid.Empty) throw new FormatException("INTENT_CONTRACT");

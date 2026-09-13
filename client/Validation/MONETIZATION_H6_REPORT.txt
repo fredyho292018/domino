@@ -1,0 +1,107 @@
+DOMINO MONETIZATION — PHASE H6 REPORT
+=====================================
+BRANCH=main
+SOURCE_SHA_BEFORE=44f0785885aed578499904531f57570c9b41b21e
+SOURCE_SHA_AFTER=44f0785885aed578499904531f57570c9b41b21e
+H5_COMMIT=44f0785885aed578499904531f57570c9b41b21e
+
+REMOTE_POLICY_IMPLEMENTED=YES
+CONFIG_ENDPOINT=GET /api/v1/monetization/config (Firebase authenticated)
+POLICY_VERSION=1
+ADS_ENABLED_DEFAULT=true (backend; Unity technical switch remains false)
+REWARDED_ENABLED_DEFAULT=true
+REWARD_COINS=10
+MAX_PER_ROUND=1 (single-use server opportunity; see limitations)
+COOLDOWN_SECONDS=120
+MAX_PER_HOUR=5
+MAX_PER_DAY=20
+MAX_COINS_PER_DAY=200
+DAILY_TIMEZONE=UTC
+
+UNITY_REWARD_AMOUNT_AUTHORITY=NO
+UNITY_LOCAL_REWARD_PREVIEW_REMOVED=YES
+REMOTE_POLICY_SERVICE=YES
+POLICY_CACHE_TTL=600 seconds
+BUILD_ENVIRONMENT_LOCAL=YES
+DEVELOPMENT_TEST_AD_ID_PRESERVED=YES
+
+ELIGIBILITY_ENDPOINT=GET /api/v1/economy/ad-rewards/eligibility
+UID_FROM_SECURITY_PRINCIPAL=YES
+ELIGIBILITY_REASONS=ADS_DISABLED, REWARDED_DISABLED, ROUND_LIMIT, COOLDOWN, HOURLY_LIMIT, DAILY_LIMIT, DAILY_COIN_LIMIT, ACCOUNT_NOT_ELIGIBLE, DEPENDENCY_UNAVAILABLE
+ELIGIBILITY_IS_AUTHORITY=NO
+CONSUME_REVALIDATES=YES
+
+ROUND_LIMIT=PASS per server-issued opportunity; offline round attestation unavailable
+COOLDOWN=PASS
+ROLLING_HOURLY_LIMIT=PASS
+UTC_DAILY_LIMIT=PASS
+DAILY_COIN_LIMIT=PASS
+LIMIT_BOUNDARY_CONCURRENCY=PASS (transactional test double)
+MAX_LIMIT_OVERSHOOT=0 in tests
+MULTI_DEVICE_SHARED_LIMIT=PASS (shared UID/durable store test double)
+
+INTENT_POLICY_VERSION_SNAPSHOT=YES
+INTENT_REWARD_AMOUNT_SNAPSHOT=YES
+OLD_INTENT_AFTER_POLICY_CHANGE=PASS (10 remains 10; new intent 15)
+ADS_DISABLED_NEW_INTENTS=PASS
+REWARDED_DISABLED_NEW_INTENTS=PASS
+VERIFIED_PENDING_CONSUME_AFTER_DISABLE=PASS (explicit final-spec exception; quotas remain enforced)
+
+SERVER_TIME_AUTHORITY=YES
+INJECTABLE_CLOCK=YES
+CLIENT_CLOCK_AUTHORITY=NO
+ECONOMIC_AUTHORITY=FIRESTORE
+REDIS_ECONOMIC_AUTHORITY=NO
+LEDGER_SOURCE_OF_TRUTH=YES
+FIRESTORE_INDEXES_DOCUMENTED=YES (automatic createdAt single-field ascending)
+
+BACKEND_TEST_COUNT=285 total: 284 passed, 1 real Redis test skipped
+BACKEND_TESTS=PASS
+BACKEND_BUILD=PASS
+H6_BACKEND_TESTS=26 PASS (23 policy/transaction cases + 3 authenticated HTTP cases)
+H6_UNITY_TESTS=26 PASS + 30 added UI assertions
+H5_REGRESSION=PASS (27 flow checks; 192 baseline UI assertions)
+H4_REGRESSION=PASS (35 client checks and full backend suite)
+H3_REGRESSION=PASS (30 client checks and full backend suite)
+H2_REGRESSION=PASS (46 checks)
+H1_REGRESSION=PASS (31 checks)
+PLAYER_FOUNDATION=PASS (469 client checks; Guest Auth 43)
+REALTIME_G3=PASS (included in Player Foundation and backend suites)
+PORTRAIT=PASS (139414 checks; 9 sizes, 4 local seats)
+GAMEPLAY=PASS (2981089 checks, 1000 games; regression trace unchanged)
+UNITY_COMPILATION=PASS (Unity 6000.0.41f1, isolated copy, final compile exit 0)
+PLAY_MODE=PASS (isolated Editor fixture)
+CONSOLE_ERRORS=0 (Play Mode fixture; licensing diagnostics in Editor startup log are separate)
+
+REAL_FIRESTORE_H6=NOT_RUN
+REAL_SSV=NOT_RUN
+PRODUCTION_AD_USED=NO
+REAL_AD_REQUESTS=0
+TEST_AD_REQUESTS=0 (test doubles only)
+LIVE_WALLET_CREDITS=0
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+COMMIT=NONE
+PUSH=NONE
+
+KNOWN_LIMITATIONS:
+- Offline round completion cannot be independently attested. Server opportunities are single-use and bounded by persistent UID quotas, but a caller can request a later opportunity without playing a real offline round.
+- maxPerRound currently supports 1 only; other values fail configuration validation.
+- Unconsumed legacy pre-H6 intents lacking snapshots require an explicit audited migration; they fail closed. Existing consumed receipts replay and legacy ledger credits count.
+- Economic concurrency validated with transactional doubles, not real Firestore/emulator.
+- Per-instance HTTP rate limits are supplemental; anonymous UID rotation remains future hardening.
+- Runtime configuration changes require backend restart; Unity refreshes cache/before show without rebuilding.
+
+DOCUMENTATION=server/domino/MONETIZATION_H6.md
+EVIDENCE:
+- server/domino/build/test-results/test/TEST-*.xml
+- client/Validation/Generated/H6-unity.log
+- client/Validation/Generated/H6-portrait.log
+- client/Validation/Generated/H6-final-compile.log
+- client/Validation/Generated/H5Source/Validation/Generated/H5/ui-result.txt (222 total assertions)
+- client/Validation/Generated/H5Source/Validation/Generated/H5/h6-cooldown-es.png
+- client/Validation/Generated/H5Source/Validation/Generated/H5/h6-cooldown-en.png
+- client/Validation/Generated/H5Source/client/portrait-unity-result.txt
+
+RECOMMENDED NEXT TASK=PHASE H7 — physical Android validation + public TEST backend + real AdMob SSV + real Firestore reward validation, after H6 review.

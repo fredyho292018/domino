@@ -19,6 +19,51 @@ MonoBehaviour:
     m_Items:
     - rid: 7246862583952572445
   m_TableData:
+  - m_Id: 3600000000000000
+    m_Localized: "Ads are currently unavailable"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000001
+    m_Localized: "Rewards are currently unavailable"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000002
+    m_Localized: "Reward already claimed this round"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000003
+    m_Localized: "Available in {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000004
+    m_Localized: "Hourly reward limit reached"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000005
+    m_Localized: "Daily reward limit reached"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000006
+    m_Localized: "Daily coin limit reached"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000007
+    m_Localized: "Rewards unavailable for this account"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3600000000000008
+    m_Localized: "Unable to check rewards. Try again later."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   - m_Id: 3500000000000000
     m_Localized: "Round complete"
     m_Metadata:

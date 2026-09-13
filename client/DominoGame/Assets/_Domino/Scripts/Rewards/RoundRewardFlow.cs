@@ -16,6 +16,7 @@ namespace Domino.Rewards
         readonly RewardVerificationService verification;
         readonly Func<bool> ready;
         readonly Func<bool> recoveryReady;
+        readonly IMonetizationPolicyService policy;
         readonly CancellationToken lifetime;
         readonly Func<int, CancellationToken, Task> delay;
         readonly HashSet<object> rewardedRounds = new HashSet<object>();
@@ -26,28 +27,31 @@ namespace Domino.Rewards
         string message = "reward.unavailable";
         public event Action Changed;
         public event Action<long> Confirmed;
-        public long PreviewCoins => verification.Current?.PreviewAmount ?? 10; // Display only, never sent.
+        public long PreviewCoins => (busy || pending) && verification.Current?.PreviewAmount > 0 ? verification.Current.PreviewAmount : policy?.RewardCoins ?? 0;
         public long ConfirmedCoins { get; private set; }
-        public RoundRewardState State => ads.State == RewardedState.DISABLED || round == null ? RoundRewardState.HIDDEN :
+        public RoundRewardState State => ads.State == RewardedState.DISABLED || round == null || (!busy && !pending && policy?.AllowAds != true) ? RoundRewardState.HIDDEN :
             rewardedRounds.Contains(round) ? RoundRewardState.REWARDED : busy || pending || phase == RoundRewardState.FAILED || phase == RoundRewardState.UNAVAILABLE ? phase :
-            !ready() ? RoundRewardState.UNAVAILABLE : ads.IsAvailable ? RoundRewardState.AVAILABLE :
+            !ready() || policy?.Eligible != true ? RoundRewardState.UNAVAILABLE : ads.IsAvailable ? RoundRewardState.AVAILABLE :
             ads.State == RewardedState.LOADING ? RoundRewardState.PREPARING : RoundRewardState.UNAVAILABLE;
-        public bool CanWatch => !busy && !pending && round != null && !rewardedRounds.Contains(round) && ready() && ads.IsAvailable;
+        public bool CanWatch => !busy && !pending && round != null && !rewardedRounds.Contains(round) && ready() && policy?.Eligible == true && ads.IsAvailable;
         public bool CanRetry => !busy && pending && recoveryReady() && ads.State != RewardedState.DISABLED;
-        public string MessageKey => State switch {
+        public int CooldownSeconds => policy?.RemainingSeconds ?? 0;
+        public string MessageKey => !busy && !pending && State == RoundRewardState.UNAVAILABLE && policy?.Eligibility?.Reason != null ? "reward.reason."+policy.Eligibility.Reason.ToLowerInvariant() : State switch {
             RoundRewardState.PREPARING => "reward.preparing", RoundRewardState.AVAILABLE => "reward.optional",
             RoundRewardState.STARTING => "reward.preparing", RoundRewardState.WATCHING => "reward.watching",
             RoundRewardState.VERIFYING => "reward.verifying", RoundRewardState.CREDITING => "reward.crediting",
             RoundRewardState.REWARDED => "reward.received", _ => message };
         public RoundRewardFlow(IRewardedAdsService ads, RewardVerificationService verification, Func<bool> ready,
-            CancellationToken lifetime, Func<int, CancellationToken, Task> delay = null, Func<bool> recoveryReady = null)
+            CancellationToken lifetime, Func<int, CancellationToken, Task> delay = null, Func<bool> recoveryReady = null, IMonetizationPolicyService policy = null)
         {
             this.ads = ads; this.verification = verification; this.ready = ready; this.lifetime = lifetime;
             this.delay = delay ?? ((ms, token) => Task.Delay(ms, token));
             this.recoveryReady = recoveryReady ?? ready;
+            this.policy = policy;
+            if(policy!=null)policy.Changed+=Notify;
             ads.RewardedStateChanged += AdState;
         }
-        public void PresentRound(object identity) { round = identity; if (!busy && !pending) phase = RoundRewardState.AVAILABLE; Notify(); }
+        public void PresentRound(object identity) { round = identity; if (!busy && !pending) phase = RoundRewardState.AVAILABLE; if(policy!=null)_=policy.RefreshEligibilityAsync(true); Notify(); }
         public void LeaveRound() { round = null; Notify(); } // Never cancels an earned reward.
         public void Refresh() => Notify();
         void AdState(RewardedState state) { if (busy && (state == RewardedState.SHOWING || state == RewardedState.EARNED)) phase = RoundRewardState.WATCHING; Notify(); }
@@ -120,6 +124,6 @@ namespace Domino.Rewards
         }
         void Set(RoundRewardState state, string key) { phase = state; message = key; Notify(); }
         void Notify() { if (!disposed && !lifetime.IsCancellationRequested) Changed?.Invoke(); }
-        public void Dispose() { disposed = true; ads.RewardedStateChanged -= AdState; Changed = null; Confirmed = null; }
+        public void Dispose() { disposed = true; ads.RewardedStateChanged -= AdState; if(policy!=null)policy.Changed-=Notify; Changed = null; Confirmed = null; }
     }
 }

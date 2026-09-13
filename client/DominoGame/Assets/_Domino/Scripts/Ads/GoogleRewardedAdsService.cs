@@ -14,6 +14,7 @@ namespace Domino.Ads
         readonly Func<DateTimeOffset> now;
         readonly Action<string> log;
         readonly IRewardIntentAuthorization intents;
+        readonly Func<bool> remoteGate;
         readonly CancellationTokenSource shutdown = new CancellationTokenSource();
         Task<RewardedShowResult> preparing;
         IRewardedAd current;
@@ -25,7 +26,7 @@ namespace Domino.Ads
         // Reject expired inventory on interaction/preload, with no per-frame polling.
         public bool IsAvailable => !disposed && Allowed && State == RewardedState.READY && Fresh;
         bool Fresh => current != null && now() - loadedAt < TimeSpan.FromMinutes(55) && current.CanShow;
-        bool Allowed => configuration.IsAvailable && configuration.Environment == AdsEnvironment.DEVELOPMENT &&
+        bool Allowed => remoteGate() && configuration.IsAvailable && configuration.Environment == AdsEnvironment.DEVELOPMENT &&
             IsTestUnit(configuration.RewardedUnitId) && consent.CanInitializeAds;
         public static bool IsTestUnit(string id) => id == AdsConfiguration.AndroidDemoRewarded || id == AdsConfiguration.IosDemoRewarded;
         public event Action<RewardedState> RewardedStateChanged;
@@ -34,11 +35,12 @@ namespace Domino.Ads
 
         public GoogleRewardedAdsService(AdsConfiguration configuration, IAdsService initialization,
             IAdsConsentGate consent, IRewardedAdLoader loader, Action<string> log = null, Func<DateTimeOffset> now = null,
-            IRewardIntentAuthorization intents = null)
+            IRewardIntentAuthorization intents = null, Func<bool> remoteGate = null)
         {
             this.configuration = configuration; this.initialization = initialization; this.consent = consent;
             this.loader = loader; this.log = log; this.now = now ?? (() => DateTimeOffset.UtcNow);
             this.intents = intents;
+            this.remoteGate = remoteGate ?? (() => true);
             State = configuration.Enabled ? RewardedState.NOT_LOADED : RewardedState.DISABLED;
         }
         public Task InitializeAsync() => LoadRewardedAsync();

@@ -33,3 +33,16 @@ realtime:
   heartbeat-timeout-seconds: 45
   presence-ttl-seconds: 60
   messages-per-second: 10
+
+domino:
+  monetization:
+    version: ${DOMINO_MONETIZATION_VERSION:1}
+    ads-enabled: ${DOMINO_MONETIZATION_ADS_ENABLED:true}
+    rewarded:
+      enabled: ${DOMINO_MONETIZATION_REWARDED_ENABLED:true}
+      coins: ${DOMINO_MONETIZATION_REWARD_COINS:10}
+      max-per-round: ${DOMINO_MONETIZATION_MAX_PER_ROUND:1}
+      cooldown-seconds: ${DOMINO_MONETIZATION_COOLDOWN_SECONDS:120}
+      max-per-hour: ${DOMINO_MONETIZATION_MAX_PER_HOUR:5}
+      max-per-day: ${DOMINO_MONETIZATION_MAX_PER_DAY:20}
+      max-coins-per-day: ${DOMINO_MONETIZATION_MAX_COINS_PER_DAY:200}

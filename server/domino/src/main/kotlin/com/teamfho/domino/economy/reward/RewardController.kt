@@ -11,24 +11,27 @@ import tools.jackson.databind.JsonNode
 @RestController
 class RewardController(private val repository: RewardIntentRepository, private val verifier: AdMobSsvVerifier, private val policy: RewardPolicy) {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val requestGate = MonetizationRequestGate()
     @PostMapping("/api/v1/economy/ad-rewards/intents", consumes = ["application/json"])
     fun issue(@AuthenticationPrincipal identity: FirebaseIdentity, @RequestBody body: JsonNode): RewardIntentResponse {
+        requestGate.check(identity.uid)
         if (!body.isObject || !body.isEmpty) reject("REQUEST_INVALID")
-        return RewardIntentResponse.from(repository.issue(identity.uid), policy.rewardCoins)
+        return RewardIntentResponse.from(repository.issue(identity.uid))
     }
     @GetMapping("/api/v1/economy/ad-rewards/intents/{intentId}")
     fun status(@AuthenticationPrincipal identity: FirebaseIdentity, @PathVariable intentId: String): RewardIntentResponse =
-        RewardIntentResponse.from(repository.status(identity.uid, intentId), policy.rewardCoins)
+        RewardIntentResponse.from(repository.status(identity.uid, intentId))
     @PostMapping("/api/v1/economy/ad-rewards/intents/{intentId}/consume", consumes = ["application/json"])
     fun consume(@AuthenticationPrincipal identity: FirebaseIdentity, @PathVariable intentId: String,
         @RequestBody body: JsonNode): RewardConsumeResponse {
+        requestGate.check(identity.uid)
         if (!body.isObject || !body.isEmpty) reject("REQUEST_INVALID")
         log.info("[ECONOMY] reward consume started")
-        return repository.consume(identity.uid, intentId).also { log.info("[ECONOMY] reward consumed or already consumed") }
+        return repository.consume(identity.uid, intentId).also { log.info("REWARD_CONSUMED outcome=confirmed_or_replayed") }
     }
     @GetMapping("/api/v1/economy/ad-rewards/pending")
     fun pending(@AuthenticationPrincipal identity: FirebaseIdentity): Map<String, RewardIntentResponse?> =
-        mapOf("intent" to repository.pending(identity.uid)?.let { RewardIntentResponse.from(it, policy.rewardCoins) })
+        mapOf("intent" to repository.pending(identity.uid)?.let { RewardIntentResponse.from(it) })
     @GetMapping("/api/v1/admob/rewarded/ssv")
     fun ssv(request: HttpServletRequest): ResponseEntity<Void> {
         val event = verifier.verify(request.queryString)

@@ -15,6 +15,42 @@ MonoBehaviour:
   m_TableCollectionName: Domino UI
   m_TableCollectionNameGuidString: b787000c94add624d8c3529bf807766f
   m_Entries:
+  - m_Id: 3600000000000000
+    m_Key: reward.reason.ads_disabled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000001
+    m_Key: reward.reason.rewarded_disabled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000002
+    m_Key: reward.reason.round_limit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000003
+    m_Key: reward.reason.cooldown
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000004
+    m_Key: reward.reason.hourly_limit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000005
+    m_Key: reward.reason.daily_limit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000006
+    m_Key: reward.reason.daily_coin_limit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000007
+    m_Key: reward.reason.account_not_eligible
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3600000000000008
+    m_Key: reward.reason.dependency_unavailable
+    m_Metadata:
+      m_Items: []
   - m_Id: 3500000000000000
     m_Key: reward.round_end
     m_Metadata:

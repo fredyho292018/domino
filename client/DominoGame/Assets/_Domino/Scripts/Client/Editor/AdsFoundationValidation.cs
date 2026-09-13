@@ -48,7 +48,7 @@ namespace Domino.Editor
             try
             {
                 var settings = Resources.Load<DominoAdsSettings>("AdsSettings");
-                if (!settings || settings.Configuration.Enabled || settings.RewardCoinsPreview != 10) throw new Exception("SOURCE_SETTINGS");
+                if (!settings || settings.Configuration.Enabled) throw new Exception("SOURCE_SETTINGS");
                 var google = AssetDatabase.LoadMainAssetAtPath("Assets/GoogleMobileAds/Resources/GoogleMobileAdsSettings.asset");
                 var serialized = new SerializedObject(google);
                 if (!serialized.FindProperty("adMobAndroidAppId").stringValue.Contains("~")) throw new Exception("APP_ID");

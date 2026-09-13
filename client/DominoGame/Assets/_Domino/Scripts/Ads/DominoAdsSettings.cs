@@ -11,8 +11,6 @@ namespace Domino.Ads
         [SerializeField] string androidRewardedAdUnitIdProduction = "";
         [SerializeField] string iosRewardedAdUnitIdDevelopment = AdsConfiguration.IosDemoRewarded;
         [SerializeField] string iosRewardedAdUnitIdProduction = "";
-        [SerializeField, Min(0)] int rewardCoinsPreview = 10;
-        public int RewardCoinsPreview => rewardCoinsPreview;
         public string AndroidRewardedAdUnitIdDevelopment => androidRewardedAdUnitIdDevelopment;
         public string IosRewardedAdUnitIdDevelopment => iosRewardedAdUnitIdDevelopment;
         public AdsConfiguration Configuration => new AdsConfiguration(enabled, environment,

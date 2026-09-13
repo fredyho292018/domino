@@ -23,7 +23,7 @@ namespace Domino.Editor
     {
         const string Flag="Domino.H5Validation";
         static int errors, checks;
-        static Fixture fixture;
+        static Fixture fixture; static FakeAd fakeAd;
         sealed class FakeIdentity : IFirebaseClient, IAuthTokenProvider
         {
             public Task<string> CheckDependenciesAsync()=>Task.FromResult("Available");
@@ -32,15 +32,18 @@ namespace Domino.Editor
             public Task<PlayerIdentity> SignInAnonymouslyAsync()=>throw new Exception("NO_REAL_GUEST");
             public Task<string> GetIdTokenAsync(bool refresh,CancellationToken token)=>throw new Exception("NO_NETWORK_TOKEN");
         }
-        sealed class Fixture : IDominoApiClient,IRewardIntentApi,IRewardConsumptionApi
+        sealed class Fixture : IDominoApiClient,IRewardIntentApi,IRewardConsumptionApi,IMonetizationPolicyApi
         {
+            public long PolicyCoins=10; public bool AdsEnabled=true; public string BlockReason; public Task<MonetizationPolicySnapshot> ConfigAsync(CancellationToken t)=>Task.FromResult(new MonetizationPolicySnapshot(1,AdsEnabled,true,PolicyCoins,1,120,5,20,200));
+            public Task<RewardEligibilitySnapshot> EligibilityAsync(string id,CancellationToken t)=>Task.FromResult(new RewardEligibilitySnapshot(BlockReason==null,PolicyCoins,BlockReason,BlockReason=="COOLDOWN"?DateTimeOffset.UtcNow.AddSeconds(120):(DateTimeOffset?)null,DateTimeOffset.UtcNow,5,20,200));
+            public Task<string> OpportunityAsync(CancellationToken t)=>Task.FromResult(Guid.NewGuid().ToString());
             public long Coins; public int Credits, Creates, Consumes;
             public string Id=Guid.NewGuid().ToString(), Status="ISSUED";
             public bool IsAvailable=>true;
             public Task<PlayerBootstrapResponseDto> BootstrapAsync(string language,CancellationToken token)=>Task.FromResult(new PlayerBootstrapResponseDto {
                 player=new PlayerResponseDto {uid="h5-fixture",accountType="GUEST",displayName="Fredy",language="es",status="ACTIVE"},wallet=new WalletResponseDto {coins=Coins}});
             public Task<PlayerBootstrapResponseDto> UpdateDisplayNameAsync(string value,CancellationToken token)=>BootstrapAsync("es",token);
-            RewardIntentReceipt Receipt()=>new RewardIntentReceipt(Id,Status,DateTimeOffset.UtcNow.AddMinutes(10));
+            RewardIntentReceipt Receipt()=>new RewardIntentReceipt(Id,Status,DateTimeOffset.UtcNow.AddMinutes(10),10);
             public Task<RewardIntentReceipt> CreateAsync(CancellationToken token){ Creates++; Id=Guid.NewGuid().ToString(); Status="ISSUED"; return Task.FromResult(Receipt()); }
             public async Task<RewardIntentReceipt> StatusAsync(string id,CancellationToken token){ await Task.Delay(700,token); Status="VERIFIED"; return Receipt(); }
             public Task<RewardIntentReceipt> PendingAsync(CancellationToken token)=>Task.FromResult(Status=="VERIFIED"?Receipt():null);
@@ -77,7 +80,7 @@ namespace Domino.Editor
             ApplicationServices.ValidationFirebaseFactory=()=>new FakeIdentity();
             ApplicationServices.ValidationPlayerApiFactory=()=>fixture;
             ApplicationServices.ValidationRewardIntentApiFactory=()=>fixture;
-            ApplicationServices.ValidationRewardedFactory=service=>new FakeAd(service);
+            ApplicationServices.ValidationMonetizationFactory=()=>fixture; ApplicationServices.ValidationRewardedFactory=service=>fakeAd=new FakeAd(service);
             Application.logMessageReceived+=(_,__,type)=>{if(type==LogType.Error||type==LogType.Exception)errors++;};
             EditorApplication.playModeStateChanged+=state=>{if(state==PlayModeStateChange.EnteredPlayMode)Validate();};
         }
@@ -112,9 +115,9 @@ namespace Domino.Editor
                 Check(panel!=null&&panel.ContinueButton.interactable,"canonical round continue");
                 Check(panel.WatchButton.interactable,"CTA available");
                 Check(fixture.Creates==0,"no auto show");
-                ((FakeAd)ApplicationServices.Rewarded).SetState(RewardedState.DISABLED);
+                fakeAd.SetState(RewardedState.DISABLED);
                 Check(!panel.WatchButton.gameObject.activeSelf && panel.ContinueButton.interactable,"disabled hides CTA, preserves continue");
-                ((FakeAd)ApplicationServices.Rewarded).SetState(RewardedState.READY);
+                fakeAd.SetState(RewardedState.READY);
                 int[,] sizes={{1080,1920},{1080,2160},{1080,2340},{1080,2400},{1080,2520},{1170,2532},{1284,2778},{1600,2560},{1536,2048}};
                 var resize=typeof(Phase1Validation).GetMethod("ResizeGameView",BindingFlags.Static|BindingFlags.NonPublic);
                 foreach(var lang in new[]{"es","en"})
@@ -142,6 +145,24 @@ namespace Domino.Editor
                     }
                     ScreenCapture.CaptureScreenshot(Path.Combine(output,"available-"+lang+".png"));await Task.Delay(150);
                 }
+                fixture.PolicyCoins=15;
+                await ApplicationServices.Monetization.RefreshAsync(true);await ApplicationServices.Monetization.RefreshEligibilityAsync();
+                Check(panel.transform.Find("Reward preview").GetComponent<UnityEngine.UI.Text>().text.Contains("15"),"remote 15 preview");
+                foreach(var lang in new[]{"es","en"}) {
+                    DominoLocalization.Select(lang);await Task.Delay(100);
+                    foreach(var reason in new[]{"COOLDOWN","ROUND_LIMIT","HOURLY_LIMIT","DAILY_LIMIT","DAILY_COIN_LIMIT","ACCOUNT_NOT_ELIGIBLE","DEPENDENCY_UNAVAILABLE"}) {
+                        fixture.BlockReason=reason;await ApplicationServices.Monetization.RefreshEligibilityAsync();
+                        Check(!panel.WatchButton.interactable&&panel.ContinueButton.interactable,"H6 blocked CTA preserves continue");
+                        var text=panel.transform.Find("Reward status").GetComponent<UnityEngine.UI.Text>().text;
+                        Check(!text.Contains("reward.reason")&&!string.IsNullOrWhiteSpace(text),"H6 localized reason");
+                    }
+                    fixture.BlockReason="COOLDOWN";await ApplicationServices.Monetization.RefreshEligibilityAsync();
+                    ScreenCapture.CaptureScreenshot(Path.Combine(output,"h6-cooldown-"+lang+".png"));await Task.Delay(150);
+                }
+                fixture.AdsEnabled=false;await ApplicationServices.Monetization.RefreshAsync(true);
+                Check(!panel.WatchButton.gameObject.activeSelf&&panel.ContinueButton.interactable,"H6 kill switch hides ad only");
+                fixture.AdsEnabled=true;fixture.BlockReason=null;fixture.PolicyCoins=10;
+                await ApplicationServices.Monetization.RefreshAsync(true);await ApplicationServices.Monetization.RefreshEligibilityAsync();
                 panel.WatchButton.onClick.Invoke();panel.WatchButton.onClick.Invoke();
                 Check(ApplicationServices.Player.Wallet.Coins==0,"no optimistic credit");
                 await Until(()=>ApplicationServices.RoundRewards.State==RoundRewardState.REWARDED,10);

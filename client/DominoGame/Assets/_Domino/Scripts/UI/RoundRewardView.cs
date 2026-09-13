@@ -32,9 +32,9 @@ namespace Domino.UI
             balance = UiKit.Label("Confirmed wallet", transform, "", new Vector2(560,38), new Vector2(0,45), 23, UiKit.Gold);
             DominoLocalization.Bind(balance, () => player?.Wallet == null ? DominoLocalization.Get("reward.balance_unknown") : DominoLocalization.Get("reward.balance", player.Wallet.Coins));
             preview = UiKit.Label("Reward preview", transform, "", new Vector2(560,36), new Vector2(0,-10), 23, UiKit.Gold);
-            DominoLocalization.Bind(preview, () => DominoLocalization.Get("reward.amount", flow?.State == RoundRewardState.REWARDED ? flow.ConfirmedCoins : flow?.PreviewCoins ?? 10));
+            DominoLocalization.Bind(preview, () => DominoLocalization.Get("reward.amount", flow?.State == RoundRewardState.REWARDED ? flow.ConfirmedCoins : flow?.PreviewCoins ?? 0));
             status = UiKit.Label("Reward status", transform, "", new Vector2(560,48), new Vector2(0,-58), 21, UiKit.Muted);
-            DominoLocalization.Bind(status, () => DominoLocalization.Get(flow?.MessageKey ?? "reward.unavailable"));
+            DominoLocalization.Bind(status, () => DominoLocalization.Get(flow?.MessageKey ?? "reward.unavailable", TimeSpan.FromSeconds(flow?.CooldownSeconds ?? 0).ToString(@"m\:ss")));
             watch = UiKit.Button("Watch reward", transform, "", new Vector2(440,60), new Vector2(0,-120), UiKit.Hex("315851"), Watch);
             DominoLocalization.Bind(watch.GetComponentInChildren<Text>(), () => DominoLocalization.Get(flow?.CanRetry == true ? "reward.retry" : "reward.watch"));
             ContinueButton = UiKit.LButton("Continue", transform, "game.continue", new Vector2(440,72), new Vector2(0,-223), UiKit.Hex("397566"), () => next());

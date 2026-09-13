@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 // Test double for SDK transactions: staged writes commit together under a lock.
 // It verifies adapter calls but does not substitute for emulator contention tests.
-internal class RewardFirestoreTransactions(val now: Instant) {
+internal class RewardFirestoreTransactions(var now: Instant) {
     val firestore: Firestore = mock(Firestore::class.java)
     val documents = ConcurrentHashMap<String, Map<String, Any>>()
     val callbacks = mutableListOf<List<String>>()
@@ -18,8 +18,18 @@ internal class RewardFirestoreTransactions(val now: Instant) {
     var failAfterCommitOnce = false
     private val refs = ConcurrentHashMap<String, DocumentReference>()
     private val lock = Any()
+    private val queries = ConcurrentHashMap<Query, Pair<String,Timestamp>>()
 
     init {
+        `when`(firestore.collection(anyString())).thenAnswer { invocation ->
+            val path=invocation.getArgument<String>(0)
+            mock(CollectionReference::class.java).also { collection ->
+                `when`(collection.whereGreaterThanOrEqualTo(eq("createdAt"), any(Timestamp::class.java))).thenAnswer { filter ->
+                    val query=mock(Query::class.java); queries[query]=path to filter.getArgument(1)
+                    `when`(query.limit(anyInt())).thenReturn(query); query
+                }
+            }
+        }
         `when`(firestore.document(anyString())).thenAnswer { invocation ->
             val path = invocation.getArgument<String>(0)
             refs.computeIfAbsent(path) { mock(DocumentReference::class.java).also { `when`(it.path).thenReturn(path) } }
@@ -37,6 +47,20 @@ internal class RewardFirestoreTransactions(val now: Instant) {
                             val writes = mutableListOf<Triple<String, String, Map<String, Any>>>()
                             val trace = mutableListOf<String>()
                             val tx = mock(Transaction::class.java)
+                            `when`(tx.get(any(Query::class.java))).thenAnswer { read ->
+                                check(writes.isEmpty()) { "Read after write" }
+                                val (path,cutoff)=queries.getValue(read.getArgument(0))
+                                val rows=documents.filter { (key,value) -> key.startsWith("$path/") &&
+                                    (value["createdAt"] as? Timestamp)?.compareTo(cutoff)?.let { it >= 0 } == true }.values.map { data ->
+                                    mock(QueryDocumentSnapshot::class.java).also { row ->
+                                        `when`(row.getString(anyString())).thenAnswer { data[it.getArgument<String>(0)] as? String }
+                                        `when`(row.getLong(anyString())).thenAnswer { data[it.getArgument<String>(0)] as? Long }
+                                        `when`(row.getTimestamp(anyString())).thenAnswer { data[it.getArgument<String>(0)] as? Timestamp }
+                                    }
+                                }
+                                val snapshot=mock(QuerySnapshot::class.java); `when`(snapshot.documents).thenReturn(rows)
+                                trace += "query:$path"; ApiFutures.immediateFuture(snapshot)
+                            }
                             `when`(tx.get(any(DocumentReference::class.java))).thenAnswer { read ->
                                 check(writes.isEmpty()) { "Read after write" }
                                 val path = read.getArgument<DocumentReference>(0).path

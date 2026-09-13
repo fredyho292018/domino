@@ -6,6 +6,13 @@ using Domino.Rewards;
 
 static class RoundRewardTests
 {
+    sealed class PolicyApi : IMonetizationPolicyApi
+    {
+        public Task<MonetizationPolicySnapshot> ConfigAsync(CancellationToken t)=>Task.FromResult(new MonetizationPolicySnapshot(1,true,true,10,1,120,5,20,200));
+        public Task<RewardEligibilitySnapshot> EligibilityAsync(string id,CancellationToken t)=>Task.FromResult(new RewardEligibilitySnapshot(true,10,null,null,DateTimeOffset.UtcNow,5,20,200));
+        public Task<string> OpportunityAsync(CancellationToken t)=>Task.FromResult(Guid.NewGuid().ToString());
+    }
+    static MonetizationPolicyService NewPolicy()=>new MonetizationPolicyService(new PolicyApi(),default);
     static int checks;
     static void Check(bool value, string label) { checks++; if (!value) throw new Exception(label); }
     sealed class Api : IRewardIntentApi, IRewardConsumptionApi, IRewardWalletReceiver
@@ -15,7 +22,7 @@ static class RoundRewardTests
         public int Creates, Consumes, Credits;
         public long ServerCoins, Wallet;
         public TaskCompletionSource<bool> VerificationGate;
-        public RewardIntentReceipt Receipt() => new RewardIntentReceipt(Id,Status,DateTimeOffset.UtcNow.AddMinutes(10));
+        public RewardIntentReceipt Receipt() => new RewardIntentReceipt(Id,Status,DateTimeOffset.UtcNow.AddMinutes(10),10);
         public Task<RewardIntentReceipt> CreateAsync(CancellationToken token)
         { Creates++; if (Offline) throw new Exception(); Id=Guid.NewGuid().ToString(); Status="ISSUED"; return Task.FromResult(Receipt()); }
         public async Task<RewardIntentReceipt> StatusAsync(string id,CancellationToken token)
@@ -58,7 +65,7 @@ static class RoundRewardTests
     static (Api api, Ad ads, RoundRewardFlow flow) Setup()
     {
         var api=new Api(); var verification=new RewardVerificationService(api,default,api); var ads=new Ad(verification);
-        var flow=new RoundRewardFlow(ads,verification,()=>true,default,(ms,ct)=>Task.CompletedTask);
+        var flow=new RoundRewardFlow(ads,verification,()=>true,default,(ms,ct)=>Task.CompletedTask,policy:NewPolicy());
         flow.PresentRound(new object()); return(api,ads,flow);
     }
     static async Task Main()
@@ -98,7 +105,7 @@ static class RoundRewardTests
         var recoveringApi=new Api { NeverVerify=true };
         var recoveringVerification=new RewardVerificationService(recoveringApi,default,recoveringApi);
         var recoveringAds=new Ad(recoveringVerification); bool synced=true;
-        var recoveringFlow=new RoundRewardFlow(recoveringAds,recoveringVerification,()=>synced,default,(ms,ct)=>Task.CompletedTask,()=>true);
+        var recoveringFlow=new RoundRewardFlow(recoveringAds,recoveringVerification,()=>synced,default,(ms,ct)=>Task.CompletedTask,()=>true,NewPolicy());
         recoveringFlow.PresentRound(new object()); await recoveringFlow.WatchAsync(); synced=false;
         Check(recoveringFlow.CanRetry,"pending retry with confirmed snapshot after offline failure");
         recoveringApi.NeverVerify=false; await recoveringFlow.RetryAsync(); Check(recoveringApi.Wallet==10,"offline pending retry resolved");

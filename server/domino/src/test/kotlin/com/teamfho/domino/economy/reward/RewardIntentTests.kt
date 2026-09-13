@@ -21,7 +21,7 @@ class RewardIntentTests {
     private fun unchanged() {
         assertEquals(wallet, store.documents["players/owner/wallet/main"])
         assertTrue(store.callbacks.flatten().filter { it.startsWith("create:") || it.startsWith("update:") || it.startsWith("set:") }
-            .none { it.contains("wallet") || it.contains("players/") })
+            .none { it.contains("/wallet/") || it.contains("/walletTransactions/") })
     }
     private fun event(id: String, transaction: String = "aabbcc") = VerifiedAdMobEvent(id, transaction, "5224354917", clock.instant())
     @Test fun `issue reuse principal expiry and ownership`() {

@@ -28,6 +28,33 @@ class RewardControllerTests {
     @MockitoBean lateinit var verifier: AdMobSsvVerifier
     private val id = "12345678-1234-4234-8234-123456789012"
     private val path = "/api/v1/economy/ad-rewards/intents"
+    @Test fun `H6 endpoints require authentication`() {
+        mvc.perform(get("/api/v1/monetization/config")).andExpect(status().isUnauthorized)
+        mvc.perform(get("/api/v1/economy/ad-rewards/eligibility")).andExpect(status().isUnauthorized)
+        mvc.perform(post("/api/v1/economy/ad-rewards/opportunities").contentType("application/json").content("{}"))
+            .andExpect(status().isUnauthorized)
+        verifyNoInteractions(repository)
+    }
+    @Test fun `H6 policy is typed and eligibility uses principal`() {
+        mvc.perform(get("/api/v1/monetization/config").header("Authorization","Bearer valid-guest"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.rewarded.rewardCoins").value(10))
+            .andExpect(jsonPath("$.rewarded.limits.cooldownSeconds").value(120))
+            .andExpect(jsonPath("$.rewarded.limits.perHour").value(5))
+        `when`(repository.eligibility("verified-guest",null)).thenReturn(
+            RewardEligibilityPolicy.evaluate(MonetizationPolicy(),emptyList(),Instant.now()))
+        mvc.perform(get("/api/v1/economy/ad-rewards/eligibility").header("Authorization","Bearer valid-guest"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.eligible").value(true))
+            .andExpect(jsonPath("$.remaining.day").value(20)).andExpect(jsonPath("$.serverTime").exists())
+        verify(repository).eligibility("verified-guest",null)
+    }
+    @Test fun `H6 opportunity rejects client economic fields`() {
+        for(field in listOf("uid","roundId","amount","coins","ledgerId")) {
+            mvc.perform(post("/api/v1/economy/ad-rewards/opportunities").header("Authorization","Bearer valid-guest")
+                .contentType("application/json").content("{\"$field\":\"fake\"}"))
+                .andExpect(status().isBadRequest)
+        }
+        verifyNoInteractions(repository)
+    }
     @BeforeEach fun setup() {
         `when`(repository.issue("verified-guest")).thenReturn(RewardIntent(id, "verified-guest", RewardIntentStatus.ISSUED,
             Instant.now(), Instant.now().plusSeconds(600), AdUnitEnvironment.DEVELOPMENT))

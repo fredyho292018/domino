@@ -35,7 +35,7 @@ class RewardConsumptionTests {
         assertEquals("CREDIT", ledger["type"]); assertEquals("REWARDED_AD", ledger["source"])
         assertEquals(1L, ledger["version"])
         assertEquals(response, repo.consume("owner", intent.intentId))
-        val changedPolicy = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(rewardCoins = 20))
+        val changedPolicy = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), MonetizationPolicy(version=2,rewarded=RewardedRules(coins=20)))
         assertEquals(response, changedPolicy.consume("owner", intent.intentId))
         assertFalse(repo.verify(VerifiedAdMobEvent(intent.intentId, intent.intentId.replace("-", ""), "5224354917", clock.instant())))
         assertEquals(ledger, store.documents[ledgerPath(intent.intentId)])
@@ -44,7 +44,7 @@ class RewardConsumptionTests {
         assertEquals(0L, store.documents[walletPath]?.get("lifetimeCoinsSpent"))
         assertEquals(stamp, store.documents[walletPath]?.get("createdAt"))
         assertNull(repo.pending("owner"))
-        assertNotEquals(intent.intentId, repo.issue("owner").intentId)
+        assertEquals("COOLDOWN", assertFailsWith<RewardFailure> { repo.issue("owner") }.category)
     }
     @Test fun `parallel consumes one credit and immutable ledger`() {
         val intent = verified(); val pool = Executors.newFixedThreadPool(10)
@@ -102,20 +102,21 @@ class RewardConsumptionTests {
     }
     @Test fun `verified intent consumption after issue TTL and policy amount`() {
         val intent = verified(); clock.value = clock.instant().plusSeconds(86400)
-        val configured = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(rewardCoins = 17))
-        assertEquals(17L, configured.consume("owner", intent.intentId).wallet.coins)
+        val configured = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), MonetizationPolicy(version=2,rewarded=RewardedRules(coins=17)))
+        assertEquals(10L, configured.consume("owner", intent.intentId).wallet.coins)
     }
     @Test fun `two rewards preserve spent and replay returns current wallet`() {
         val old = Timestamp.ofTimeSecondsAndNanos(clock.instant().minusSeconds(86400).epochSecond, 0)
         store.documents[walletPath] = mapOf("coins" to 77L, "lifetimeCoinsEarned" to 100L,
             "lifetimeCoinsSpent" to 23L, "createdAt" to old, "updatedAt" to old)
         val first = verified(); repo.consume("owner", first.intentId)
+        clock.value = clock.instant().plusSeconds(120); store.now = clock.instant()
         val second = verified(); repo.consume("owner", second.intentId)
         assertEquals(97L, repo.consume("owner", first.intentId).wallet.coins)
         assertEquals(120L, store.documents[walletPath]?.get("lifetimeCoinsEarned"))
         assertEquals(23L, store.documents[walletPath]?.get("lifetimeCoinsSpent"))
         assertEquals(old, store.documents[walletPath]?.get("createdAt"))
-        assertEquals(stamp, store.documents[walletPath]?.get("updatedAt"))
+        assertEquals(Timestamp.ofTimeSecondsAndNanos(clock.instant().epochSecond,0), store.documents[walletPath]?.get("updatedAt"))
         assertEquals(2, store.documents.keys.count { it.contains("/walletTransactions/") })
     }
 }
