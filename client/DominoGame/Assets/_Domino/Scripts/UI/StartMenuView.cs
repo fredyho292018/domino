@@ -19,6 +19,7 @@ namespace Domino.UI
         public LanguageSettingsPanel Settings { get; private set; }
         public PlayerProfileView Profile { get; private set; }
         public event Action<GameModeDefinition> StartRequested;
+        void OnEnable() { _ = Domino.Infrastructure.ApplicationServices.RefreshGameCatalogAsync(); }
 
         public void Initialize(GameModeDefinition mode, GameConfigurationSnapshot configuration)
         {

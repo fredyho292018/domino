@@ -26,6 +26,7 @@ namespace Domino.Infrastructure
         public static RewardVerificationService RewardVerification { get; private set; }
         public static Domino.Rewards.RoundRewardFlow RoundRewards { get; private set; }
         public static Domino.Rewards.IMonetizationPolicyService Monetization { get; private set; }
+        public static Domino.Catalog.GameCatalogService GameCatalog { get; private set; }
 #if UNITY_EDITOR
         public static EditorMockAdsConsent EditorAdsConsent { get; private set; }
         // Opt-in editor validation only; never compiled into a player build.
@@ -46,6 +47,7 @@ namespace Domino.Infrastructure
             RewardVerification = null;
             RoundRewards = null;
             Monetization = null;
+            GameCatalog = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -69,6 +71,13 @@ namespace Domino.Infrastructure
             Identity = new FirebaseAuthService(Firebase, client, Debug.Log, lifetime.Token);
             var asset = Resources.Load<DominoApiSettings>("ApiSettings");
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
+            try {
+                var bundled = Resources.Load<TextAsset>("GameCatalogFallback");
+                GameCatalog = new Domino.Catalog.GameCatalogService(
+                    new Domino.Catalog.GameCatalogApi(settings, (IAuthTokenProvider)client, new UnityApiTransport()),
+                    new Domino.Catalog.FileGameCatalogCache(System.IO.Path.Combine(Application.persistentDataPath, "game-catalog-v1.json")),
+                    bundled ? bundled.text : "", lifetime.Token, Debug.Log);
+            } catch { Debug.LogWarning("[GAME-CATALOG] passive initialization unavailable; local gameplay unchanged"); }
             IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
             var rewardHttp = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
             IRewardIntentApi rewardApi = rewardHttp;
@@ -114,6 +123,14 @@ namespace Domino.Infrastructure
                 await Rewarded.InitializeAsync();
                 await RoundRewards.RecoverAsync();
             }
+        }
+        // Menu-triggered and passive: never assigns the catalog to SessionSetup or ClientGame.
+        public static async Task RefreshGameCatalogAsync(bool force = false)
+        {
+            var catalog = GameCatalog; var identity = Identity;
+            if (catalog == null || identity == null) return;
+            try { await identity.InitializeAsync(); await catalog.RefreshAsync(force); }
+            catch { /* Offline identity cannot prevent use of the already loaded bundled/cache snapshot. */ }
         }
         static async Task<string> CurrentLanguageAsync()
         {

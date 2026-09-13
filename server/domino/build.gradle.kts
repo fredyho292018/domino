@@ -55,3 +55,11 @@ tasks.register<JavaExec>("seedMonetizationPolicy") {
     mainClass.set("com.teamfho.domino.economy.reward.MonetizationPolicySeed")
     args("--seed-if-absent")
 }
+
+tasks.register<JavaExec>("seedGameCatalog") {
+    group = "application"
+    description = "Explicit create-only Game Catalog v1 publication using ADC; verifies existing content."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.catalog.GameCatalogSeed")
+    args("--seed-if-absent")
+}
