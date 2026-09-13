@@ -76,7 +76,11 @@ namespace Domino.Client
             board = null; game = null; Session = null;
             startMenu.Show(StartScreen.ModeSelector);
         }
-        void Enqueue(GameEvent e) => events.Enqueue(e);
+        void Enqueue(GameEvent e)
+        {
+            events.Enqueue(e);
+            Domino.Ads.RewardedRoundPreload.Handle(e, Domino.Infrastructure.ApplicationServices.Rewarded);
+        }
         public void RestartClient()
         {
             if (game == null || !board) return;

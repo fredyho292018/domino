@@ -1,0 +1,153 @@
+DOMINO MONETIZATION — PHASE H2 REPORT
+=====================================
+
+BRANCH=main
+SOURCE_SHA_BEFORE=63ceb732530bcf6d96e5c8e1a31bf2dbce0d7be7
+SOURCE_SHA_AFTER=63ceb732530bcf6d96e5c8e1a31bf2dbce0d7be7
+WORKTREE_CLEAN_BEFORE=YES
+WORKTREE_CLEAN_AFTER=NO (H2 pending review)
+H1_COMMIT=63ceb732530bcf6d96e5c8e1a31bf2dbce0d7be7
+SOURCE_ADS_ENABLED=false
+
+REWARDED
+--------------------------------
+REWARDED_IMPLEMENTED=YES
+REWARDED_STATE_MACHINE=DISABLED,NOT_LOADED,LOADING,READY,SHOWING,EARNED,FAILED
+REWARDED_LOAD_API=RewardedAd.Load(testUnitId, new AdRequest(), callback)
+REWARDED_SHOW_API=RewardedAd.CanShowAd(), RewardedAd.Show(rewardCallback)
+SDK_VERSION=11.5.0 (unchanged)
+DEVELOPMENT_AD_UNIT=ca-app-pub-3940256099942544/5224354917
+PRODUCTION_AD_UNIT_USED=NO
+
+LOAD
+--------------------------------
+INITIAL_PRELOAD=YES (enabled + consent allowed + SDK ready)
+ROUND_FINISHED_PRELOAD=PASS
+DUPLICATE_LOAD_PREVENTED=PASS
+LOAD_SUCCESS=PASS
+LOAD_FAILURE_NON_FATAL=PASS
+
+SHOW
+--------------------------------
+EXPLICIT_PLAYER_ACTION_REQUIRED=YES
+AUTOMATIC_SHOW_AFTER_ROUND=NO
+READY_REQUIRED_FOR_SHOW=YES
+DOUBLE_SHOW_PREVENTED=PASS
+SHOW_FAILURE_NON_FATAL=PASS
+
+REWARD
+--------------------------------
+REWARD_CALLBACK_RECEIVED=PASS
+REWARD_CALLBACK_ONCE=PASS
+GOOGLE_REWARD_TYPE=Reward (official Editor mock)
+GOOGLE_REWARD_AMOUNT=10 (informational, not Domino coins)
+DOMINO_COINS_CREDITED=0
+
+LIFECYCLE
+--------------------------------
+AD_DISPOSED_AFTER_CLOSE=PASS
+NEXT_AD_PRELOADED=PASS
+GAME_RESUMES_AFTER_AD=PASS (timeScale, audio and next round)
+
+REQUEST COUNTERS
+--------------------------------
+TEST_AD_LOAD_REQUESTS=3
+TEST_AD_SHOWS=2
+TEST_REWARD_CALLBACKS=2
+REAL_AD_LOAD_REQUESTS=0
+COUNTER_SCOPE=All H2 Editor attempts, SDK API calls to local mock; not native HTTP impressions.
+FINAL_PASS_RUN=2 test loads, 1 show, 1 reward callback, 0 real loads
+INITIAL_HARNESS_ATTEMPT=1 test load, 1 show, 1 reward callback; wrong parent button selected instead of Close Ad, fixed.
+UNIT_TEST_SDK_REQUESTS=0
+
+ECONOMY
+--------------------------------
+WALLET_CHANGED=NO
+COINS_CHANGED=NO
+LIFETIME_EARNED_CHANGED=NO
+REWARD_BACKEND_IMPLEMENTED=NO
+LEDGER_IMPLEMENTED=NO
+ECONOMY_EVIDENCE=No economy dependencies in service; isolated fake-auth wallet snapshot unchanged; no Firestore operations.
+
+ROUND INTEGRATION
+--------------------------------
+CAN_CONTINUE_WITHOUT_AD=PASS
+ROUND_SCORING_CHANGED=NO
+GAMEPLAY_CHANGED=NO (presentation event forwards preload only)
+CANONICAL_EVENT=GameEventType.ROUND_FINISHED emitted by ClientGame
+
+VALIDATION
+--------------------------------
+UNITY_EDITOR_REWARDED_TEST=PASS
+ANDROID_PHYSICAL_REWARDED_TEST=NOT_RUN (adb listed no connected devices)
+TEST_AD_LABEL_CONFIRMED=PASS (official Editor test creative)
+ANDROID_BUILD=PASS (Development ARM64 IL2CPP, Ads disabled)
+APK=client/Validation/Generated/H2/Domino-H2-development.apk
+EDITOR_CAPTURE=client/Validation/Generated/H2/rewarded-editor.png
+
+TESTS
+--------------------------------
+H1_TESTS=PASS (31)
+H2_TESTS=PASS
+H2_TEST_COUNT=45
+EXISTING_TESTS=PASS
+GUEST_AUTH=PASS (43)
+PLAYER_FOUNDATION=PASS (469 client checks including G1/G2/G2.1/G3)
+REALTIME_G3=PASS (client and UI regression; network outage tests not repeated)
+PROFILE_ALIAS_EN_ES=PASS (nine sizes)
+PORTRAIT=PASS (139394 checks, nine sizes, four seats, complete round)
+GAMEPLAY=PASS (82 configuration, 32679 scoring, 2981089 domain/geometry checks)
+UNITY_COMPILATION=PASS (Editor and Android)
+CONSOLE_ERRORS=0
+
+EXTERNAL
+--------------------------------
+BACKEND_CHANGED=NO
+FIRESTORE_CHANGED=NO
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+FIREBASE_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+
+FILES CREATED
+--------------------------------
+- client/DominoGame/Assets/_Domino/Scripts/Ads/RewardedContracts.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/GoogleRewardedAdsService.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/UnityRewardedAdLoader.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/RewardedRoundPreload.cs
+- client/DominoGame/Assets/_Domino/Scripts/Ads/EditorMockAdsConsent.cs
+- client/DominoGame/Assets/_Domino/Scripts/Client/Editor/RewardedTestMenu.cs
+- client/DominoGame/Assets/_Domino/Scripts/Client/Editor/RewardedAdsValidation.cs
+- Corresponding Unity .meta files
+- client/Validation/RewardedAdsTests.cs
+- client/Validation/RunRewardedAdsTests.ps1
+- client/Validation/REWARDED_ADS_H2.md
+- client/Validation/REWARDED_ADS_H2_REPORT.txt
+
+FILES MODIFIED
+--------------------------------
+- client/DominoGame/Assets/_Domino/Scripts/Infrastructure/ApplicationServices.cs
+- client/DominoGame/Assets/_Domino/Scripts/Client/DominoClientController.cs
+
+KNOWN LIMITATIONS
+--------------------------------
+- No Domino coins, backend claim or persistent reward idempotency.
+- Production remains blocked in H2, not merely unused during tests.
+- Mobile consent/UMP remains pending; native consent gate stays closed.
+- Test authorization is local Editor mock only and resets each Play session.
+- Physical Android/iOS behavior and native consent/ad lifecycle are not validated.
+- The official rewarded mock reuses artwork labelled interstitial test ad; actual API is RewardedAd.
+- No final H5 monetization UI or player-build debug button; test menu is Editor-only.
+- Expiration checked on access/preload/show; no background expiration polling.
+- Original H1 settings remain disabled; validation temporarily enabled only the isolated copy and restored it.
+- Existing three serialized-field CS0649 warnings remain; no new compilation errors.
+
+GIT
+--------------------------------
+COMMIT=NONE
+PUSH=NONE
+
+RECOMMENDED NEXT TASK
+--------------------------------
+PHASE H3: Authenticated Reward Claim API, server-generated claim semantics and idempotency;
+no arbitrary coin amount from Unity. Then H4: atomic Wallet transaction ledger.

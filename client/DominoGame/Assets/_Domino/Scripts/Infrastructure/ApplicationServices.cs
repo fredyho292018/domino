@@ -22,7 +22,9 @@ namespace Domino.Infrastructure
         public static PlayerService Player { get; private set; }
         public static IRealtimeConnectionService Realtime { get; private set; }
         public static IAdsService Ads { get; private set; }
+        public static IRewardedAdsService Rewarded { get; private set; }
 #if UNITY_EDITOR
+        public static EditorMockAdsConsent EditorAdsConsent { get; private set; }
         // Opt-in editor validation only; never compiled into a player build.
         public static Func<IFirebaseClient> ValidationFirebaseFactory;
 #endif
@@ -33,7 +35,7 @@ namespace Domino.Infrastructure
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
-            Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null;
+            Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null; Rewarded = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -43,8 +45,14 @@ namespace Domino.Infrastructure
             var adsAsset = Resources.Load<DominoAdsSettings>("AdsSettings");
             var adsConfiguration = adsAsset ? adsAsset.Configuration :
                 new AdsConfiguration(false, AdsEnvironment.DEVELOPMENT, AdsPlatform.Unsupported, false);
-            Ads = new GoogleMobileAdsService(adsConfiguration, new PendingAdsConsent(), new UnityGoogleAdsSdk(), Debug.Log);
-            _ = Ads.InitializeAsync();
+            IAdsConsentGate adsConsent = new PendingAdsConsent();
+#if UNITY_EDITOR
+            EditorAdsConsent = new EditorMockAdsConsent();
+            adsConsent = EditorAdsConsent;
+#endif
+            Ads = new GoogleMobileAdsService(adsConfiguration, adsConsent, new UnityGoogleAdsSdk(), Debug.Log);
+            Rewarded = new GoogleRewardedAdsService(adsConfiguration, Ads, adsConsent, new UnityRewardedAdLoader(), Debug.Log);
+            _ = Rewarded.InitializeAsync();
             IFirebaseClient client = new FirebaseSdkClient(() => Identity?.Current);
 #if UNITY_EDITOR
             client = ValidationFirebaseFactory?.Invoke() ?? client;
@@ -85,6 +93,7 @@ namespace Domino.Infrastructure
         static void Shutdown()
         {
             Player?.Dispose();
+            Rewarded?.Dispose();
             Ads?.Dispose();
             Realtime?.Dispose();
             lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null;
