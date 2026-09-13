@@ -5,16 +5,24 @@ using System.Collections.ObjectModel;
 namespace Domino.Configuration
 {
     public enum TeamMode { FixedTeams, Individual }
-    public enum StartingPolicy { FixedSeat }
+    public enum StartingPolicy { FixedSeat, RandomStartMethod, PreviousRoundWinner }
+    public enum ScoreOwnerKind { TEAM, PLAYER }
+    public enum StarterMethod { HIGH_TILE_SELECTION, EVEN_ODD_GUESS }
+    public enum AutoPlayPolicy { FIRST_VALID_MOVE }
+    public enum ParticipantConnectionState { CONNECTED, DISCONNECTED, RECONNECTED, ABANDONED }
     public enum OpeningTilePolicy { Any }
     public enum PointsSource { AllOtherPlayers, OpponentsOnly }
     public enum BlockedWinnerRule { LowestPlayer, LowestTeamTotal }
 
     public sealed class StartingPolicySnapshot
     {
-        public StartingPolicy Mode => StartingPolicy.FixedSeat;
+        public StartingPolicy Mode { get; }
+        public IReadOnlyList<StarterMethod> Methods { get; }
         public int Seat { get; }
-        internal StartingPolicySnapshot(int seat) => Seat = seat;
+        internal StartingPolicySnapshot(StartingPolicyDto dto) {
+            Seat=dto.seat; Mode=dto.mode=="FIXED_SEAT"?StartingPolicy.FixedSeat:dto.mode=="RANDOM_START_METHOD"?StartingPolicy.RandomStartMethod:StartingPolicy.PreviousRoundWinner;
+            Methods=Array.AsReadOnly(Array.ConvertAll(dto.methods??Array.Empty<string>(), x=>(StarterMethod)Enum.Parse(typeof(StarterMethod),x)));
+        }
     }
     public sealed class DealPolicySnapshot
     {
@@ -44,13 +52,26 @@ namespace Domino.Configuration
     {
         public string Detection => "ALL_PLAYERS_PASS_CONSECUTIVELY";
         public BlockedWinnerRule Winner { get; }
-        public string OpposingTeamsMinimumTie => "ROUND_TIE";
+        public string OpposingTeamsMinimumTie { get; }
         public string SameTeamMinimumTie => "TEAM_WINS";
         public string WinningRepresentative => "FIRST_SEAT_IN_WINNING_MINIMUM";
         internal BlockedPolicySnapshot(BlockedPolicyDto dto)
-            => Winner = dto.winner == "LOWEST_INDIVIDUAL_PIPS" ? BlockedWinnerRule.LowestPlayer : BlockedWinnerRule.LowestTeamTotal;
+            { Winner = dto.winner == "LOWEST_INDIVIDUAL_PIPS" ? BlockedWinnerRule.LowestPlayer : BlockedWinnerRule.LowestTeamTotal; OpposingTeamsMinimumTie=dto.opposingTeamsMinimumTie; }
     }
 
+    public sealed class TurnPolicySnapshot
+    {
+        public int TimeLimitSeconds { get; }
+        public bool AutoPlayOnTimeout { get; }
+        public AutoPlayPolicy AutoPlayPolicy => AutoPlayPolicy.FIRST_VALID_MOVE;
+        internal TurnPolicySnapshot(TurnPolicyDto dto) { TimeLimitSeconds=dto.timeLimitSeconds;AutoPlayOnTimeout=dto.autoPlayOnTimeout; }
+    }
+    public sealed class CapicuaPolicySnapshot
+    {
+        public int PipMultiplier { get; }
+        public bool MultiplyBonus => false;
+        internal CapicuaPolicySnapshot(CapicuaPolicyDto dto) { PipMultiplier=dto.pipMultiplier; }
+    }
     /// <summary>Only the validator can build this deep copy. No DTO arrays escape.</summary>
     public sealed class GameConfigurationSnapshot
     {
@@ -63,6 +84,11 @@ namespace Domino.Configuration
         public int PlayerCount { get; }
         public TeamMode TeamMode { get; }
         public int TeamCount => teams.Count;
+        public ScoreOwnerKind ScoreOwner => TeamMode==TeamMode.FixedTeams?ScoreOwnerKind.TEAM:ScoreOwnerKind.PLAYER;
+        public int ScoreOwnerCount => ScoreOwner==ScoreOwnerKind.TEAM?TeamCount:PlayerCount;
+        public int GetScoreOwner(int player) => ScoreOwner==ScoreOwnerKind.TEAM?GetTeamForPlayer(player):player;
+        public TurnPolicySnapshot TurnPolicy { get; }
+        public CapicuaPolicySnapshot Capicua { get; }
         public IReadOnlyList<ReadOnlyCollection<int>> TeamAssignments => teams;
         public int MaxPip { get; }
         public int TotalTiles { get; }
@@ -94,16 +120,17 @@ namespace Domino.Configuration
             teams = Array.AsReadOnly(copies);
             MaxPip = dto.maxPip; TotalTiles = totalTiles; TilesPerPlayer = dto.tilesPerPlayer;
             Deal = new DealPolicySnapshot(dto.deal.seatOrder); TurnOrder = Array.AsReadOnly((int[])dto.turnOrder.Clone());
-            FirstRoundStarting = new StartingPolicySnapshot(dto.firstRoundStarting.seat);
-            FollowingRoundStarting = new StartingPolicySnapshot(dto.followingRoundStarting.seat);
+            FirstRoundStarting = new StartingPolicySnapshot(dto.firstRoundStarting);
+            FollowingRoundStarting = new StartingPolicySnapshot(dto.followingRoundStarting);
             Blocked = new BlockedPolicySnapshot(dto.blocked);
             FinishScoring = new ScoringPolicySnapshot(dto.finishScoring); BlockedScoring = new ScoringPolicySnapshot(dto.blockedScoring);
             Tie = new TiePolicySnapshot(dto.tie); TargetScore = dto.targetScore;
+            TurnPolicy=dto.turnPolicy==null?null:new TurnPolicySnapshot(dto.turnPolicy); Capicua=dto.capicuaPolicy==null?null:new CapicuaPolicySnapshot(dto.capicuaPolicy);
         }
         public int GetTeamForPlayer(int player)
         {
             if (player < 0 || player >= PlayerCount) throw new ArgumentOutOfRangeException(nameof(player));
-            return teamForPlayer[player];
+            return TeamMode==TeamMode.Individual?player:teamForPlayer[player];
         }
         public IReadOnlyList<int> GetTeamMembers(int team) => teams[team];
         public int GetNextPlayer(int player)

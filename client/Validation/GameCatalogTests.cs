@@ -23,7 +23,7 @@ static class GameCatalogTests
     static async Task Main()
     {
         var root=Environment.GetEnvironmentVariable("DOMINO_M1_ROOT");
-        string json=File.ReadAllText(Path.Combine(root,"client/DominoGame/Assets/_Domino/Resources/GameCatalogFallback.json"));
+        string json=File.ReadAllText(Path.Combine(root,"client/Validation/GameCatalogV1Fixture.json"));
         string canonical=File.ReadAllText(Path.Combine(root,"client/DominoGame/Assets/_Domino/Config/double-nine-partners-v1.json"));
         var codec=new GameCatalogCodec();var snapshot=codec.Read(json);
         var current=GameConfigurationValidator.Validate(JsonConvert.DeserializeObject<GameConfigurationDto>(canonical));

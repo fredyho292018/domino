@@ -25,7 +25,7 @@ static class GameCatalogGameplayTests
     static async Task Main()
     {
         string root=Environment.GetEnvironmentVariable("DOMINO_M1_ROOT");
-        string bundled=File.ReadAllText(Path.Combine(root,"client/DominoGame/Assets/_Domino/Resources/GameCatalogFallback.json"));
+        string bundled=File.ReadAllText(Path.Combine(root,"client/Validation/GameCatalogV1Fixture.json"));
         string legacy=File.ReadAllText(Path.Combine(root,"client/DominoGame/Assets/_Domino/Config/double-nine-partners-v1.json"));
         var old=GameConfigurationValidator.Validate(JsonConvert.DeserializeObject<GameConfigurationDto>(legacy));
         var api=new Api{Json=bundled,Pending=new TaskCompletionSource<string>()};var cache=new Cache();

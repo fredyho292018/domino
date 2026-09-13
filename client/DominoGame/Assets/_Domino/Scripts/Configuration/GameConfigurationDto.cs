@@ -27,10 +27,14 @@ namespace Domino.Configuration
         public ScoringPolicyDto blockedScoring = new();
         public TiePolicyDto tie = new();
         public int targetScore = -1;
+        public TurnPolicyDto turnPolicy;
+        public CapicuaPolicyDto capicuaPolicy;
     }
     [Serializable] public sealed class TeamAssignmentDto { public int[] members; }
     [Serializable] public sealed class DealPolicyDto { public string method; public int[] seatOrder; public string undealtTiles; }
-    [Serializable] public sealed class StartingPolicyDto { public string mode; public int seat = -1; }
+    [Serializable] public sealed class StartingPolicyDto { public string mode; public int seat = -1; public string[] methods; }
+    [Serializable] public sealed class TurnPolicyDto { public int timeLimitSeconds = -1; public bool autoPlayOnTimeout; public string autoPlayPolicy; }
+    [Serializable] public sealed class CapicuaPolicyDto { public string detection; public int pipMultiplier = -1; public bool multiplyBonus; }
     [Serializable] public sealed class BlockedPolicyDto
     {
         public string detection;

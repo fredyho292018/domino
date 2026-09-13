@@ -6,7 +6,8 @@ namespace Domino.UI
     public sealed partial class BoardView
     {
         public SeatPerspectiveMapper Perspective { get; private set; }
-        public int LocalPlayerSeat => Perspective.BottomPlayer;
+        int? activeHumanSeat;
+        public int LocalPlayerSeat => activeHumanSeat ?? Perspective.BottomPlayer;
         public bool IsPortrait => safe && safe.rect.height > safe.rect.width;
         public RectTransform BoardSurface => dropSurface.rectTransform;
         public RectTransform PlayerRect(int logicalSeat) => (RectTransform)players[logicalSeat].transform;
@@ -20,7 +21,7 @@ namespace Domino.UI
         float HandAngle(int seat) => seat == LocalPlayerSeat || (IsPortrait && (Perspective.PositionFor(seat) == VisualSeat.Left || Perspective.PositionFor(seat) == VisualSeat.Right)) ? 90 : 0;
         public string LocalHandLayout => IsPortrait ? "SINGLE_ROW_CONTROLLED_OVERLAP" : "SINGLE_ROW";
         public Vector2 ChainCenter => IsPortrait ? BoardSurface.anchoredPosition + Vector2.down * 25 : new Vector2(0, 25);
-        public Vector2 ChainSize => IsPortrait ? new Vector2(BoardSurface.rect.width * .64f, BoardSurface.rect.height - 330) : BoardSurface.rect.size - new Vector2(160, 180);
+        public Vector2 ChainSize => IsPortrait ? new Vector2(BoardSurface.rect.width * .64f, BoardSurface.rect.height - (SharedDevice ? 640 : 330)) : BoardSurface.rect.size - new Vector2(160, 180);
 
         internal static void ConfigureCanvas(GameObject owner)
         {
@@ -70,7 +71,7 @@ namespace Domino.UI
                         _ => new Vector2(size.x / 2 - 65, 80)
                     };
                     players[p].SetPresentation(slot, portrait,
-                        slot == VisualSeat.Bottom ? "player.you" : slot == VisualSeat.Top && configuration.TeamMode == Domino.Configuration.TeamMode.FixedTeams ? "player.partner" : "player.opponent");
+                        SharedDevice ? "player.human" : slot == VisualSeat.Bottom ? "player.you" : slot == VisualSeat.Top && configuration.TeamMode == Domino.Configuration.TeamMode.FixedTeams ? "player.partner" : "player.opponent");
                 }
                 Place("Brand", portrait ? new Vector2(-280, halfHeight - 45) : new Vector2(-size.x / 2 + 190, 415));
                 Place("Score surface", portrait ? new Vector2(175, halfHeight - 52) : new Vector2(size.x / 2 - 275, 414));
@@ -140,6 +141,12 @@ namespace Domino.UI
         Vector2 PortraitHandPosition(int player, int index, int count)
         {
             var slot = Perspective.PositionFor(player);
+            if(SharedDevice) {
+                var sharedOrigin=PlayerRect(player).anchoredPosition;
+                if(player!=LocalPlayerSeat) return sharedOrigin+new Vector2((index-(count-1)*.5f)*4.5f,-110);
+                float spacing=Mathf.Min(94,(content.rect.width-234)/Mathf.Max(1,count-1));
+                return new Vector2((index-(count-1)*.5f)*spacing,slot==VisualSeat.Bottom?-content.rect.height/2+165:sharedOrigin.y-205);
+            }
             if (slot == VisualSeat.Bottom)
             {
                 // Keep both pip fields visible: the overlap is confined to the ivory margins.
@@ -149,6 +156,23 @@ namespace Domino.UI
             var origin = PlayerRect(player).anchoredPosition;
             return slot == VisualSeat.Top ? origin + new Vector2((index-(count-1)*.5f)*4.5f,-110)
                 : origin + new Vector2(0,-111+index*4);
+        }
+        public void HideHands()
+        {
+            SetInteraction(false,false);
+            foreach(var hand in hands) foreach(var tile in hand) {tile.Selectable=false;tile.Select(false);tile.Conceal();}
+        }
+        public void RevealActiveSeat(int seat)
+        {
+            HideHands();
+            activeHumanSeat=seat;
+            previousLayout=Vector2.zero;Fit();
+            for(int p=0;p<hands.Length;p++) foreach(var tile in hands[p]) {
+                tile.transform.SetParent(p==seat?localHandLayer:opponentHandLayer,false);
+                tile.SetCompactBack(p!=seat);
+                if(p==seat)tile.Reveal();
+            }
+            RefreshHandLayout();
         }
         void RefreshHandLayout()
         {

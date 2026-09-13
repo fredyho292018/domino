@@ -4,7 +4,9 @@ namespace Domino.Core
     // Local events have no dependency on Unity or a future transport.
     public enum GameEventType
     {
-        GAME_STARTED, TILE_PLAYED, TURN_CHANGED, PLAYER_PASSED, ROUND_FINISHED, GAME_FINISHED
+        GAME_STARTED, TILE_PLAYED, TURN_CHANGED, PLAYER_PASSED, ROUND_FINISHED, GAME_FINISHED,
+        // Reserved semantics only; M3 never emits these online events.
+        TURN_STARTED, TURN_TIMEOUT, AUTO_PLAYED, PLAYER_DISCONNECTED, PLAYER_RECONNECTED, PLAYER_ABANDONED
     }
 
     public readonly struct GameEvent

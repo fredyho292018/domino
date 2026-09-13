@@ -3,25 +3,27 @@ using Domino.Configuration;
 
 namespace Domino.Game
 {
+    public enum RoundFinishType { NORMAL, CAPICUA, BLOCKED }
     public sealed class RoundResult
     {
         public int WinnerPlayer { get; }
         public int WinnerSide { get; }
         public bool Tie => WinnerSide < 0;
         public bool Blocked { get; }
+        public RoundFinishType FinishType { get; }
         public int BasePoints { get; }
         public int Bonus { get; }
         public int Multiplier { get; }
         public int Award => checked((BasePoints + Bonus) * Multiplier);
         public int[] HandPoints => (int[])points.Clone();
         readonly int[] points;
-        public RoundResult(int player, int side, bool blocked, int basePoints, int bonus, int multiplier, int[] handPoints)
-        { WinnerPlayer = player; WinnerSide = side; Blocked = blocked; BasePoints = basePoints; Bonus = bonus; Multiplier = multiplier; points = (int[])handPoints.Clone(); }
+        public RoundResult(int player, int side, bool blocked, int basePoints, int bonus, int multiplier, int[] handPoints, bool capicua=false)
+        { FinishType=blocked?RoundFinishType.BLOCKED:capicua?RoundFinishType.CAPICUA:RoundFinishType.NORMAL; WinnerPlayer = player; WinnerSide = side; Blocked = blocked; BasePoints = basePoints; Bonus = bonus; Multiplier = multiplier; points = (int[])handPoints.Clone(); }
     }
 
     public static class RoundScoring
     {
-        public static RoundResult Evaluate(GameRules rules, int[] points, int finisher, bool blocked, int multiplier)
+        public static RoundResult Evaluate(GameRules rules, int[] points, int finisher, bool blocked, int multiplier, int roundStarter=-1, bool capicua=false)
         {
             if (rules == null) throw new ArgumentNullException(nameof(rules));
             if (points == null || points.Length != rules.Configuration.PlayerCount || Array.Exists(points, p => p < 0) || multiplier < 1)
@@ -42,14 +44,23 @@ namespace Domino.Game
                     if (value < best) { best = value; winner = p; side = rules.Side(p); tie = false; }
                     else if (value == best && rules.Side(p) != side) tie = true;
                 }
-                if (tie) return new RoundResult(-1, -1, true, 0, 0, multiplier, points);
+                if (tie) {
+                    if(rules.Configuration.Blocked.OpposingTeamsMinimumTie=="ROUND_STARTER_WINS") {
+                        if(roundStarter<0||roundStarter>=points.Length)throw new ArgumentOutOfRangeException(nameof(roundStarter));
+                        winner=roundStarter;
+                    } else return new RoundResult(-1, -1, true, 0, 0, multiplier, points);
+                }
             }
             if (winner < 0 || winner >= points.Length) throw new ArgumentOutOfRangeException(nameof(finisher));
             int total = 0;
             var scoring = blocked ? rules.Configuration.BlockedScoring : rules.Configuration.FinishScoring;
             for (int p = 0; p < points.Length; p++)
                 if (scoring.Source == PointsSource.AllOtherPlayers ? p != winner : rules.Side(p) != rules.Side(winner)) total += points[p];
-            return new RoundResult(winner, rules.Side(winner), blocked, total, scoring.Bonus, multiplier, points);
+            if(capicua) {
+                if(blocked||rules.Configuration.Capicua==null)throw new ArgumentException("Capicua not enabled.");
+                total=checked(total*rules.Configuration.Capicua.PipMultiplier);
+            }
+            return new RoundResult(winner, rules.Side(winner), blocked, total, scoring.Bonus, multiplier, points, capicua);
         }
     }
 
@@ -65,7 +76,7 @@ namespace Domino.Game
         public int WinnerSide { get; private set; } = -1;
         public int Score(int side) => scores[side];
         public MatchState(GameRules rules)
-        { this.rules = rules ?? throw new ArgumentNullException(nameof(rules)); scores = new int[Configuration.TeamCount]; }
+        { this.rules = rules ?? throw new ArgumentNullException(nameof(rules)); scores = new int[Configuration.ScoreOwnerCount]; }
         public void Reset() { Array.Clear(scores, 0, scores.Length); RoundNumber = 1; Multiplier = 1; Finished = false; WinnerSide = -1; settled = false; }
         public void Apply(RoundResult result)
         {

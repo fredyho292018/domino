@@ -12,17 +12,19 @@ namespace Domino.Configuration
             Require(dto.version > 0, "version", "must be positive");
             Require(dto.schemaVersion == 1, "schemaVersion", "only 1 is supported");
             Policy(dto.rulesetVersion, "rulesetVersion", "1.0");
-            Require(dto.playerCount == 4, "playerCount", "this client supports exactly 4 seats");
+            Require(dto.playerCount == 4 || (dto.playerCount == 2 && dto.teamMode == "NONE"), "playerCount", "supported seat counts: 2, 4");
             Require(dto.maxPip >= 1 && dto.maxPip <= DominoTile.SupportedMaxPip, "maxPip", "supported range is 1..9");
             int total = DominoTile.TotalTilesFor(dto.maxPip);
             Require(dto.tilesPerPlayer > 0, "tilesPerPlayer", "must be positive");
             Require((long)dto.playerCount * dto.tilesPerPlayer <= total, "tilesPerPlayer", "deal exceeds the tile set");
             Require(dto.tilesPerPlayer <= 10, "tilesPerPlayer", "current hand layout supports at most 10");
             Require(dto.targetScore > 0, "targetScore", "must be positive");
-            Policy(dto.teamMode, "teamMode", "FIXED_TEAMS", "INDIVIDUAL");
+            Policy(dto.teamMode, "teamMode", "FIXED_TEAMS", "INDIVIDUAL", "NONE");
             Require(dto.teamAssignments != null, "teamAssignments", "is required");
             bool fixedTeams = dto.teamMode == "FIXED_TEAMS";
-            Require(dto.teamAssignments.Length == (fixedTeams ? 2 : dto.playerCount), "teamAssignments", "unsupported team count");
+            bool noTeams = dto.teamMode == "NONE";
+            Require(!noTeams || dto.playerCount==2, "teamMode", "NONE supports two human seats");
+            Require(dto.teamAssignments.Length == (noTeams ? 0 : fixedTeams ? 2 : dto.playerCount), "teamAssignments", "unsupported team count");
             var seen = new bool[dto.playerCount];
             for (int team = 0; team < dto.teamAssignments.Length; team++)
             {
@@ -37,7 +39,7 @@ namespace Domino.Configuration
                 // Existing individual scoreboard indexes scores by seat.
                 Require(fixedTeams || members[0] == team, "teamAssignments", "individual teams must use seat order");
             }
-            Require(Array.TrueForAll(seen, x => x), "teamAssignments", "missing seat");
+            Require(noTeams || Array.TrueForAll(seen, x => x), "teamAssignments", "missing seat");
             Order(dto.turnOrder, dto.playerCount, "turnOrder");
             Require(dto.deal != null, "deal", "is required");
             Policy(dto.deal.method, "deal.method", "ROUND_ROBIN");
@@ -51,7 +53,7 @@ namespace Domino.Configuration
             Require(dto.blocked != null, "blocked", "is required");
             Policy(dto.blocked.detection, "blocked.detection", "ALL_PLAYERS_PASS_CONSECUTIVELY");
             Policy(dto.blocked.winner, "blocked.winner", "LOWEST_INDIVIDUAL_PIPS", "LOWEST_TEAM_TOTAL");
-            Policy(dto.blocked.opposingTeamsMinimumTie, "blocked.opposingTeamsMinimumTie", "ROUND_TIE");
+            Policy(dto.blocked.opposingTeamsMinimumTie, "blocked.opposingTeamsMinimumTie", "ROUND_TIE", "ROUND_STARTER_WINS");
             Policy(dto.blocked.sameTeamMinimumTie, "blocked.sameTeamMinimumTie", "TEAM_WINS");
             Policy(dto.blocked.winningRepresentative, "blocked.winningRepresentative", "FIRST_SEAT_IN_WINNING_MINIMUM");
             Scoring(dto.finishScoring, "finishScoring", total, dto.maxPip);
@@ -62,6 +64,19 @@ namespace Domino.Configuration
             Policy(dto.tie.repeatedTie, "tie.repeatedTie", "KEEP_MULTIPLIER", "MULTIPLY");
             Policy(dto.tie.appliesTo, "tie.appliesTo", "TOTAL_INCLUDING_BONUS");
             Policy(dto.tie.afterAward, "tie.afterAward", "RESET_TO_ONE");
+            if (dto.capicuaPolicy != null) {
+                Policy(dto.capicuaPolicy.detection,"capicuaPolicy.detection","LAST_TILE_PLAYABLE_ON_BOTH_ENDS");
+                Require(dto.capicuaPolicy.pipMultiplier==2&&!dto.capicuaPolicy.multiplyBonus,"capicuaPolicy","supported formula is pips * 2 + bonus");
+            }
+            if (dto.turnPolicy != null) {
+                Require(dto.turnPolicy.timeLimitSeconds==60 && dto.turnPolicy.autoPlayOnTimeout,"turnPolicy","unsupported timing");
+                Policy(dto.turnPolicy.autoPlayPolicy,"turnPolicy.autoPlayPolicy","FIRST_VALID_MOVE");
+            }
+            if(noTeams) {
+                Require(dto.firstRoundStarting.mode=="RANDOM_START_METHOD" && dto.followingRoundStarting.mode=="PREVIOUS_ROUND_WINNER", "starting","duel starter policies required");
+                Require(dto.blocked.opposingTeamsMinimumTie=="ROUND_STARTER_WINS" && dto.blocked.winner=="LOWEST_INDIVIDUAL_PIPS", "blocked","duel block policies required");
+                Require(dto.capicuaPolicy!=null&&dto.turnPolicy!=null,"policies","duel policies required");
+            }
             return new GameConfigurationSnapshot(dto, total);
         }
         static void Order(int[] order, int count, string field)
@@ -77,8 +92,14 @@ namespace Domino.Configuration
         static void Start(StartingPolicyDto policy, int count, string field)
         {
             Require(policy != null, field, "is required");
-            Policy(policy.mode, field + ".mode", "FIXED_SEAT");
-            Require(policy.seat >= 0 && policy.seat < count, field + ".seat", "seat out of range");
+            Policy(policy.mode, field + ".mode", "FIXED_SEAT", "RANDOM_START_METHOD", "PREVIOUS_ROUND_WINNER");
+            if(policy.mode=="FIXED_SEAT") Require(policy.seat >= 0 && policy.seat < count, field + ".seat", "seat out of range");
+            else Require(policy.seat==-1,field+".seat","non-fixed starter has no seat");
+            if(policy.mode=="RANDOM_START_METHOD") {
+                Require(policy.methods!=null&&policy.methods.Length>0&&policy.methods.Length<=2,field+".methods","one or two methods required");
+                foreach(var method in policy.methods) Policy(method,field+".methods","HIGH_TILE_SELECTION","EVEN_ODD_GUESS");
+                Require(policy.methods.Length==1||policy.methods[0]!=policy.methods[1],field+".methods","duplicate method");
+            }
         }
         static void Scoring(ScoringPolicyDto policy, string field, int total, int maxPip)
         {

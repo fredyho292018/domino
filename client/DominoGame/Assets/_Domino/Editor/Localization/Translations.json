@@ -1,10 +1,30 @@
 {
   "entries": [
-    { "key": "realtime.connected", "en": "Connected", "es": "Conectado" },
-    { "key": "realtime.connecting", "en": "Connecting…", "es": "Conectando…" },
-    { "key": "realtime.reconnecting", "en": "Reconnecting…", "es": "Reconectando…" },
-    { "key": "realtime.disconnected", "en": "Realtime offline", "es": "Sin conexión en tiempo real" },
-    { "key": "realtime.activity", "en": "{0} online · {1} {1:plural:match|matches} · {2} waiting", "es": "{0} {0:plural:conectado|conectados} · {1} {1:plural:partida|partidas} · {2} esperando" },
+    {
+      "key": "realtime.connected",
+      "en": "Connected",
+      "es": "Conectado"
+    },
+    {
+      "key": "realtime.connecting",
+      "en": "Connecting…",
+      "es": "Conectando…"
+    },
+    {
+      "key": "realtime.reconnecting",
+      "en": "Reconnecting…",
+      "es": "Reconectando…"
+    },
+    {
+      "key": "realtime.disconnected",
+      "en": "Realtime offline",
+      "es": "Sin conexión en tiempo real"
+    },
+    {
+      "key": "realtime.activity",
+      "en": "{0} online · {1} {1:plural:match|matches} · {2} waiting",
+      "es": "{0} {0:plural:conectado|conectados} · {1} {1:plural:partida|partidas} · {2} esperando"
+    },
     {
       "key": "menu.play",
       "en": "Play",
@@ -318,7 +338,7 @@
     {
       "key": "result.tie_summary",
       "en": "Blocked draw · Next round ×{0}",
-      "es": "Tranca empatada · Próxima ronda ×{0}"
+      "es": "Tranque empatado · Próxima ronda ×{0}"
     },
     {
       "key": "result.award",
@@ -539,6 +559,106 @@
       "key": "profile.cached_status",
       "en": "{0} · last known data",
       "es": "{0} · últimos datos"
+    },
+    {
+      "key": "mode.duel.title",
+      "en": "One vs One",
+      "es": "Uno contra uno"
+    },
+    {
+      "key": "mode.duel.subtitle",
+      "en": "Two humans · Shared device",
+      "es": "Dos personas · Dispositivo compartido"
+    },
+    {
+      "key": "player.human",
+      "en": "Human",
+      "es": "Humano"
+    },
+    {
+      "key": "duel.choose_starter",
+      "en": "Choose who starts",
+      "es": "Decidir quién sale"
+    },
+    {
+      "key": "duel.choose_tile",
+      "en": "Choose a tile",
+      "es": "Escoge una ficha"
+    },
+    {
+      "key": "duel.guess",
+      "en": "Guess the sum: even or odd?",
+      "es": "¿La suma es par o impar?"
+    },
+    {
+      "key": "duel.even",
+      "en": "Even",
+      "es": "Par"
+    },
+    {
+      "key": "duel.odd",
+      "en": "Odd",
+      "es": "Impar"
+    },
+    {
+      "key": "duel.tile_one",
+      "en": "Tile 1",
+      "es": "Ficha 1"
+    },
+    {
+      "key": "duel.tile_two",
+      "en": "Tile 2",
+      "es": "Ficha 2"
+    },
+    {
+      "key": "duel.repeat",
+      "en": "Equal sums — choose again",
+      "es": "Sumas iguales — volver a escoger"
+    },
+    {
+      "key": "duel.starts",
+      "en": "Player {0} starts",
+      "es": "Sale el jugador {0}"
+    },
+    {
+      "key": "duel.handoff",
+      "en": "Player {0}’s turn",
+      "es": "Turno del jugador {0}"
+    },
+    {
+      "key": "duel.privacy",
+      "en": "Pass the device before continuing.",
+      "es": "Entrega el dispositivo antes de continuar."
+    },
+    {
+      "key": "result.capicua",
+      "en": "Capicua",
+      "es": "Capicúa"
+    },
+    {
+      "key": "result.blocked",
+      "en": "Blocked round",
+      "es": "Tranque"
+    },
+    {
+      "key": "game.player_score",
+      "en": "P{0}  {1}",
+      "es": "J{0}  {1}"
+    },
+    {
+      "key": "game.time_expired",
+      "en": "Time expired",
+      "es": "Tiempo agotado"
+    },
+    {
+      "key": "game.player_disconnected",
+      "en": "Player disconnected",
+      "es": "Jugador desconectado"
+    },
+    {
+      "key": "game.autoplay",
+      "en": "Autoplay",
+      "es": "Autoplay"
     }
   ]
 }

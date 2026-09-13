@@ -25,7 +25,7 @@ namespace Domino.UI
         public event Action<DealPresentationPhase> DealPhaseChanged;
         public event Action<int> TileDealt;
         public IReadOnlyList<DominoTileView> HandViews(int player) => hands[player];
-        readonly List<DominoTileView>[] hands = { new(), new(), new(), new() };
+        List<DominoTileView>[] hands;
         readonly List<DominoTileView> played = new();
         readonly Dictionary<DominoTileView, (Vector3 scale, Vector2 position, float started)> endpointZoom = new();
         ChainEnd? opponentPlacement;
@@ -33,7 +33,8 @@ namespace Domino.UI
         public IReadOnlyList<DominoTileView> ReserveViews => washReserve;
         Text reserveLabel;
         bool reserveParked;
-        readonly PlayerView[] players = new PlayerView[4];
+        PlayerView[] players;
+        public bool SharedDevice { get; private set; }
         static readonly Vector2[] PlayerPositions = { new(-674, -397), new(-735, 80), new(0, 402), new(735, 80) };
         readonly List<RectTransform> tableLayers = new();
         static readonly float[] TableInsets = { 0, 0, 4, 6, 8, 10 };
@@ -70,9 +71,12 @@ namespace Domino.UI
         public IReadOnlyList<DominoTileView> LocalTiles => hands[LocalPlayerSeat];
         public int PlayedCount => played.Count;
 
-        public void Initialize(DominoTileView dominoPrefab, PlayerView playerPrefab, GameConfigurationSnapshot configuration, int localPlayerSeat = 0)
+        public void Initialize(DominoTileView dominoPrefab, PlayerView playerPrefab, GameConfigurationSnapshot configuration, int localPlayerSeat = 0, bool sharedDevice=false)
         {
             this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            SharedDevice=sharedDevice;
+            hands=new List<DominoTileView>[configuration.PlayerCount];players=new PlayerView[configuration.PlayerCount];
+            for(int p=0;p<hands.Length;p++)hands[p]=new List<DominoTileView>();
             Perspective = new SeatPerspectiveMapper(localPlayerSeat, configuration);
             tilePrefab = dominoPrefab;
             gameObject.AddComponent<DominoWashAudio>().Initialize(this);
@@ -126,7 +130,7 @@ namespace Domino.UI
             string[] names = { "Fredy", "Alex", "Maria", "John" };
             string[] initials = { "F", "A", "M", "J" };
             string[] colors = { "52786D", "866952", "8B6873", "526B87" };
-            for (int p = 0; p < 4; p++)
+            for (int p = 0; p < players.Length; p++)
             {
                 players[p] = Instantiate(playerPrefab, content);
                 players[p].name = "Player " + (p + 1) + " - " + names[p];
@@ -255,7 +259,7 @@ namespace Domino.UI
         {
             var surface = dropSurface.rectTransform;
             return surface.anchoredPosition + new Vector2(surface.rect.width / 2 - 126 + (index % 5 - 2) * 40,
-                surface.rect.height / 2 - 44 - index / 5 * 22);
+                surface.rect.height / 2 - 44 - index / 5 * 22 - (SharedDevice && IsPortrait ? 300 : 0));
         }
         public IEnumerator Deal(IReadOnlyList<DominoTile>[] modelHands)
         {
@@ -355,7 +359,7 @@ namespace Domino.UI
                     foreach (var view in hands[LocalPlayerSeat]) view.Rect.localScale = new Vector3(LocalScale, LocalScale * width, LocalScale);
                     yield return null;
                 }
-                if (phase == 0) foreach (var view in hands[LocalPlayerSeat]) view.Reveal();
+                if (phase == 0 && !SharedDevice) foreach (var view in hands[LocalPlayerSeat]) view.Reveal();
             }
             SetDealPhase(DealPresentationPhase.OrganizingHands);
             var starts = new Vector2[toDeal]; var rotations = new Quaternion[toDeal];
@@ -487,7 +491,7 @@ namespace Domino.UI
         {
             if (DealPhase == DealPresentationPhase.Ready) SetDealPhase(DealPresentationPhase.Playing);
             if (IsPreparingRound) return;
-            for (int p = 0; p < 4; p++) players[p].SetTurn(p == player);
+            for (int p = 0; p < players.Length; p++) players[p].SetTurn(p == player);
             bannerTarget = player == LocalPlayerSeat ? 1 : 0;
             feedback.Turn(player == LocalPlayerSeat);
             UpdateTurnNotice(player);
@@ -711,8 +715,11 @@ namespace Domino.UI
             displayedRound = match.RoundNumber;
             scoreA.fontSize = scoreB.fontSize = IsPortrait ? 24 : rules.Teams ? 18 : 15;
             round.fontSize = IsPortrait ? 16 : 12;
+            if(configuration.PlayerCount==2) { DominoLocalization.Set(scoreA,"game.player_score",1,match.Score(0));DominoLocalization.Set(scoreB,"game.player_score",2,match.Score(1)); }
+            else {
             DominoLocalization.Set(scoreA, rules.Teams ? "game.score_a" : "game.individual_a", match.Score(rules.Teams ? configuration.GetTeamForPlayer(LocalPlayerSeat) : 0), rules.Teams ? 0 : match.Score(2));
             DominoLocalization.Set(scoreB, rules.Teams ? "game.score_b" : "game.individual_b", match.Score(rules.Teams ? 1 - configuration.GetTeamForPlayer(LocalPlayerSeat) : 1), rules.Teams ? 0 : match.Score(3));
+            }
             DominoLocalization.Set(round, "game.score_round", match.RoundNumber, rules.TargetScore, match.Multiplier);
             round.rectTransform.sizeDelta = new Vector2(290, 25);
         }
@@ -736,7 +743,7 @@ namespace Domino.UI
                 }
                 if (phase == 0) foreach (var tile in reveal) tile.Reveal();
             }
-            for (int p = 0; p < 4; p++) players[p].ShowPoints(hands[p].Count, points[p]);
+            for (int p = 0; p < players.Length; p++) players[p].ShowPoints(hands[p].Count, points[p]);
         }
         public void Finish(Func<string> message, bool matchFinished = false)
         {
@@ -753,7 +760,7 @@ namespace Domino.UI
             if (RoundRewardPanel) Destroy(RoundRewardPanel.gameObject);
             var resultPanel = UiKit.Rect("Round result and optional reward", content, new Vector2(800,590), Vector2.zero);
             RoundRewardPanel = resultPanel.gameObject.AddComponent<RoundRewardView>();
-            RoundRewardPanel.Initialize(Domino.Infrastructure.ApplicationServices.RoundRewards,
+            RoundRewardPanel.Initialize(SharedDevice?null:Domino.Infrastructure.ApplicationServices.RoundRewards,
                 Domino.Infrastructure.ApplicationServices.Player, message, () => scoreA.text + "     ·     " + scoreB.text,
                 () => { if (matchEnded) RestartRequested?.Invoke(); else NextRoundRequested?.Invoke(); });
         }

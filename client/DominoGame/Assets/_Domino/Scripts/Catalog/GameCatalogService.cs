@@ -65,6 +65,6 @@ namespace Domino.Catalog
         }
         // Synchronous main-thread resolution; does not fetch or wait for identity/network.
         // Existing sessions retain this immutable object when Current is replaced.
-        public MatchRuleSnapshot ResolveMatch() => GameCatalogConfigurationAdapter.Freeze(Current,Source);
+        public MatchRuleSnapshot ResolveMatch(string key=GameCatalogConfigurationAdapter.SupportedModeKey) => GameCatalogConfigurationAdapter.Freeze(Current,Source,key);
     }
 }

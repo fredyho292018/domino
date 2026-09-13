@@ -1,6 +1,8 @@
 using System;
 using Domino.Client;
 using Domino.Configuration;
+using Domino.Catalog;
+using Domino.Infrastructure;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +13,9 @@ namespace Domino.UI
     {
         RectTransform safe, composition;
         GameObject main, selector;
+        GameCatalogSnapshot shownCatalog;
+        RectTransform duelCard;
+        public Button DuelPlay { get; private set; }
         public StartScreen Screen { get; private set; }
         public Button MainPlay { get; private set; }
         public Button ModePlay { get; private set; }
@@ -75,8 +80,36 @@ namespace Domino.UI
             main.SetActive(screen == StartScreen.MainMenu);
             selector.SetActive(screen == StartScreen.ModeSelector);
         }
+        void RefreshCatalogCards()
+        {
+            var catalog=ApplicationServices.GameCatalog?.Current;
+            if(catalog==null||ReferenceEquals(catalog,shownCatalog))return;
+            shownCatalog=catalog;
+            var partners=GameCatalogConfigurationAdapter.SupportedMode(catalog);
+            BindCard(Card,ModePlay,partners);
+            GameModeSnapshot duel=null;
+            foreach(var m in catalog.Modes)if(m.Key==GameCatalogConfigurationAdapter.DuelModeKey&&m.Active)duel=m;
+            if(duel!=null && !duelCard) {
+                duelCard=Instantiate(Card,selector.transform);duelCard.name="Duel card";
+                foreach(Transform child in duelCard) if(child.name.EndsWith(" avatar")) {child.gameObject.SetActive(false);Destroy(child.gameObject);}
+                Avatar(duelCard,"player.human",-240,DominoVisualTheme.TeamA);
+                Avatar(duelCard,"player.human",240,DominoVisualTheme.TeamB);
+                DuelPlay=duelCard.Find("Start match").GetComponent<Button>();
+            }
+            if(duelCard) {duelCard.gameObject.SetActive(duel!=null);if(duel!=null)BindCard(duelCard,DuelPlay,duel);}
+        }
+        void BindCard(RectTransform card,Button button,GameModeSnapshot snapshot)
+        {
+            var mode=new GameModeDefinition(snapshot);var c=snapshot.RuleSet.Configuration;
+            DominoLocalization.Set(card.Find("Mode name").GetComponent<Text>(),mode.DisplayNameKey);
+            DominoLocalization.Set(card.Find("Subtitle").GetComponent<Text>(),mode.SubtitleKey);
+            DominoLocalization.Set(card.Find("Teams").GetComponent<Text>(),"mode.teams",c.PlayerCount==2?1:2,c.PlayerCount==2?1:2);
+            DominoLocalization.Bind(card.Find("Rules").GetComponent<Text>(),()=>DominoLocalization.Get("rules.summary",DominoLocalization.Get("rules.double_nine",c.MaxPip),DominoLocalization.Get("rules.tiles",c.TilesPerPlayer),DominoLocalization.Get("rules.no_draw"),DominoLocalization.Get("rules.target_score",c.TargetScore)));
+            button.onClick.RemoveAllListeners();button.onClick.AddListener(()=>StartRequested?.Invoke(mode));
+        }
         void LateUpdate()
         {
+            RefreshCatalogCards();
             bool portrait = safe.rect.height > safe.rect.width;
             float scale = portrait ? Mathf.Min(safe.rect.width / 1040, safe.rect.height / 1280) : Mathf.Min(safe.rect.width / 1160, safe.rect.height / 740);
             composition.localScale = Vector3.one * Mathf.Max(.01f, scale);
@@ -98,6 +131,17 @@ namespace Domino.UI
             rules.anchoredPosition = new Vector2(0, portrait ? -110 : -62);
             ModePlay.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, portrait ? -230 : -145);
             Settings.GetComponent<RectTransform>().sizeDelta = new Vector2(2400, portrait ? 3200 : 1400);
+            bool two=duelCard&&duelCard.gameObject.activeSelf;
+            Card.localScale=Vector3.one*(two?(portrait?.65f:.55f):1);
+            Card.anchoredPosition=two?(portrait?new Vector2(0,130):new Vector2(-260,-15)):new Vector2(0,-10);
+            if(two) {
+                duelCard.sizeDelta=Card.sizeDelta;duelCard.localScale=Card.localScale;
+                duelCard.anchoredPosition=portrait?new Vector2(0,-300):new Vector2(260,-15);
+                foreach(string child in new[]{"Mode name","Subtitle","Rules","Start match"}) {
+                    var src=(RectTransform)Card.Find(child);var dst=(RectTransform)duelCard.Find(child);
+                    dst.sizeDelta=src.sizeDelta;dst.anchoredPosition=src.anchoredPosition;
+                }
+            }
         }
     }
 }

@@ -16,9 +16,10 @@ namespace Domino.UI
         public SeatPerspectiveMapper(int localPlayerSeat, GameConfigurationSnapshot configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
-            if (configuration.PlayerCount != 4 || localPlayerSeat < 0 || localPlayerSeat >= 4)
+            if ((configuration.PlayerCount != 4 && configuration.PlayerCount != 2) || localPlayerSeat < 0 || localPlayerSeat >= configuration.PlayerCount)
                 throw new ArgumentOutOfRangeException(nameof(localPlayerSeat));
             seats[0] = localPlayerSeat;
+            if(configuration.PlayerCount==2) {seats[1]=-1;seats[3]=-1;seats[2]=1-localPlayerSeat;return;}
             // Also supports the existing individual development configuration: the opposite
             // seat occupies Top, but presentation must not call that player a partner.
             int localIndex = 0;

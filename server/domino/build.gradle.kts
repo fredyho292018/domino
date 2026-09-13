@@ -63,3 +63,11 @@ tasks.register<JavaExec>("seedGameCatalog") {
     mainClass.set("com.teamfho.domino.catalog.GameCatalogSeed")
     args("--seed-if-absent")
 }
+
+tasks.register<JavaExec>("publishGameCatalogV2") {
+    group = "application"
+    description = "Explicit immutable catalog v2 publication and rollback verification using ADC."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.catalog.GameCatalogV2Publisher")
+    args("--publish-v2", "--verify-rollback")
+}

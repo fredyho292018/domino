@@ -23,6 +23,10 @@ namespace Domino.Client
         DominoTileView selected;
         bool acceptingInput;
         bool previewing;
+        SharedDevicePrompt sharedPrompt;
+        public SharedDevicePrompt SharedPrompt => sharedPrompt;
+        public StarterSelection StarterSelection { get; private set; }
+        int InputSeat => Session.SharedDevice?game.CurrentPlayer:Session.LocalPlayerSeat;
         StartMenuView startMenu;
         public StartMenuView Menu => startMenu;
         public SessionSetup Session { get; private set; }
@@ -44,14 +48,14 @@ namespace Domino.Client
         public void StartMatch(GameModeDefinition mode, int localPlayerSeat)
         {
             if (Session != null) return;
-            if(mode==null||mode.Key!=GameCatalogConfigurationAdapter.SupportedModeKey)throw new ArgumentException("Unsupported mode.");
-            var resolved=ResolveConfiguration();
+            if(mode==null||(mode.Key!=GameCatalogConfigurationAdapter.SupportedModeKey&&mode.Key!=GameCatalogConfigurationAdapter.DuelModeKey))throw new ArgumentException("Unsupported mode.");
+            var resolved=ResolveConfiguration(mode.Key);
             Session = new SessionSetup(resolved, localPlayerSeat);
             Debug.Log(resolved.Diagnostic);
             game = new ClientGame(new GameRules(Session.Configuration));
             startMenu.Show(StartScreen.Match);
             board = new GameObject("Domino Canvas", typeof(RectTransform)).AddComponent<BoardView>();
-            board.Initialize(tilePrefab, playerPrefab, game.Configuration, Session.LocalPlayerSeat);
+            board.Initialize(tilePrefab, playerPrefab, game.Configuration, Session.LocalPlayerSeat,Session.SharedDevice);
             board.CanPlace = (tile, end) => game.CanPlay(tile, end);
             board.TileSelected += Select;
             board.TileDropped += PlayDropped;
@@ -62,28 +66,38 @@ namespace Domino.Client
             game.Changed += Enqueue;
             RestartClient();
         }
-        static MatchRuleSnapshot ResolveConfiguration() =>
-            (ApplicationServices.GameCatalog ?? throw new InvalidOperationException("No valid bundled game catalog available.")).ResolveMatch();
+        static MatchRuleSnapshot ResolveConfiguration(string key=GameCatalogConfigurationAdapter.SupportedModeKey) =>
+            (ApplicationServices.GameCatalog ?? throw new InvalidOperationException("No valid bundled game catalog available.")).ResolveMatch(key);
         public void ExitMatch()
         {
             StopAllCoroutines(); events.Clear(); acceptingInput = false; previewing = false; selected = null;
             if (game != null) game.Changed -= Enqueue;
             if (board) { board.Clear(); board.gameObject.SetActive(false); Destroy(board.gameObject); }
+            if(sharedPrompt)Destroy(sharedPrompt.gameObject);sharedPrompt=null;StarterSelection=null;
             board = null; game = null; Session = null;
             startMenu.Show(StartScreen.ModeSelector);
         }
         void Enqueue(GameEvent e)
         {
             events.Enqueue(e);
-            Domino.Ads.RewardedRoundPreload.Handle(e, Domino.Infrastructure.ApplicationServices.Rewarded);
+            if(!Session.SharedDevice) Domino.Ads.RewardedRoundPreload.Handle(e, Domino.Infrastructure.ApplicationServices.Rewarded);
         }
         public void RestartClient()
         {
             if (game == null || !board) return;
             previewing = false;
             StopAllCoroutines(); events.Clear(); acceptingInput = false; selected = null;
-            board.Clear(); game.Start(Environment.TickCount);
-            StartCoroutine(PresentEvents());
+            board.Clear();
+            if(Session.SharedDevice)StartCoroutine(StartSharedMatch());
+            else {game.Start(Environment.TickCount);StartCoroutine(PresentEvents());}
+        }
+        IEnumerator StartSharedMatch()
+        {
+            if(!sharedPrompt)sharedPrompt=new GameObject("Shared device prompt",typeof(RectTransform)).AddComponent<SharedDevicePrompt>();
+            StarterSelection=new StarterSelection(Session.Configuration,Environment.TickCount);
+            yield return sharedPrompt.ChooseStarter(StarterSelection);
+            game.Start(Environment.TickCount,StarterSelection.WinnerSeat);
+            yield return PresentEvents();
         }
         void NextRound()
         {
@@ -120,7 +134,7 @@ namespace Domino.Client
             if (!acceptingInput || board.IsDragging || !selected) return;
             var tile = selected.Tile;
             acceptingInput = false; board.SetInteraction(false, false);
-            if (!game.TryPlay(Session.LocalPlayerSeat, tile, end))
+            if (!game.TryPlay(InputSeat, tile, end))
             {
                 acceptingInput = true; board.SetInteraction(true, true);
                 board.ShowMessage("game.no_match", game.LeftEnd, game.RightEnd);
@@ -153,8 +167,13 @@ namespace Domino.Client
                         yield return board.Play(e);
                         break;
                     case GameEventType.TURN_CHANGED:
+                        if(Session.SharedDevice) {
+                            acceptingInput=false;board.HideHands();
+                            yield return sharedPrompt.Handoff(e.Player);
+                            board.RevealActiveSeat(e.Player);
+                        }
                         board.SetTurn(e.Player);
-                        acceptingInput = e.Player == Session.LocalPlayerSeat && game.HasLegalMove(Session.LocalPlayerSeat);
+                        acceptingInput = e.Player == InputSeat && game.HasLegalMove(InputSeat);
                         board.SetInteraction(acceptingInput, false);
                         if (!game.HasLegalMove(e.Player))
                         {
@@ -191,12 +210,13 @@ namespace Domino.Client
                         {
                             string text = result.Tie ? DominoLocalization.Get("result.tie_summary", multiplier)
                                 : DominoLocalization.Get("result.award", winnerName, result.Award, result.BasePoints, result.Bonus, result.Multiplier);
+                            if(result.FinishType==RoundFinishType.CAPICUA)text=DominoLocalization.Get("result.capicua")+" · "+text;
                             return matchFinished ? DominoLocalization.Get("result.match_summary", DominoLocalization.Get(localWon ? "result.victory" : "result.defeat"), text) : text;
                         };
                         if (!result.Tie) yield return board.ShowWinner(winnerName, game.Match.Finished, localWon);
                         // Wash after every round, including a tied block, before allowing the next deal.
                         yield return board.WashDominoes(game.Reserve);
-                        Domino.Infrastructure.ApplicationServices.RoundRewards?.PresentRound(result);
+                        if(!Session.SharedDevice) Domino.Infrastructure.ApplicationServices.RoundRewards?.PresentRound(result);
                         board.Finish(summary, game.Match.Finished);
                         break;
                 }
@@ -207,6 +227,7 @@ namespace Domino.Client
             if (game != null) game.Changed -= Enqueue;
             if (board) Destroy(board.gameObject);
             if (startMenu) Destroy(startMenu.gameObject);
+            if(sharedPrompt)Destroy(sharedPrompt.gameObject);
         }
         string TeamName(int team)
         {

@@ -1,6 +1,6 @@
 {
   "catalogSchemaVersion": 1,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "modes": [
     {
       "id": "partners-2v2",
@@ -93,6 +93,113 @@
         },
         "contentHash": "9afd636e38e64009e3a30048557e71a17f84f78aa0cd44ea32f6b1dbbb55bef8",
         "createdAt": "2026-09-13T00:00:00Z"
+      }
+    },
+    {
+      "id": "duel-1v1",
+      "key": "DUEL_1V1",
+      "nameKey": "mode.duel.title",
+      "descriptionKey": "mode.duel.subtitle",
+      "active": true,
+      "sortOrder": 20,
+      "iconKey": "duel",
+      "playerCount": 2,
+      "teamMode": "NONE",
+      "teamSize": null,
+      "seatTeams": [],
+      "minHumans": 2,
+      "maxHumans": 2,
+      "botsAllowed": false,
+      "executionModesSupported": [
+        "LOCAL"
+      ],
+      "defaultRuleSetId": "double-nine-duel",
+      "availability": "ALL",
+      "topologyVersion": 1,
+      "onlinePolicy": {
+        "reconnectWindowSeconds": 180,
+        "turnClockContinuesWhileDisconnected": true,
+        "autoPlayWhileDisconnected": true
+      },
+      "ruleSet": {
+        "id": "double-nine-duel",
+        "version": 1,
+        "maxPip": 9,
+        "tilesPerPlayer": 10,
+        "drawPolicy": "NONE",
+        "targetScore": 150,
+        "firstRoundStarting": {
+          "mode": "RANDOM_START_METHOD",
+          "seat": -1,
+          "methods": [
+            "HIGH_TILE_SELECTION",
+            "EVEN_ODD_GUESS"
+          ]
+        },
+        "followingRoundStarting": {
+          "mode": "PREVIOUS_ROUND_WINNER",
+          "seat": -1
+        },
+        "openingTilePolicy": "ANY",
+        "turnOrder": [
+          0,
+          1
+        ],
+        "passPolicy": "NO_LEGAL_MOVE",
+        "finishScoring": {
+          "source": "OPPONENTS_ONLY",
+          "bonus": 10
+        },
+        "blockedScoring": {
+          "source": "OPPONENTS_ONLY",
+          "bonus": 0
+        },
+        "ruleSchemaVersion": 1,
+        "requiredCapabilities": [
+          "DUEL_TOPOLOGY",
+          "RANDOM_START_METHOD",
+          "HIGH_TILE_SELECTION",
+          "EVEN_ODD_GUESS",
+          "PREVIOUS_ROUND_WINNER_START",
+          "BLOCKED_TIE_STARTER_WINS",
+          "CAPICUA_SCORING_V1"
+        ],
+        "tileSet": "DOUBLE_N",
+        "reservePolicy": "RESERVE",
+        "dealPolicy": {
+          "method": "ROUND_ROBIN",
+          "seatOrder": [
+            0,
+            1
+          ],
+          "undealtTiles": "RESERVE"
+        },
+        "blockedPolicy": {
+          "detection": "ALL_PLAYERS_PASS_CONSECUTIVELY",
+          "winner": "LOWEST_INDIVIDUAL_PIPS",
+          "opposingTeamsMinimumTie": "ROUND_STARTER_WINS",
+          "sameTeamMinimumTie": "TEAM_WINS",
+          "winningRepresentative": "FIRST_SEAT_IN_WINNING_MINIMUM"
+        },
+        "tiePolicy": {
+          "award": 0,
+          "nextRoundMultiplier": 2,
+          "repeatedTie": "KEEP_MULTIPLIER",
+          "appliesTo": "TOTAL_INCLUDING_BONUS",
+          "afterAward": "RESET_TO_ONE"
+        },
+        "contentHash": "e94ca494dcd768868e14a0b92ff89969ce4839f4f57c0b29aabaf2d7528ab1e2",
+        "createdAt": "2026-09-13T00:00:00Z",
+        "turnPolicy": {
+          "timeLimitSeconds": 60,
+          "autoPlayOnTimeout": true,
+          "autoPlayPolicy": "FIRST_VALID_MOVE"
+        },
+        "capicuaPolicy": {
+          "detection": "LAST_TILE_PLAYABLE_ON_BOTH_ENDS",
+          "pipMultiplier": 2,
+          "multiplyBonus": false
+        }
       }
     }
   ]

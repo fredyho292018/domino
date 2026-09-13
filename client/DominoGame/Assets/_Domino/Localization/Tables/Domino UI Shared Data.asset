@@ -567,6 +567,86 @@ MonoBehaviour:
     m_Key: realtime.activity
     m_Metadata:
       m_Items: []
+  - m_Id: 2784011691520000
+    m_Key: mode.duel.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463040
+    m_Key: mode.duel.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463041
+    m_Key: player.human
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463042
+    m_Key: duel.choose_starter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463043
+    m_Key: duel.choose_tile
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463044
+    m_Key: duel.guess
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463045
+    m_Key: duel.even
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463046
+    m_Key: duel.odd
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463047
+    m_Key: duel.tile_one
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463048
+    m_Key: duel.tile_two
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463049
+    m_Key: duel.repeat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463050
+    m_Key: duel.starts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463051
+    m_Key: duel.handoff
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463052
+    m_Key: duel.privacy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463053
+    m_Key: result.capicua
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463054
+    m_Key: result.blocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463055
+    m_Key: game.player_score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463056
+    m_Key: game.time_expired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463057
+    m_Key: game.player_disconnected
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2784011733463058
+    m_Key: game.autoplay
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

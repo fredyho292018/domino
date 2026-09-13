@@ -709,6 +709,106 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 2784011691520000
+    m_Localized: One vs One
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463040
+    m_Localized: "Two humans \xB7 Shared device"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463041
+    m_Localized: Human
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463042
+    m_Localized: Choose who starts
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463043
+    m_Localized: Choose a tile
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463044
+    m_Localized: 'Guess the sum: even or odd?'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463045
+    m_Localized: Even
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463046
+    m_Localized: Odd
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463047
+    m_Localized: Tile 1
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463048
+    m_Localized: Tile 2
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463049
+    m_Localized: "Equal sums \u2014 choose again"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463050
+    m_Localized: Player {0} starts
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463051
+    m_Localized: "Player {0}\u2019s turn"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463052
+    m_Localized: Pass the device before continuing.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463053
+    m_Localized: Capicua
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463054
+    m_Localized: Blocked round
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463055
+    m_Localized: P{0}  {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463056
+    m_Localized: Time expired
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463057
+    m_Localized: Player disconnected
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 2784011733463058
+    m_Localized: Autoplay
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -846,3 +946,23 @@ MonoBehaviour:
         - id: 2496881836716033
         - id: 2496881840910336
         - id: 2496881840910337
+        - id: 2784011691520000
+        - id: 2784011733463040
+        - id: 2784011733463041
+        - id: 2784011733463042
+        - id: 2784011733463043
+        - id: 2784011733463044
+        - id: 2784011733463045
+        - id: 2784011733463046
+        - id: 2784011733463047
+        - id: 2784011733463048
+        - id: 2784011733463049
+        - id: 2784011733463050
+        - id: 2784011733463051
+        - id: 2784011733463052
+        - id: 2784011733463053
+        - id: 2784011733463054
+        - id: 2784011733463055
+        - id: 2784011733463056
+        - id: 2784011733463057
+        - id: 2784011733463058

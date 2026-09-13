@@ -11,6 +11,8 @@ namespace Domino.Game
         readonly List<DominoTile>[] hands;
         readonly List<DominoTile> chain = new(), reserve = new();
         int consecutivePasses;
+        public int RoundStarterSeat { get; private set; } = -1;
+        public int PreviousRoundWinnerSeat { get; private set; } = -1;
         public event Action<GameEvent> Changed;
         public int CurrentPlayer { get; private set; }
         public bool Finished { get; private set; }
@@ -32,8 +34,13 @@ namespace Domino.Game
         public IReadOnlyList<DominoTile> Hand(int player) => hands[player].AsReadOnly();
         public IReadOnlyList<DominoTile> Chain => chain.AsReadOnly();
         public IReadOnlyList<DominoTile> Reserve => reserve.AsReadOnly();
-        public void Start(int seed)
-        { Match.Reset(); Deal(seed); }
+        public void Start(int seed) => Start(seed, -1);
+        public void Start(int seed,int resolvedStarter)
+        {
+            if(Configuration.FirstRoundStarting.Mode==StartingPolicy.RandomStartMethod && (resolvedStarter<0||resolvedStarter>=Configuration.PlayerCount))
+                throw new ArgumentException("Resolve the starter mini-game before dealing.");
+            Match.Reset();PreviousRoundWinnerSeat=-1;RoundStarterSeat=resolvedStarter;Deal(seed);
+        }
         public bool StartNextRound(int seed)
         {
             if (!Finished || !Match.NextRound()) return false;
@@ -50,7 +57,10 @@ namespace Domino.Game
             int dealt = Configuration.TilesPerPlayer * Configuration.PlayerCount;
             for (int i = 0; i < dealt; i++) hands[Configuration.Deal.SeatOrder[i % hands.Length]].Add(tiles[i]);
             reserve.AddRange(tiles.GetRange(dealt, tiles.Count - dealt));
-            CurrentPlayer = Match.RoundNumber == 1 ? Configuration.FirstRoundStarting.Seat : Configuration.FollowingRoundStarting.Seat;
+            var starting=Match.RoundNumber==1?Configuration.FirstRoundStarting:Configuration.FollowingRoundStarting;
+            if(starting.Mode==StartingPolicy.FixedSeat) RoundStarterSeat=starting.Seat;
+            else if(starting.Mode==StartingPolicy.PreviousRoundWinner) RoundStarterSeat=PreviousRoundWinnerSeat;
+            CurrentPlayer=RoundStarterSeat;
             Finished = false; Blocked = false; Winner = -1; consecutivePasses = 0; Result = null;
             Changed?.Invoke(new GameEvent(GameEventType.GAME_STARTED));
             Changed?.Invoke(new GameEvent(GameEventType.TURN_CHANGED, CurrentPlayer));
@@ -67,6 +77,7 @@ namespace Domino.Game
         public bool TryPlay(int player, DominoTile tile, ChainEnd end = ChainEnd.Auto)
         {
             if (Finished || player != CurrentPlayer || !hands[player].Contains(tile) || !CanPlay(tile, end)) return false;
+            bool capicua=Configuration.Capicua!=null && chain.Count>0 && hands[player].Count==1 && CanPlay(tile,ChainEnd.Left) && CanPlay(tile,ChainEnd.Right);
             if (end == ChainEnd.Auto) end = CanPlay(tile, ChainEnd.Right) ? ChainEnd.Right : ChainEnd.Left;
             DominoTile oriented = tile;
             if (chain.Count > 0 && ((end == ChainEnd.Left && tile.SideB != LeftEnd) || (end == ChainEnd.Right && tile.SideA != RightEnd)))
@@ -74,7 +85,7 @@ namespace Domino.Game
             int index = end == ChainEnd.Left ? 0 : chain.Count;
             hands[player].Remove(tile); chain.Insert(index, oriented); consecutivePasses = 0;
             Changed?.Invoke(new GameEvent(GameEventType.TILE_PLAYED, player, oriented, index));
-            if (hands[player].Count == 0) Finish(player, false); else AdvanceTurn();
+            if (hands[player].Count == 0) Finish(player, false, capicua); else AdvanceTurn();
             return true;
         }
         public bool TryPass(int player)
@@ -85,12 +96,13 @@ namespace Domino.Game
             if (consecutivePasses == Configuration.PlayerCount) Finish(-1, true); else AdvanceTurn();
             return true;
         }
-        void Finish(int player, bool blocked)
+        void Finish(int player, bool blocked, bool capicua=false)
         {
             var points = new int[Configuration.PlayerCount];
             for (int p = 0; p < hands.Length; p++) foreach (var tile in hands[p]) points[p] += tile.SideA + tile.SideB;
-            Result = RoundScoring.Evaluate(Rules, points, player, blocked, Match.Multiplier);
+            Result = RoundScoring.Evaluate(Rules, points, player, blocked, Match.Multiplier, RoundStarterSeat, capicua);
             Match.Apply(Result);
+            PreviousRoundWinnerSeat=Result.WinnerPlayer;
             Finished = true; Winner = Result.WinnerPlayer; Blocked = blocked;
             Changed?.Invoke(new GameEvent(GameEventType.ROUND_FINISHED, Winner));
             if (Match.Finished) Changed?.Invoke(new GameEvent(GameEventType.GAME_FINISHED, Winner));

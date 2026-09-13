@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.Collections
 
 object GameCatalogValidator {
+    val duelCapabilities = RuleCapability.entries.map { it.name }.toSet()
     private fun id(value: String) = require(value.matches(Regex("[a-z0-9][a-z0-9-]{0,79}")))
     private fun metadata(created: String, updated: String = created) { Instant.parse(created); Instant.parse(updated) }
     fun resolve(p: GameCatalogPublication): GameCatalogSnapshot {
@@ -20,9 +21,15 @@ object GameCatalogValidator {
             id(m.id); id(m.defaultRuleSetId); metadata(m.createdAt,m.updatedAt)
             require(m.key.isNotBlank() && m.nameKey.isNotBlank() && m.descriptionKey.isNotBlank() && m.iconKey.isNotBlank())
             require(m.schemaVersion == 1 && m.topologyVersion > 0)
-            require(m.playerCount == 4 && m.teamSize == 2) // M1 supported topology, not speculative 1v1.
-            require(m.seatTeams.size == 2 && m.seatTeams.all { it.size == m.teamSize })
-            require(m.seatTeams.flatten().sorted() == (0 until m.playerCount).toList())
+            if(m.teamMode == TeamMode.FIXED_TEAMS) {
+                require(m.playerCount == 4 && m.teamSize == 2)
+                require(m.seatTeams.size == 2 && m.seatTeams.all { it.size == m.teamSize })
+                require(m.seatTeams.flatten().sorted() == (0 until m.playerCount).toList())
+            } else {
+                require(m.playerCount == 2 && m.teamSize == null && m.seatTeams.isEmpty())
+                require(m.minHumans == 2 && m.maxHumans == 2 && !m.botsAllowed)
+                require(m.onlinePolicy == DisconnectPolicy(180, true, true))
+            }
             require(m.minHumans in 1..m.playerCount && m.maxHumans in m.minHumans..m.playerCount)
             require(m.botsAllowed || m.minHumans == m.playerCount)
             require(m.executionModesSupported == listOf(ExecutionMode.LOCAL))
@@ -31,7 +38,7 @@ object GameCatalogValidator {
         p.versions.forEach { r ->
             id(r.id); metadata(r.createdAt)
             require(p.ruleSets.any { it.id == r.id })
-            require(r.version > 0 && r.ruleSchemaVersion == 1 && r.requiredCapabilities.isEmpty())
+            require(r.version > 0 && r.ruleSchemaVersion == 1 && r.requiredCapabilities.all { it in duelCapabilities })
             require(r.maxPip in 1..9 && r.tilesPerPlayer in 1..10 && r.targetScore > 0)
             require(r.finishScoring.bonus in 0..1000000 && r.blockedScoring.bonus in 0..1000000)
             require(r.tiePolicy.award == 0 && r.tiePolicy.nextRoundMultiplier == 2)
@@ -43,7 +50,19 @@ object GameCatalogValidator {
             val r = p.versions.single { it.id == b.ruleSetId && it.version == b.ruleSetVersion }
             val seats = (0 until m.playerCount).toList()
             require(r.turnOrder.sorted() == seats && r.dealPolicy.seatOrder.sorted() == seats)
-            require(r.firstRoundStarting.seat in seats && r.followingRoundStarting.seat in seats)
+            if(m.teamMode == TeamMode.NONE) {
+                require(r.requiredCapabilities.toSet() == duelCapabilities)
+                require(r.firstRoundStarting.mode == StartingMode.RANDOM_START_METHOD && r.firstRoundStarting.seat == -1)
+                val methods = requireNotNull(r.firstRoundStarting.methods)
+                require(methods.isNotEmpty() && methods.distinct().size == methods.size)
+                require(r.followingRoundStarting.mode == StartingMode.PREVIOUS_ROUND_WINNER && r.followingRoundStarting.seat == -1)
+                require(r.blockedPolicy.opposingTeamsMinimumTie == OpposingTie.ROUND_STARTER_WINS)
+                require(r.turnPolicy == TurnPolicy(60, true, AutoPlayPolicy.FIRST_VALID_MOVE))
+                require(r.capicuaPolicy == CapicuaPolicy(CapicuaDetection.LAST_TILE_PLAYABLE_ON_BOTH_ENDS, 2, false))
+            } else {
+                require(r.firstRoundStarting.mode == StartingMode.FIXED_SEAT && r.followingRoundStarting.mode == StartingMode.FIXED_SEAT)
+                require(r.firstRoundStarting.seat in seats && r.followingRoundStarting.seat in seats)
+            }
             require(m.playerCount.toLong() * r.tilesPerPlayer <= (r.maxPip + 1L) * (r.maxPip + 2L) / 2)
             if (b.active) require(p.ruleSets.single { it.id == b.ruleSetId }.active)
         }
@@ -58,7 +77,8 @@ object GameCatalogValidator {
                 m.playerCount,m.teamMode,m.teamSize,Collections.unmodifiableList(m.seatTeams.map { Collections.unmodifiableList(it.toList()) }),
                 m.minHumans,m.maxHumans,m.botsAllowed,Collections.unmodifiableList(m.executionModesSupported.toList()),m.defaultRuleSetId,
                 r.copy(requiredCapabilities=Collections.unmodifiableList(r.requiredCapabilities.toList()), turnOrder=Collections.unmodifiableList(r.turnOrder.toList()),
-                    dealPolicy=r.dealPolicy.copy(seatOrder=Collections.unmodifiableList(r.dealPolicy.seatOrder.toList()))))
+                    dealPolicy=r.dealPolicy.copy(seatOrder=Collections.unmodifiableList(r.dealPolicy.seatOrder.toList())),
+                    firstRoundStarting=r.firstRoundStarting.copy(methods=r.firstRoundStarting.methods?.let { Collections.unmodifiableList(it.toList()) })), m.onlinePolicy)
         }.sortedWith(compareBy({it.sortOrder},{it.id}))
         return GameCatalogSnapshot(1,p.catalogVersion,Collections.unmodifiableList(modes))
     }

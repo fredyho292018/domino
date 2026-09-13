@@ -15,8 +15,11 @@ namespace Domino.Client
         {
             if (string.IsNullOrWhiteSpace(json) || !json.TrimStart().StartsWith("{", StringComparison.Ordinal))
                 throw new ArgumentException("Expected a JSON configuration object.");
-            var dto = new GameConfigurationDto();
-            JsonUtility.FromJsonOverwrite(json, dto);
+            GameConfigurationDto dto;
+            // Preserve absent optional policy objects. Unity's inline serializer materializes
+            // them as empty objects, which changes the meaning of the legacy v1 fixture.
+            try { dto = Newtonsoft.Json.JsonConvert.DeserializeObject<GameConfigurationDto>(json); }
+            catch (Newtonsoft.Json.JsonException error) { throw new ArgumentException("Invalid configuration JSON.", error); }
             return GameConfigurationValidator.Validate(dto);
         }
     }

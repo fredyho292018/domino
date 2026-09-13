@@ -460,7 +460,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 745304124
-    m_Localized: "Tranca empatada \xB7 Pr\xF3xima ronda \xD7{0}"
+    m_Localized: "Tranque empatado \xB7 Pr\xF3xima ronda \xD7{0}"
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
@@ -710,9 +710,111 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 2784011691520000
+    m_Localized: Uno contra uno
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463040
+    m_Localized: "Dos personas \xB7 Dispositivo compartido"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463041
+    m_Localized: Humano
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463042
+    m_Localized: "Decidir qui\xE9n sale"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463043
+    m_Localized: Escoge una ficha
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463044
+    m_Localized: "\xBFLa suma es par o impar?"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463045
+    m_Localized: Par
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463046
+    m_Localized: Impar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463047
+    m_Localized: Ficha 1
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463048
+    m_Localized: Ficha 2
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463049
+    m_Localized: "Sumas iguales \u2014 volver a escoger"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463050
+    m_Localized: Sale el jugador {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463051
+    m_Localized: Turno del jugador {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463052
+    m_Localized: Entrega el dispositivo antes de continuar.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463053
+    m_Localized: "Capic\xFAa"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463054
+    m_Localized: Tranque
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463055
+    m_Localized: J{0}  {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463056
+    m_Localized: Tiempo agotado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463057
+    m_Localized: Jugador desconectado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2784011733463058
+    m_Localized: Autoplay
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 7246862583952572444
       type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
       data:
@@ -847,3 +949,23 @@ MonoBehaviour:
         - id: 2496881836716033
         - id: 2496881840910336
         - id: 2496881840910337
+        - id: 2784011691520000
+        - id: 2784011733463040
+        - id: 2784011733463041
+        - id: 2784011733463042
+        - id: 2784011733463043
+        - id: 2784011733463044
+        - id: 2784011733463045
+        - id: 2784011733463046
+        - id: 2784011733463047
+        - id: 2784011733463048
+        - id: 2784011733463049
+        - id: 2784011733463050
+        - id: 2784011733463051
+        - id: 2784011733463052
+        - id: 2784011733463053
+        - id: 2784011733463054
+        - id: 2784011733463055
+        - id: 2784011733463056
+        - id: 2784011733463057
+        - id: 2784011733463058

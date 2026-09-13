@@ -13,6 +13,7 @@ namespace Domino.Catalog
     public sealed class GameCatalogCodec
     {
         public const int MaxBytes = 262144;
+        public static readonly string[] DuelCapabilities = { "DUEL_TOPOLOGY", "RANDOM_START_METHOD", "HIGH_TILE_SELECTION", "EVEN_ODD_GUESS", "PREVIOUS_ROUND_WINNER_START", "BLOCKED_TIE_STARTER_WINS", "CAPICUA_SCORING_V1" };
         public GameCatalogSnapshot Read(string json)
         {
             if (string.IsNullOrEmpty(json) || Encoding.UTF8.GetByteCount(json)>MaxBytes) throw new FormatException("SIZE");
@@ -27,17 +28,20 @@ namespace Domino.Catalog
             {
                 var m=token as JObject ?? throw new FormatException("MODE");
                 string id=Text(m,"id"),key=Text(m,"key");Require(ids.Add(id)&&keys.Add(key),"DUPLICATE");
-                int topology=Int(m,"topologyVersion"),players=Int(m,"playerCount"),size=Int(m,"teamSize");
-                Require(topology>0&&players==4&&size==2&&Text(m,"teamMode")=="FIXED_TEAMS","TOPOLOGY");
+                int topology=Int(m,"topologyVersion"),players=Int(m,"playerCount");
+                string teamMode=Text(m,"teamMode"); bool duel=teamMode=="NONE";
+                Require(topology>0 && (duel ? players==2&&m["teamSize"]?.Type==JTokenType.Null : players==4&&Int(m,"teamSize")==2&&teamMode=="FIXED_TEAMS"),"TOPOLOGY");
                 Require(Text(m,"availability")=="ALL","AVAILABILITY");
                 var executions=Array(m,"executionModesSupported");Require(executions.Count==1&&executions[0].Type==JTokenType.String&&(string)executions[0]=="LOCAL","EXECUTION");
                 int min=Int(m,"minHumans"),max=Int(m,"maxHumans");bool bots=Bool(m,"botsAllowed");
                 Require(min>=1&&min<=max&&max<=players&&(bots||min==players),"HUMANS");
                 var teams=Array(m,"seatTeams");
-                Require(teams.Count==2&&teams.All(t=>t is JArray a&&a.Count==2&&a.All(x=>x.Type==JTokenType.Integer)),"TEAMS");
+                Require(duel ? teams.Count==0 : teams.Count==2&&teams.All(t=>t is JArray a&&a.Count==2&&a.All(x=>x.Type==JTokenType.Integer)),"TEAMS");
                 var r=m["ruleSet"] as JObject ?? throw new FormatException("RULES");
                 Require(Int(r,"ruleSchemaVersion")==1,"RULE_SCHEMA");
-                Require(Array(r,"requiredCapabilities").Count==0,"CAPABILITY");
+                var capabilities=Array(r,"requiredCapabilities");
+                Require(capabilities.All(x=>x.Type==JTokenType.String&&DuelCapabilities.Contains((string)x)),"CAPABILITY");
+                if(duel) Require(capabilities.Count==DuelCapabilities.Length && DuelCapabilities.All(x=>capabilities.Values<string>().Contains(x)),"DUEL_CAPABILITIES");
                 Require(Text(r,"tileSet")=="DOUBLE_N"&&Text(r,"reservePolicy")=="RESERVE","TILE_SET");
                 string ruleId=Text(r,"id"),hash=Text(r,"contentHash");
                 Require(ruleId==Text(m,"defaultRuleSetId")&&hash==Hash(r),"HASH_OR_BINDING");
@@ -51,15 +55,26 @@ namespace Domino.Catalog
                 Int((JObject)r["tiePolicy"],"award");Int((JObject)r["tiePolicy"],"nextRoundMultiplier");
                 Require(Array(r,"turnOrder").All(x=>x.Type==JTokenType.Integer)&&Array((JObject)r["dealPolicy"],"seatOrder").All(x=>x.Type==JTokenType.Integer),"ORDER");
                 var dto=new GameConfigurationDto {
-                    id=ruleId,version=Int(r,"version"),schemaVersion=1,rulesetVersion="1.0",playerCount=players,teamMode="FIXED_TEAMS",
+                    id=ruleId,version=Int(r,"version"),schemaVersion=1,rulesetVersion="1.0",playerCount=players,teamMode=teamMode,
                     teamAssignments=teams.Select(t=>new TeamAssignmentDto {members=t.Values<int>().ToArray()}).ToArray(),
                     maxPip=Int(r,"maxPip"),tilesPerPlayer=Int(r,"tilesPerPlayer"),targetScore=Int(r,"targetScore"),
                     deal=r["dealPolicy"].ToObject<DealPolicyDto>(),drawPolicy=Text(r,"drawPolicy"),turnOrder=r["turnOrder"].ToObject<int[]>(),
                     firstRoundStarting=r["firstRoundStarting"].ToObject<StartingPolicyDto>(),followingRoundStarting=r["followingRoundStarting"].ToObject<StartingPolicyDto>(),
                     openingTilePolicy=Text(r,"openingTilePolicy"),passPolicy=Text(r,"passPolicy"),blocked=r["blockedPolicy"].ToObject<BlockedPolicyDto>(),
-                    finishScoring=r["finishScoring"].ToObject<ScoringPolicyDto>(),blockedScoring=r["blockedScoring"].ToObject<ScoringPolicyDto>(),tie=r["tiePolicy"].ToObject<TiePolicyDto>() };
+                    finishScoring=r["finishScoring"].ToObject<ScoringPolicyDto>(),blockedScoring=r["blockedScoring"].ToObject<ScoringPolicyDto>(),tie=r["tiePolicy"].ToObject<TiePolicyDto>(), turnPolicy=r["turnPolicy"]?.ToObject<TurnPolicyDto>(),capicuaPolicy=r["capicuaPolicy"]?.ToObject<CapicuaPolicyDto>() };
+                DisconnectPolicySnapshot online=null;
+                if(duel) {
+                    Require(!bots&&min==2&&max==2,"DUEL_HUMANS");
+                    var o=m["onlinePolicy"] as JObject??throw new FormatException("ONLINE_POLICY");
+                    Require(Int(o,"reconnectWindowSeconds")==180&&Bool(o,"turnClockContinuesWhileDisconnected")&&Bool(o,"autoPlayWhileDisconnected"),"ONLINE_POLICY");
+                    online=new DisconnectPolicySnapshot(180,true,true);
+                    var t=r["turnPolicy"] as JObject??throw new FormatException("TURN_POLICY");
+                    Require(Int(t,"timeLimitSeconds")==60&&Bool(t,"autoPlayOnTimeout")&&Text(t,"autoPlayPolicy")=="FIRST_VALID_MOVE","TURN_POLICY");
+                    var c=r["capicuaPolicy"] as JObject??throw new FormatException("CAPICUA_POLICY");
+                    Require(Int(c,"pipMultiplier")==2&&!Bool(c,"multiplyBonus"),"CAPICUA_POLICY");
+                }
                 result.Add(new GameModeSnapshot(id,key,Text(m,"nameKey"),Text(m,"descriptionKey"),Text(m,"iconKey"),Bool(m,"active"),Int(m,"sortOrder"),topology,min,max,bots,
-                    new RuleSetSnapshot(GameConfigurationValidator.Validate(dto),hash)));
+                    new RuleSetSnapshot(GameConfigurationValidator.Validate(dto),hash,capabilities.Values<string>().Select(x=>(RuleCapability)Enum.Parse(typeof(RuleCapability),x)).ToArray()), online));
             }
             return new GameCatalogSnapshot(version,result);
         }
