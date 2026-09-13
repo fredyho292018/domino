@@ -28,6 +28,9 @@ namespace Domino.Catalog
         public bool BotsAllowed { get; }
         public RuleSetSnapshot RuleSet { get; }
         public int PlayerCount => RuleSet.Configuration.PlayerCount;
+        public TeamMode TeamMode => RuleSet.Configuration.TeamMode;
+        public IReadOnlyList<System.Collections.ObjectModel.ReadOnlyCollection<int>> SeatTeams => RuleSet.Configuration.TeamAssignments;
+        public int TeamSize => SeatTeams[0].Count;
         public string ExecutionMode => "LOCAL";
         public string Availability => "ALL";
         internal GameModeSnapshot(string id,string key,string name,string description,string icon,bool active,int sort,int topology,

@@ -42,7 +42,7 @@ namespace Domino.Client
                 Debug.Log("MODE_RESPONSIVE=PASS " + names[i]);
             }
             client.Menu.MainPlay.onClick.Invoke(); client.Menu.ModePlay.onClick.Invoke();
-            Check(client.Session.Mode == GameModeDefinition.TeamMatch && client.State != null, "TEAM_MATCH_SELECTED / MATCH_STARTS");
+            Check(client.Session.Mode.Key == Domino.Catalog.GameCatalogConfigurationAdapter.SupportedModeKey && client.State != null, "TEAM_MATCH_SELECTED / MATCH_STARTS");
             Check(client.Session.LocalPlayerSeat == 0 && client.Session.Mode.BotCount == 3 && client.Session.Mode.LocalPlayerCount == 1, "Participant ownership");
             for (int p = 0; p < 4; p++) Check(client.Session.IsBot(p) == (p != 0), "Bots unchanged");
             Check(client.State.Configuration.PlayerCount == 4 && client.State.Configuration.GetTeamForPlayer(0) == 0

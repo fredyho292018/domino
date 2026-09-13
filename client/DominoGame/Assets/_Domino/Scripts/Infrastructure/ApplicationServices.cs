@@ -35,6 +35,7 @@ namespace Domino.Infrastructure
         public static Func<IDominoApiClient> ValidationPlayerApiFactory;
         public static Func<RewardVerificationService, IRewardedAdsService> ValidationRewardedFactory;
         public static Func<Domino.Rewards.IMonetizationPolicyApi> ValidationMonetizationFactory;
+        public static Func<IAuthTokenProvider, Domino.Catalog.GameCatalogService> ValidationGameCatalogFactory;
 #endif
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset()
@@ -77,7 +78,10 @@ namespace Domino.Infrastructure
                     new Domino.Catalog.GameCatalogApi(settings, (IAuthTokenProvider)client, new UnityApiTransport()),
                     new Domino.Catalog.FileGameCatalogCache(System.IO.Path.Combine(Application.persistentDataPath, "game-catalog-v1.json")),
                     bundled ? bundled.text : "", lifetime.Token, Debug.Log);
-            } catch { Debug.LogWarning("[GAME-CATALOG] passive initialization unavailable; local gameplay unchanged"); }
+#if UNITY_EDITOR
+                if (ValidationGameCatalogFactory != null) GameCatalog = ValidationGameCatalogFactory((IAuthTokenProvider)client);
+#endif
+            } catch { Debug.LogWarning("[GAME-CATALOG] initialization unavailable; no valid bundled catalog"); }
             IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
             var rewardHttp = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
             IRewardIntentApi rewardApi = rewardHttp;
@@ -124,7 +128,7 @@ namespace Domino.Infrastructure
                 await RoundRewards.RecoverAsync();
             }
         }
-        // Menu-triggered and passive: never assigns the catalog to SessionSetup or ClientGame.
+        // Menu-triggered refresh changes future resolutions only; active sessions keep their snapshot.
         public static async Task RefreshGameCatalogAsync(bool force = false)
         {
             var catalog = GameCatalog; var identity = Identity;

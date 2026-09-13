@@ -24,11 +24,12 @@ namespace Domino.Catalog
             CancellationToken lifetime=default,Action<string> log=null,Func<DateTimeOffset> now=null)
         {
             this.api=api;this.cache=cache;this.lifetime=lifetime;this.log=log??(_=>{});this.now=now??(()=>DateTimeOffset.UtcNow);codec=new GameCatalogCodec();
-            Current=codec.Read(bundled);acceptedJson=bundled;Source=GameCatalogSource.Bundled;
+            Current=codec.Read(bundled);GameCatalogConfigurationAdapter.SupportedMode(Current);acceptedJson=bundled;Source=GameCatalogSource.Bundled;
             try {
                 var saved=cache.Read();
                 if(saved!=null) {
                     var snapshot=codec.Read(saved.Json);
+                    GameCatalogConfigurationAdapter.SupportedMode(snapshot);
                     if(saved.DownloadedAt>this.now().AddMinutes(1))throw new FormatException();
                     Current=snapshot;acceptedJson=saved.Json;Source=GameCatalogSource.Cache;freshUntil=saved.DownloadedAt.AddSeconds(CacheTtlSeconds);
                     this.log("[GAME-CATALOG] cache hit version="+Current.CatalogVersion);
@@ -44,6 +45,7 @@ namespace Domino.Catalog
                 log("[GAME-CATALOG] remote load started");
                 var json=await api.FetchAsync(lifetime);lifetime.ThrowIfCancellationRequested();
                 var next=codec.Read(json);
+                GameCatalogConfigurationAdapter.SupportedMode(next);
                 // Never replace a valid publication with different rules under the same version.
                 if(next.CatalogVersion==Current.CatalogVersion&& !Newtonsoft.Json.Linq.JToken.DeepEquals(
                     Newtonsoft.Json.Linq.JObject.Parse(json),Newtonsoft.Json.Linq.JObject.Parse(acceptedJson)))throw new FormatException();
@@ -61,5 +63,8 @@ namespace Domino.Catalog
             }
             finally { gate.Release(); }
         }
+        // Synchronous main-thread resolution; does not fetch or wait for identity/network.
+        // Existing sessions retain this immutable object when Current is replaced.
+        public MatchRuleSnapshot ResolveMatch() => GameCatalogConfigurationAdapter.Freeze(Current,Source);
     }
 }

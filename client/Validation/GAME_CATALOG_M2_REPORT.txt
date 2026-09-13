@@ -1,0 +1,119 @@
+DOMINO GAME MODES & RULESETS — PHASE M2 REPORT
+==============================================
+BRANCH=main
+SOURCE_SHA_BEFORE=201c8195a3d4d6fd13195e0ed058d7047e3aab50
+SOURCE_SHA_AFTER=201c8195a3d4d6fd13195e0ed058d7047e3aab50
+M1_COMMIT=201c8195a3d4d6fd13195e0ed058d7047e3aab50
+
+AUTHORITY
+GAMEPLAY_USES_GAME_CATALOG=YES
+LEGACY_CONFIG_PRIMARY_AUTHORITY=NO
+EFFECTIVE_CONFIG_ADAPTER=GameCatalogConfigurationAdapter.Freeze / GameCatalogService.ResolveMatch
+MATCH_RULE_SNAPSHOT_FROZEN=YES
+
+SOURCE RESOLUTION
+REMOTE_SOURCE=PASS
+CACHE_SOURCE=PASS
+BUNDLED_FALLBACK_SOURCE=PASS
+NO_MIXED_SOURCE_CONFIG=PASS
+START_BEFORE_REMOTE_READY=PASS
+
+MODE
+MODE_KEY=PARTNERS_2V2
+PLAYER_COUNT=4
+TEAM_TOPOLOGY_SOURCE=GAME_MODE_SNAPSHOT
+TEAMS=[0,2] vs [1,3]
+BOT_ASSIGNMENT=1 LOCAL_HUMAN + 3 BOT
+
+RULESET
+RULESET_ID=double-nine-partners
+RULESET_VERSION=1
+DEAL_ORDER=[0,1,2,3]
+TURN_ORDER=[0,3,2,1]
+MAX_PIP=9
+TILES_PER_PLAYER=10
+DRAW_POLICY=NONE
+TARGET_SCORE=200
+
+PARITY
+DEAL_PARITY=PASS
+TURN_PARITY=PASS
+OPENING_PARITY=PASS
+PASS_PARITY=PASS
+TRANQUE_PARITY=PASS
+SCORING_PARITY=PASS
+TIE_PARITY=PASS
+MATCH_END_PARITY=PASS
+SAME_SEED_DIFFERENTIAL=PASS
+
+SNAPSHOT
+ACTIVE_MATCH_CATALOG_REFRESH_SAFE=PASS
+NEXT_MATCH_CAN_USE_REFRESHED_CATALOG=PASS
+
+FALLBACK
+INVALID_REMOTE_REJECTED=PASS
+UNSUPPORTED_SCHEMA_REJECTED=PASS
+UNSUPPORTED_CAPABILITY_REJECTED=PASS
+REMOTE_FAILURE_LOCAL_PLAY=PASS
+
+TESTS
+BACKEND_TEST_COUNT=348 (346 PASS, 2 optional integration tests SKIPPED)
+BACKEND_TESTS=PASS
+BACKEND_BUILD=PASS
+M2_UNITY_TESTS=PASS (251685 checks)
+GOLDEN_GAMEPLAY_TESTS=PASS (100 seeded matches)
+DIFFERENTIAL_PARITY_TESTS=PASS (250 rounds)
+CURRENT_SCORING_GOLDEN_HASH=CF8D7610D54AF6C74C3A6F1A20A3FAE0881C2FAF8A46F6E78EC0273893DB26EC
+M1_REGRESSION=PASS (42)
+PLAYER_FOUNDATION=PASS (469 checks including realtime)
+GUEST_AUTH=PASS (43)
+REALTIME_G3=PASS
+MONETIZATION=PASS (H1=31, H2=46, H3=30, H4=35, H5=27, H6=26)
+PORTRAIT=PASS (139402 checks; nine sizes; all four local seats; EN/ES)
+GAMEPLAY=PASS (existing domain: 2981089 checks / 1000 games; configuration: 82; scoring: 32679)
+UNITY_COMPILATION=PASS
+UNITY_PLAY_MODE=PASS
+CONSOLE_ERRORS=0 in M2 remote/cache/bundled and Portrait runs; 1 assertion in separate legacy Landscape menu run
+LEGACY_LANDSCAPE_MODE_SMOKE=FAIL (Card inside safe area)
+LEGACY_LANDSCAPE_BASELINE_COMPARISON=SAME_FAILURE with HEAD controller, mode definition and smoke test restored in isolated project
+OVERALL_VALIDATION=PASS for M2 migration; pre-existing Landscape menu validation issue remains
+
+OFFLINE
+SERVICE_RECONSTRUCTION_CACHE=PASS
+FULL_EDITOR_RESTART=PASS
+PHYSICAL_DEVICE=NOT_RUN
+
+FIRESTORE
+REAL_FIRESTORE_CHANGED=NO
+GAME_CATALOG_VERSION=1
+Remote test read the actual local authenticated catalog endpoint with an existing Firebase identity.
+The v2 target-250 refresh was a test-only transport fixture; no Firestore publication was changed.
+The real v1 cache was restored before closing the remote validation Editor.
+Cache and bundled fallback were validated in separate new Unity processes with that backend stopped.
+The user's ordinary Unity Editor and backend were not stopped.
+
+EXTERNAL
+DUEL_1V1_IMPLEMENTED=NO
+ONLINE_MATCH_ENGINE=NO
+MATCH_HISTORY=NO
+REPLAY=NO
+H7_STARTED=NO
+BACKEND_SOURCE_CHANGED=NO
+MONETIZATION_CHANGED=NO
+
+GIT
+COMMIT=NONE
+PUSH=NONE
+
+NOTES
+Gameplay does not read the legacy scene configuration reference. It remains hidden for older editor tests.
+The real-source Editor tests cleared that reference in memory and still started/dealt the match.
+Menu preview metadata is captured at menu initialization; new matches resolve the latest accepted catalog.
+Editor evidence: client/Validation/Generated/M2Evidence/{REMOTE,CACHE,BUNDLED_FALLBACK}.txt.
+Generated test artifacts and isolated Unity copy are ignored by Git.
+The supplementary legacy RunModes assertion reproduced with the pre-M2 controller, mode definition and validator. The menu source was unchanged. This is not reported as PASS and was not repaired as part of the catalog migration. Logs: Generated/m2-modes.log and Generated/m2-modes-baseline.log. Current M2 scripts were restored in the isolated copy after the comparison.
+
+RECOMMENDED NEXT TASK
+Review and checkpoint M2 with commit/push when authorized.
+Then M3: DUEL_1V1 foundation, two human seats, generic topology and two-player Portrait/UI.
+No M3 work was started.

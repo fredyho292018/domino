@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Domino.Core;
 using Domino.Game;
 using Domino.UI;
+using Domino.Catalog;
+using Domino.Infrastructure;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -13,15 +15,14 @@ namespace Domino.Client
     {
         [SerializeField] DominoTileView tilePrefab;
         [SerializeField] PlayerView playerPrefab;
-        [Header("Configuración local de reglas")]
-        [SerializeField] TextAsset configurationJson;
+        // Serialized legacy reference retained for differential/editor validation only.
+        [SerializeField, HideInInspector] TextAsset configurationJson;
         ClientGame game;
         readonly Queue<GameEvent> events = new();
         BoardView board;
         DominoTileView selected;
         bool acceptingInput;
         bool previewing;
-        Domino.Configuration.GameConfigurationSnapshot configuration;
         StartMenuView startMenu;
         public StartMenuView Menu => startMenu;
         public SessionSetup Session { get; private set; }
@@ -32,28 +33,21 @@ namespace Domino.Client
         {
             Application.targetFrameRate = 60;
             yield return DominoLocalization.Initialize();
-            try
-            {
-                configuration = LocalGameConfiguration.Load(configurationJson);
-                Debug.Log($"CONFIGURATION_LOAD=SUCCESS id={configuration.Id} version={configuration.Version} schema={configuration.SchemaVersion} ruleset={configuration.RulesetVersion}");
-            }
-            catch (Exception error)
-            {
-                Debug.LogError("CONFIGURATION_LOAD=FAILURE: " + error.Message, this);
-                enabled = false;
-                yield break;
-            }
+            var preview = ResolveConfiguration();
             if (!tilePrefab || !playerPrefab) throw new InvalidOperationException("Assign the DominoTile and Player prefabs in DominoClient.");
             if (!FindFirstObjectByType<EventSystem>()) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             startMenu = new GameObject("Domino Start Menu", typeof(RectTransform)).AddComponent<StartMenuView>();
-            startMenu.Initialize(GameModeDefinition.TeamMatch, configuration);
+            startMenu.Initialize(new GameModeDefinition(preview.Mode), preview.Configuration);
             startMenu.StartRequested += StartMatch;
         }
         public void StartMatch(GameModeDefinition mode) => StartMatch(mode, mode.LocalPlayerSeat);
         public void StartMatch(GameModeDefinition mode, int localPlayerSeat)
         {
             if (Session != null) return;
-            Session = new SessionSetup(mode, configuration, localPlayerSeat);
+            if(mode==null||mode.Key!=GameCatalogConfigurationAdapter.SupportedModeKey)throw new ArgumentException("Unsupported mode.");
+            var resolved=ResolveConfiguration();
+            Session = new SessionSetup(resolved, localPlayerSeat);
+            Debug.Log(resolved.Diagnostic);
             game = new ClientGame(new GameRules(Session.Configuration));
             startMenu.Show(StartScreen.Match);
             board = new GameObject("Domino Canvas", typeof(RectTransform)).AddComponent<BoardView>();
@@ -68,6 +62,8 @@ namespace Domino.Client
             game.Changed += Enqueue;
             RestartClient();
         }
+        static MatchRuleSnapshot ResolveConfiguration() =>
+            (ApplicationServices.GameCatalog ?? throw new InvalidOperationException("No valid bundled game catalog available.")).ResolveMatch();
         public void ExitMatch()
         {
             StopAllCoroutines(); events.Clear(); acceptingInput = false; previewing = false; selected = null;
