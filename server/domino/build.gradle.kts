@@ -71,3 +71,13 @@ tasks.register<JavaExec>("publishGameCatalogV2") {
     mainClass.set("com.teamfho.domino.catalog.GameCatalogV2Publisher")
     args("--publish-v2", "--verify-rollback")
 }
+
+tasks.register<JavaExec>("validateMatchM4Firestore") {
+    group = "verification"
+    description = "Explicit isolated M4 match/event/history validation using ADC; no wallet writes."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.match.MatchFirestoreValidation")
+    args("--validate-m4")
+    providers.gradleProperty("m4MatchId").orNull?.let { args("--inspect-match=$it") }
+}

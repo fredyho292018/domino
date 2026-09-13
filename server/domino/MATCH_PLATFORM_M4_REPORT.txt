@@ -1,0 +1,165 @@
+DOMINO MATCH PLATFORM — PHASE M4 REPORT
+======================================
+STATUS=PASS_READY_FOR_REVIEW
+BRANCH=main
+SOURCE_SHA_BEFORE=a0f373eacc95e334baf377566056432a683efad0
+SOURCE_SHA_AFTER=a0f373eacc95e334baf377566056432a683efad0
+M3_COMMIT=a0f373eacc95e334baf377566056432a683efad0
+
+MATCH DOMAIN
+MATCH_IMPLEMENTED=YES
+MATCH_PARTICIPANT_IMPLEMENTED=YES
+MATCH_ROUND_IMPLEMENTED=YES
+MATCH_RULE_SNAPSHOT_IMPLEMENTED=YES
+MATCH_RULE_SNAPSHOT_IMMUTABLE=PASS
+RULE_SNAPSHOT_STORAGE=matches/{matchId}.ruleSnapshot; canonical effectiveModeJson includes complete typed topology/rules and policies; detached typed views; SHA-256
+ENGINE_SEMANTICS_VERSION=domino-m3-v1
+MATCH_CREATION_AUTHORITY=GameCatalogService; no client rule JSON/creation endpoint
+
+EVENTS
+MATCH_EVENT_IMPLEMENTED=YES
+STRICT_SEQUENCE=PASS
+EVENT_SCHEMA_VERSION=1
+EVENT_ID_STRATEGY=12_DIGIT_ZERO_PADDED_SEQUENCE
+ATOMIC_MATCH_EVENT_SEQUENCE=PASS
+COMMAND_IDEMPOTENCY=PASS (memory concurrency + real Firestore repeated command)
+PUBLIC_PRIVATE_VISIBILITY=PASS
+PRIVATE_HAND_PUBLIC_LEAK=NO
+CURRENT_EVENT_TYPES=MATCH_STARTED, ROUND_STARTED, HAND_DEALT, STARTER_SELECTION_PRIVATE, TURN_STARTED, TILE_PLAYED, TURN_CHANGED, PLAYER_PASSED, ROUND_FINISHED, MATCH_FINISHED
+
+HISTORY
+PLAYER_MATCH_HISTORY_IMPLEMENTED=YES
+HISTORY_ENDPOINT=GET /api/v1/players/me/matches
+HISTORY_UID_SOURCE=Authenticated FirebaseIdentity only
+PAGINATION=limit 1..100, default20; document-ID ascending keyset cursor
+HISTORY_SORT_LIMITATION=Stable ID order, not chronological; finishedAt + ID ordering/index reserved for future recent-history UI
+HISTORY_CONTENT=Summary only; no private hands or full event list
+PREMIUM_GATING=NOT_IMPLEMENTED
+
+REPLAY FOUNDATION
+REPLAY_READY_EVENT_MODEL=YES
+MINIMAL_PURE_REDUCER=YES (board, turn, score, remaining counts, private hands/setup)
+CAPICUA_REPLAY_DATA=PASS
+TRANQUE_REPLAY_DATA=PASS
+TURN_TIMEOUT_EVENT_PREPARED=YES
+AUTO_PLAYED_EVENT_PREPARED=YES
+RECONNECT_EVENTS_PREPARED=YES
+REPLAY_UI=NO
+GENERAL_EVENTS_ENDPOINT=NOT_IMPLEMENTED
+
+SPECTATOR FOUNDATION
+SPECTATOR_POLICY_MODELED=YES
+DEFAULT_SPECTATOR_DELAY_SECONDS=90
+MIN_HAND_VIEW_DELAY_SECONDS=60
+MIN_HAND_DELAY_OVERRIDE=domino.match.min-hand-spectator-delay-seconds / MIN_HAND_SPECTATOR_DELAY_SECONDS; cannot lower below60
+PLAYER_HAND_VIEW=SELECTED_PLAYER_DELAYED
+PUBLIC_MATCH_SNAPSHOT=YES
+PRIVATE_PLAYER_SNAPSHOT=YES
+DELAYED_SPECTATOR_SNAPSHOT=YES
+SAME_TIMELINE_ENFORCED=PASS
+CUTOFF_910_EVENT_909=INCLUDED
+CUTOFF_910_EVENT_910=INCLUDED
+CUTOFF_910_EVENT_911=EXCLUDED
+CURRENT_PRIVATE_HAND_EXPOSED=NO
+LIVE_SPECTATOR_RUNTIME=NO
+SPECTATOR_CLIENT_DELAY_AUTHORITY=NO
+
+FIRESTORE
+MATCH_PATH=matches/{matchId}
+PLAYERS_PATH=matches/{matchId}/players/{seatIndex}
+ROUNDS_PATH=matches/{matchId}/rounds/{roundNumber}
+EVENTS_PATH=matches/{matchId}/events/{eventId}
+HISTORY_PATH=players/{uid}/matchHistory/{matchId}
+COMMAND_RECEIPT_PATH=matches/{matchId}/commands/{commandId}
+REAL_FIRESTORE_M4=PASS
+REAL_VALIDATION_MATCH_ID=m4-validation-fc628d1d-c823-480a-ac18-0ccbb810f49c
+REAL_VALIDATION_PARTICIPANTS=2
+REAL_VALIDATION_ROUNDS=2
+REAL_VALIDATION_EVENTS=16
+REAL_VALIDATION_HISTORY_PROJECTIONS=2
+REAL_VALIDATION_IDEMPOTENT=PASS
+REAL_DATA_CLEANUP=Retained and explicitly marked validationData=true; synthetic validation UID namespace; earlier interrupted validation also marked
+FIREBASE_USERS_CREATED=0
+WALLET_WRITES=0
+LEDGER_WRITES=0
+CATALOG_WRITES=0
+DEPLOYED_FIRESTORE_CLIENT_RULES=NOT_VALIDATED (no tracked rules source; no direct Unity Match integration added)
+
+SUPPORTED MODES
+PARTNERS_2V2=PASS
+DUEL_1V1=PASS
+PARTICIPANT_TOPOLOGY=Generic configured seats and optional teams; bots have no fabricated Firebase UID
+OFFLINE_GAMEPLAY_REQUIRES_PERSISTENCE=NO
+LOCAL_UNITY_EVENT_ADAPTER=NOT_CONNECTED; deterministic confirmed server-side validation streams exercise persistence/reconstruction
+
+ONLINE PREPARATION
+TURN_TIME_LIMIT_SECONDS=60 (frozen duel policy)
+RECONNECT_WINDOW_SECONDS=180 (frozen duel policy)
+ONLINE_MATCH_ENGINE=NO
+TURN_TIMER_RUNTIME=NO
+AUTOPLAY_RUNTIME=NO
+RECONNECT_RUNTIME=NO
+ABANDON_RUNTIME=NO
+MOVE_LEGALITY_AUTHORITY=Deferred to I1; current service accepts only internal confirmed domain transitions
+
+REDIS / WEBSOCKET
+REDIS_CHANGED=NO
+WEBSOCKET_GAMEPLAY=NO
+SPECTATOR_WEBSOCKET=NO
+
+TESTS
+BACKEND_TEST_COUNT=399
+BACKEND_TESTS=397 PASS; failures0; errors0
+OPTIONAL_TESTS_SKIPPED=2 (RealFirestorePolicyTests, RedisPresenceTests)
+M4_TESTS=35 PASS (31 domain/repository/privacy + 4 authenticated HTTP)
+REAL_FIRESTORE_EXECUTABLE=PASS (separate opt-in test; not included in JUnit count)
+M3_REGRESSION=PASS (14720 checks, 200 duel rounds)
+M2_2V2_PARITY=PASS (251685 checks, 250 differential rounds, 100 golden matches)
+M2_TRACE=CF8D7610D54AF6C74C3A6F1A20A3FAE0881C2FAF8A46F6E78EC0273893DB26EC
+GAME_CATALOG=PASS (42 M1 checks)
+PLAYER_FOUNDATION=PASS (469 checks, includes realtime client regression)
+GUEST_AUTH=PASS (43)
+REALTIME_G3=PASS (backend suite and client regression; optional real Redis test skipped)
+MONETIZATION=PASS (backend regressions; client H1 31/H2 46/H3 30/H4 35/H5 27/H6 26)
+MONETIZATION_CHANGED=NO
+PORTRAIT=PASS (139388 checks, nine sizes, all four local seats, complete round)
+GAMEPLAY=PASS (2981089 checks, 1000 games)
+CONFIGURATION=PASS (82 checks)
+TEAM_SCORING=PASS (32679 checks)
+UNITY_COMPILATION=PASS
+UNITY_PLAY_MODE=PASS (isolated Editor)
+CONSOLE_ERRORS=0 (successful isolated validation)
+PHYSICAL_DEVICE=NOT_RUN
+LANDSCAPE_MENU_ISSUE=PRE_EXISTING; not changed
+
+LOCAL USER CHANGES
+ADS_SETTINGS_USER_CHANGE_PRESERVED=YES
+API_SETTINGS_USER_CHANGE_PRESERVED=YES
+ADS_SETTINGS_SHA256=C377416E334727264806761518A4B5EDF381A837A927A1C3F3D523A1ACBDB5D6
+API_SETTINGS_SHA256=AC6B0ED6D30240BC531B235E43E8B9B55D3B48DCBCCCF365ADEC62D3EE6BCB37
+WORKTREE_CLEAN=NO
+WORKTREE_REASON=Uncommitted M4 source/tests/docs plus the two pre-existing user-owned enabled assets; nothing staged
+
+KNOWN BOUNDARIES
+NO_CURRENT_PRIVATE_HAND_LEAK=PASS at tested service/API/reducer boundaries; no live spectator delivery exists
+HISTORICAL_ACCESS_POLICY=Finished replay entitlements/retention/delivery authorization remain future work
+FUTURE_COMMAND_GATEWAY=Must bind command ID to authenticated actor/request digest before network exposure
+WAITING_FOR_PLAYERS=Deferred to matchmaking/lobby
+H7_STARTED=NO
+REPLAY_SCREEN=NO
+SPECTATOR_SCREEN=NO
+HISTORY_SCREEN=NO
+
+EVIDENCE
+server/domino/build/test-results/test/
+client/Validation/Generated/m4-portrait-nine-sizes.log
+client/Validation/Generated/portrait-unity-result.txt
+REAL_VALIDATION_COMMAND=gradlew validateMatchM4Firestore -Pm4MatchId=m4-validation-fc628d1d-c823-480a-ac18-0ccbb810f49c (read-only reinspection)
+
+GIT
+COMMIT=NONE
+PUSH=NONE
+CLOUD_RUN_DEPLOYED=NO
+
+NEXT
+Review M4. I1 — Online DUEL_1V1 Match Engine using G3 and these frozen rules/events, server-authoritative moves, 60-second deadlines, autoplay, reconnect and broadcast. Not started.
