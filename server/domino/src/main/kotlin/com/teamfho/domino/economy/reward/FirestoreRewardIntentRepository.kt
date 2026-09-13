@@ -14,7 +14,7 @@ import com.teamfho.domino.player.PlayerFoundationException
 // Global opaque intent IDs permit SSV lookup without sending Firebase UID to Google.
 // All mutations stay in reward collections; no Wallet repository is referenced.
 class FirestoreRewardIntentRepository(private val firestore: Firestore, private val clock: Clock,
-    private val policy: RewardPolicy, private val monetization: MonetizationPolicy = MonetizationPolicy()) : RewardIntentRepository {
+    private val policy: RewardPolicy, private val policies: MonetizationPolicyService) : RewardIntentRepository {
     private fun usageRef(uid: String): DocumentReference {
         if (uid.isBlank() || uid.length > 128 || uid.contains('/') || uid in setOf(".","..")) reject("ACCOUNT_NOT_ELIGIBLE",403)
         return firestore.document("players/$uid/rewardUsage/current")
@@ -23,7 +23,7 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
         if (!opaqueId(id)) reject("ROUND_LIMIT", 409)
         return firestore.document("rewardOpportunities/$id")
     }
-    private fun records(tx: Transaction, uid: String, now: Instant): List<RewardCreditRecord> {
+    private fun records(tx: Transaction, uid: String, now: Instant, monetization: MonetizationPolicy): List<RewardCreditRecord> {
         // Single-field timestamp index. Includes legacy H4 ledger credits on first H6 request.
         val day = now.atZone(java.time.ZoneOffset.UTC).toLocalDate().atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
         val cutoff = minOf(day, now.minusSeconds(maxOf(3600, monetization.rewarded.cooldownSeconds)))
@@ -38,21 +38,25 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
         }
     }
     private fun enforce(eligibility: RewardEligibility) { eligibility.reason?.let { reject(it.name, 409) } }
-    override fun eligibility(uid: String, opportunityId: String?): RewardEligibility = atomic { tx ->
-        val now = clock.instant()
-        tx.get(usageRef(uid)).get() // Same lock as consume; queries alone must not permit write skew.
-        val opportunity = opportunityId?.let { tx.get(opportunityRef(it)).get().data }
-        val used = opportunityId != null && (opportunity == null || opportunity["uid"] != uid || opportunity["status"] != "OPEN" ||
-            (opportunity["expiresAt"] as? Timestamp)?.let { Instant.ofEpochSecond(it.seconds,it.nanos.toLong()) <= now } != false)
-        RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, now), now, used = used)
+    override fun eligibility(uid: String, opportunityId: String?): RewardEligibility {
+        val monetization = policies.resolve().policy
+        return atomic { tx ->
+            val now = clock.instant()
+            tx.get(usageRef(uid)).get() // Same lock as consume; queries alone must not permit write skew.
+            val opportunity = opportunityId?.let { tx.get(opportunityRef(it)).get().data }
+            val used = opportunityId != null && (opportunity == null || opportunity["uid"] != uid || opportunity["status"] != "OPEN" ||
+                (opportunity["expiresAt"] as? Timestamp)?.let { Instant.ofEpochSecond(it.seconds,it.nanos.toLong()) <= now } != false)
+            RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, now, monetization), now, used = used)
+        }
     }
     override fun opportunity(uid: String): RewardOpportunity {
+        val monetization = policies.resolve().policy
         val candidate = java.util.UUID.randomUUID().toString()
         return atomic { tx ->
             val now = clock.instant(); val usage = tx.get(usageRef(uid)).get().data
             val existingId = usage?.get("opportunityId") as? String
             val existing = existingId?.let { tx.get(opportunityRef(it)).get().data }
-            enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, now), now))
+            enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, now, monetization), now))
             val expires = existing?.get("expiresAt") as? Timestamp
             if (existing != null && existing["uid"] == uid && existing["status"] == "OPEN" && expires != null &&
                 Instant.ofEpochSecond(expires.seconds, expires.nanos.toLong()) > now)
@@ -83,6 +87,7 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
         }
     }
     override fun issue(uid: String): RewardIntent {
+        val monetization = policies.resolve().policy
         require(uid.isNotBlank() && uid.length <= 128)
         val rewardOpportunity = opportunity(uid)
         val slot = firestore.document("rewardIntentOwners/" + digest(uid))
@@ -94,7 +99,7 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
             val previous = previousRef?.let { tx.get(it).get().data }?.let(::decode)
             tx.get(usageRef(uid)).get()
             val opportunityData = tx.get(opportunityRef(rewardOpportunity.opportunityId)).get().data
-            enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx,uid,now), now,
+            enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx,uid,now, monetization), now,
                 used = opportunityData?.get("uid") != uid || opportunityData["status"] != "OPEN"))
             if (previous != null && previous.uid != uid) reject("SSV_INTENT_INVALID", 409)
             // Preserve restart discovery until the previous verified reward is consumed.
@@ -154,6 +159,7 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
         intent?.takeIf { it.status == RewardIntentStatus.VERIFIED }
     }
     override fun consume(uid: String, intentId: String): RewardConsumeResponse {
+        val monetization = policies.resolve().policy
         // Firebase UID never comes from request JSON; validate path segments defensively.
         if (uid.isBlank() || uid.length > 128 || uid.contains('/') || uid in setOf(".", "..")) reject("REQUEST_INVALID")
         val ref = intentRef(intentId)
@@ -194,7 +200,7 @@ class FirestoreRewardIntentRepository(private val firestore: Firestore, private 
                 if (amount !in 1..Wallet.MAX_COINS) reject("REWARD_INTENT_INVALID", 409)
                 val usage = tx.get(usageRef(uid)).get().data ?: emptyMap()
                 val opportunity = tx.get(opportunityRef(intent.opportunityId)).get().data
-                enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, clock.instant()), clock.instant(), amount,
+                enforce(RewardEligibilityPolicy.evaluate(monetization, records(tx, uid, clock.instant(), monetization), clock.instant(), amount,
                     used = opportunity?.get("uid") != uid || opportunity["status"] != "OPEN", earned = true))
                 val after = safeCredit(wallet.coins, amount)
                 val earned = safeCredit(wallet.lifetimeCoinsEarned, amount)

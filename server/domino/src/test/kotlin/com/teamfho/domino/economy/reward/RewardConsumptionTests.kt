@@ -11,7 +11,7 @@ import kotlin.test.*
 class RewardConsumptionTests {
     private val clock = RewardClock()
     private val store = RewardFirestoreTransactions(clock.instant())
-    private val repo = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy())
+    private val repo = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), fallbackPolicyService())
     private val walletPath = "players/owner/wallet/main"
     private val stamp = Timestamp.ofTimeSecondsAndNanos(clock.instant().epochSecond, 0)
     init { store.documents[walletPath] = mapOf("coins" to 0L, "lifetimeCoinsEarned" to 0L,
@@ -35,7 +35,7 @@ class RewardConsumptionTests {
         assertEquals("CREDIT", ledger["type"]); assertEquals("REWARDED_AD", ledger["source"])
         assertEquals(1L, ledger["version"])
         assertEquals(response, repo.consume("owner", intent.intentId))
-        val changedPolicy = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), MonetizationPolicy(version=2,rewarded=RewardedRules(coins=20)))
+        val changedPolicy = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), fallbackPolicyService(MonetizationPolicy(version=2,rewarded=RewardedRules(coins=20))))
         assertEquals(response, changedPolicy.consume("owner", intent.intentId))
         assertFalse(repo.verify(VerifiedAdMobEvent(intent.intentId, intent.intentId.replace("-", ""), "5224354917", clock.instant())))
         assertEquals(ledger, store.documents[ledgerPath(intent.intentId)])
@@ -102,7 +102,7 @@ class RewardConsumptionTests {
     }
     @Test fun `verified intent consumption after issue TTL and policy amount`() {
         val intent = verified(); clock.value = clock.instant().plusSeconds(86400)
-        val configured = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), MonetizationPolicy(version=2,rewarded=RewardedRules(coins=17)))
+        val configured = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), fallbackPolicyService(MonetizationPolicy(version=2,rewarded=RewardedRules(coins=17))))
         assertEquals(10L, configured.consume("owner", intent.intentId).wallet.coins)
     }
     @Test fun `two rewards preserve spent and replay returns current wallet`() {

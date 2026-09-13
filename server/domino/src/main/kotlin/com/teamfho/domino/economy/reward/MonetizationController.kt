@@ -22,13 +22,13 @@ class MonetizationRequestGate(private val clock: Clock = Clock.systemUTC()) {
     }
 }
 @RestController
-class MonetizationController(private val policy: MonetizationPolicy, private val repository: RewardIntentRepository) {
+class MonetizationController(private val policies: MonetizationPolicyService, private val repository: RewardIntentRepository) {
     private val gate = MonetizationRequestGate()
     private val log = LoggerFactory.getLogger(javaClass)
     @GetMapping("/api/v1/monetization/config")
     fun config(@AuthenticationPrincipal identity: FirebaseIdentity): MonetizationResponse {
         gate.check(identity.uid); log.info("MONETIZATION_POLICY_LOADED")
-        return policy.response()
+        return policies.resolve().policy.response()
     }
     @GetMapping("/api/v1/economy/ad-rewards/eligibility")
     fun eligibility(@AuthenticationPrincipal identity: FirebaseIdentity,

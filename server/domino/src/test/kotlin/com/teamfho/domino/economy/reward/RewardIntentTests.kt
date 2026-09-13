@@ -15,7 +15,7 @@ class RewardClock(var value: Instant = Instant.parse("2026-09-12T12:00:00Z")) : 
 class RewardIntentTests {
     private val clock = RewardClock()
     private val store = RewardFirestoreTransactions(clock.instant())
-    private val repo = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy())
+    private val repo = FirestoreRewardIntentRepository(store.firestore, clock, RewardPolicy(), fallbackPolicyService())
     private val wallet = mapOf<String, Any>("coins" to 77L, "lifetimeCoinsEarned" to 100L, "lifetimeCoinsSpent" to 23L)
     init { store.documents["players/owner/wallet/main"] = wallet }
     private fun unchanged() {

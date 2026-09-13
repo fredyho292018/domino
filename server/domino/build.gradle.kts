@@ -8,6 +8,8 @@ plugins {
 group = "com.teamfho"
 version = "0.0.1-SNAPSHOT"
 
+springBoot { mainClass.set("com.teamfho.domino.DominoApplicationKt") }
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
@@ -44,4 +46,12 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+tasks.register<JavaExec>("seedMonetizationPolicy") {
+    group = "application"
+    description = "Explicitly create systemConfig/monetization only if absent; never overwrites. Uses fallback ENV/YAML and ADC."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.economy.reward.MonetizationPolicySeed")
+    args("--seed-if-absent")
 }

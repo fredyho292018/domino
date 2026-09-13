@@ -1,0 +1,108 @@
+DOMINO MONETIZATION — PHASE H6.1 REPORT
+=======================================
+BRANCH=main
+SOURCE_SHA_BEFORE=d37b1a7a4d8bd2d3df32f1a2d0ba6ef30683cdf0
+SOURCE_SHA_AFTER=d37b1a7a4d8bd2d3df32f1a2d0ba6ef30683cdf0
+H6_COMMIT=d37b1a7a4d8bd2d3df32f1a2d0ba6ef30683cdf0
+
+FIRESTORE_POLICY_IMPLEMENTED=YES
+POLICY_DOCUMENT_PATH=systemConfig/monetization
+POLICY_REPOSITORY=FirestoreMonetizationPolicyRepository : MonetizationPolicyRepository
+POLICY_SERVICE=MonetizationPolicyService (Spring)
+POLICY_SOURCE_PRIORITY=FIRESTORE > FALLBACK_CONFIG
+BOOTSTRAP_STRATEGY=Explicit seedMonetizationPolicy Gradle command; create only if absent; never run on startup
+ACTIVE_DOCUMENT_SEEDED=NO (real validation used an isolated document)
+
+DEFAULT / FALLBACK POLICY:
+ADS_ENABLED=true
+REWARDED_ENABLED=true
+REWARD_COINS=10
+MAX_PER_ROUND=1
+COOLDOWN_SECONDS=120
+MAX_PER_HOUR=5
+MAX_PER_DAY=20
+MAX_COINS_PER_DAY=200
+POLICY_VERSION=1
+UNITY_TECHNICAL_ADS_ENABLED=false
+
+BACKEND_POLICY_CACHE=YES
+CACHE_TTL_SECONDS=60
+CACHE_ENVIRONMENT_OVERRIDE=DOMINO_MONETIZATION_POLICY_CACHE_SECONDS
+CACHE_FALLBACK_ON_FIRESTORE_FAILURE=PASS
+POLICY_VERSIONED=YES
+OLD_INTENT_AMOUNT_PRESERVED=PASS
+NEW_INTENT_USES_NEW_POLICY=PASS
+BACKEND_RESTART_REQUIRED=NO
+UNITY_REBUILD_REQUIRED=NO
+REWARD_COINS_DYNAMIC=PASS
+COOLDOWN_DYNAMIC=PASS
+LIMITS_DYNAMIC=PASS
+KILL_SWITCH_DYNAMIC=PASS
+
+UNITY_DIRECT_FIRESTORE_CONFIG=NO
+UNITY_REWARD_AUTHORITY=NO
+UNITY_LIMIT_AUTHORITY=NO
+UNITY_COOLDOWN_AUTHORITY=NO
+ADS_SETTINGS_BUSINESS_FIELDS=NONE
+H5_PREVIEW_FROM_SERVER=PASS
+ENV_FALLBACK_PRESERVED=YES
+NO_FIRESTORE_DOCUMENT_FALLBACK=PASS
+INVALID_FIRESTORE_POLICY_FALLBACK=PASS
+
+REAL_FIRESTORE_POLICY_TEST=PASS
+REAL_FIRESTORE_POLICY_PATH=systemConfig/monetization-h61-validation-7de21e66-dd3b-4080-8f8d-2b403b4ba639
+REAL_TEST_SEQUENCE=Absent -> seed v1/10 -> repeated seed leaves unchanged -> v2/15 -> restore v3/10
+REAL_TEST_SCOPE=Real Firestore repository/service and config controller DTO in-process; authenticated HTTP contract tested separately with MockMvc
+ISOLATED_POLICY_RESTORED=YES (version=3; coins=10; original limits)
+ACTIVE_POLICY_CHANGED=NO
+REAL_WALLET_CREDIT=NO
+REAL_SSV=NOT_RUN
+REAL_AD_REQUESTS=0
+PRODUCTION_AD_USED=NO
+
+BACKEND_TEST_COUNT=315 total: 313 PASS, 2 skipped (real Redis and opt-in real policy test)
+BACKEND_TESTS=PASS
+BACKEND_BUILD=PASS
+H6_1_TESTS=PASS (29 new ordinary tests + 1 separately executed real Firestore test)
+H6_REGRESSION=PASS (full backend suite + 26 Unity service checks)
+H5_REGRESSION=PASS (27 flow checks; 222 H5/H6 UI assertions)
+H4_REGRESSION=PASS (35 Unity client checks + backend suite)
+H3_REGRESSION=PASS (30 Unity client checks + backend suite)
+H2_REGRESSION=PASS (46 checks)
+PLAYER_FOUNDATION=PASS (469 client checks + backend suite)
+REALTIME_G3=PASS (client and backend suites)
+PORTRAIT=PASS (139388 checks, 9 sizes, 4 local seats)
+GAMEPLAY=PASS (2981089 checks, 1000 games, unchanged trace)
+UNITY_COMPILATION=PASS (6000.0.41f1; isolated copy)
+UNITY_PLAY_MODE=PASS
+CONSOLE_ERRORS=0
+
+CLOUD_RUN_DEPLOYED=NO
+H7_STARTED=NO
+GAME_MODES_CHANGED=NO
+RULESETS_CHANGED=NO
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+COMMIT=NONE
+PUSH=NONE
+
+SEMANTICS / LIMITATIONS:
+- Amount/version are frozen on intent creation. Current resolved limits are checked within H4/H6 consume transaction; a lowered quota may block a VERIFIED intent until eligible again.
+- Already VERIFIED earned rewards may settle after a kill switch, preserving the H6 exception; other limits remain enforced.
+- Each economic operation captures a policy snapshot for transaction retries. Backend propagation is cache-bounded (default 60 seconds), not immediate push. Unity keeps its existing 600-second cache and refresh-before-show behavior.
+- Same-version business changes and version regressions are rejected relative to the last accepted Firestore revision in this process. There is no durable revision history across backend restarts; operators must increment versions.
+- Missing/inactive/invalid Firestore config falls back as requested. Outage retains cached policy, including a cached disabled policy, or falls back if cache is empty.
+- OFFLINE_ROUND_VERIFICATION=NOT_SERVER_AUTHORITATIVE; no offline round bypass or device fingerprinting added. maxPerRound still supports 1 only.
+- Firestore rules are not tracked. Deployed client rules/IAM were not modified or certified. Backend Admin SDK is the only implemented policy storage access path.
+- No active configuration was seeded/modified; the isolated validation document remains restored to 10 with original limits.
+
+EVIDENCE:
+server/domino/MONETIZATION_H61.md
+server/domino/build/test-results/test/TEST-*.xml
+client/Validation/Generated/H61/real-policy-result.xml
+client/Validation/Generated/H61-unity.log
+client/Validation/Generated/H61-portrait.log
+client/Validation/Generated/H5Source/Validation/Generated/H5/ui-result.txt
+client/Validation/Generated/H5Source/client/portrait-unity-result.txt
+
+NEXT=After H6.1 review: M0 — Game Modes & RuleSets READ-ONLY design. H7 remains postponed.

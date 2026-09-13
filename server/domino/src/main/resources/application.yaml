@@ -36,6 +36,8 @@ realtime:
 
 domino:
   monetization:
+    policy:
+      cache-seconds: ${DOMINO_MONETIZATION_POLICY_CACHE_SECONDS:60}
     version: ${DOMINO_MONETIZATION_VERSION:1}
     ads-enabled: ${DOMINO_MONETIZATION_ADS_ENABLED:true}
     rewarded:

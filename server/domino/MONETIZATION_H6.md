@@ -1,5 +1,8 @@
 # H6 monetization policy
 
+Historical H6 baseline: [H6.1](MONETIZATION_H61.md) now adds Firestore-backed policy
+refresh without restart. The limits and H4/H6 economic invariants below remain.
+
 The backend owns reward amounts and limits. `MonetizationPolicy` binds
 `domino.monetization` from application.yaml/environment. Change the properties and
 restart the backend; Unity does not need rebuilding. Increment the policy version

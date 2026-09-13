@@ -13,7 +13,7 @@ import kotlin.test.*
 class MonetizationPolicyTests {
     private val clock=RewardClock(Instant.parse("2026-09-12T00:00:00Z"))
     private val store=RewardFirestoreTransactions(clock.instant())
-    private fun repo(policy:MonetizationPolicy=MonetizationPolicy())=FirestoreRewardIntentRepository(store.firestore,clock,RewardPolicy(),policy)
+    private fun repo(policy:MonetizationPolicy=MonetizationPolicy())=FirestoreRewardIntentRepository(store.firestore,clock,RewardPolicy(),fallbackPolicyService(policy))
     private fun time(seconds:Long){clock.value=clock.instant().plusSeconds(seconds);store.now=clock.instant()}
     private fun stamp(at:Instant=clock.instant())=Timestamp.ofTimeSecondsAndNanos(at.epochSecond,at.nano)
     init { store.documents["players/u/wallet/main"]=mapOf("coins" to 0L,"lifetimeCoinsEarned" to 0L,"lifetimeCoinsSpent" to 0L,"createdAt" to stamp(),"updatedAt" to stamp()) }
