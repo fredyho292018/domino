@@ -19,6 +19,7 @@ namespace Domino.Ads
         event Action Opened;
         event Action Closed;
         event Action Failed;
+        void SetVerificationIntent(string intentId);
         void Show(Action<RewardedCompletionResult> earned);
     }
     public interface IRewardedAdLoader { Task<IRewardedAd> LoadAsync(string testUnitId); }

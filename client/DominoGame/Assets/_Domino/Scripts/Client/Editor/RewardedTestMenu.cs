@@ -8,6 +8,13 @@ namespace Domino.Editor
 {
     public static class RewardedTestMenu
     {
+        [MenuItem("Domino/Ads/Refresh Reward Intent Status")]
+        public static async void RefreshStatus()
+        {
+            if (!Application.isPlaying || ApplicationServices.RewardVerification == null) return;
+            await ApplicationServices.RewardVerification.RefreshAsync();
+            Debug.Log("[ADS] reward verification state=" + ApplicationServices.RewardVerification.State);
+        }
         [MenuItem("Domino/Ads/Authorize and Load Editor Mock")]
         public static async void Load()
         {

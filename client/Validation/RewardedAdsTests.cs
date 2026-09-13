@@ -27,6 +27,8 @@ static class RewardedAdsTests
         public void Earn() => Reward?.Invoke(new RewardedCompletionResult("test", 100000));
         public void Close() => Closed?.Invoke();
         public void Fail() => Failed?.Invoke();
+        public string Intent;
+        public void SetVerificationIntent(string id) { Intent = id; }
         public void Dispose() { Disposals++; }
     }
     sealed class Loader : IRewardedAdLoader
@@ -46,7 +48,7 @@ static class RewardedAdsTests
         {
             var config = new AdsConfiguration(enabled, production ? AdsEnvironment.PRODUCTION : AdsEnvironment.DEVELOPMENT,
                 AdsPlatform.Android, !production, "ca-app-pub-1111111111111111/2222222222");
-            Service = new GoogleRewardedAdsService(config, Init, Gate, Loader, Logs.Add, () => Clock);
+            Service = new GoogleRewardedAdsService(config, Init, Gate, Loader, Logs.Add, () => Clock, new IntentAuthorization());
             Service.RewardEarned += _ => Rewards++;
         }
         public async Task<Ad> Ready()
@@ -54,6 +56,12 @@ static class RewardedAdsTests
             var task = Service.LoadRewardedAsync(); var ad = new Ad(); Loader.Pending.SetResult(ad); await task; return ad;
         }
         public void Round() => RewardedRoundPreload.Handle(new GameEvent(GameEventType.ROUND_FINISHED), Service);
+    }
+    sealed class IntentAuthorization : IRewardIntentAuthorization
+    {
+        public Task<RewardIntentReceipt> CreateAsync(System.Threading.CancellationToken token) =>
+            Task.FromResult(new RewardIntentReceipt("12345678-1234-4234-8234-123456789012", "ISSUED", DateTimeOffset.UtcNow.AddMinutes(10)));
+        public void ClientEarned(string id) { }
     }
     static async Task Main()
     {

@@ -6,7 +6,7 @@ $project = @'
  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
  <ItemGroup>
   <Compile Include="../../RewardedAdsTests.cs" />
-  <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Ads/*.cs" Exclude="../../../DominoGame/Assets/_Domino/Scripts/Ads/Unity*.cs;../../../DominoGame/Assets/_Domino/Scripts/Ads/DominoAdsSettings.cs;../../../DominoGame/Assets/_Domino/Scripts/Ads/EditorMockAdsConsent.cs" />
+  <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Ads/*.cs" Exclude="../../../DominoGame/Assets/_Domino/Scripts/Ads/RewardIntentApiClient.cs;../../../DominoGame/Assets/_Domino/Scripts/Ads/Unity*.cs;../../../DominoGame/Assets/_Domino/Scripts/Ads/DominoAdsSettings.cs;../../../DominoGame/Assets/_Domino/Scripts/Ads/EditorMockAdsConsent.cs" />
   <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Core/GameEvents.cs" />
   <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Core/DominoTile.cs" />
  </ItemGroup>

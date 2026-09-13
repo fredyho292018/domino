@@ -1,0 +1,181 @@
+DOMINO MONETIZATION — PHASE H3 REPORT
+=====================================
+BRANCH=codex/h3-reward-intents
+PROJECT_ROOT=D:/Fredy/development/2026/domino/client/Validation/Generated/H3Source
+SOURCE_SHA_BEFORE=2074524f2fffbb49c16a83908991d60ebf2b2661
+SOURCE_SHA_AFTER=2074524f2fffbb49c16a83908991d60ebf2b2661
+H2_COMMIT_SHA=2074524f2fffbb49c16a83908991d60ebf2b2661
+WORKTREE_CLEAN_BEFORE=YES (isolated H3 worktree)
+WORKTREE_CLEAN_AFTER=NO (H3 changes ready for review)
+MAIN_CHECKOUT=UNCHANGED; previously authorized ApiSettings.asset change remains on main
+H3_CHANGES_IN_MAIN_CHECKOUT=NO
+
+REWARD INTENT
+REWARD_INTENT_IMPLEMENTED=YES
+CREATE_ENDPOINT=POST /api/v1/economy/ad-rewards/intents
+STATUS_ENDPOINT=GET /api/v1/economy/ad-rewards/intents/{intentId}
+AUTH_REQUIRED=YES
+UID_FROM_SECURITY_PRINCIPAL=YES
+CLIENT_UID_ACCEPTED=NO
+CLIENT_COINS_ACCEPTED=NO
+INTENT_TTL_MINUTES=10
+MAX_ACTIVE_INTENTS_POLICY=One unexpired ISSUED per UID; atomic reuse/pointer replacement
+INTENT_STATES=ISSUED, VERIFIED, EXPIRED, REJECTED
+PERSISTENCE=Firestore rewardIntents/{uuid}, rewardIntentOwners/{sha256Uid}, adMobRewardTransactions/{sha256TransactionId}
+
+UNITY
+INTENT_REQUEST_BEFORE_SHOW=PASS
+SSV_CUSTOM_DATA_SET=PASS
+CUSTOM_DATA_CONTENT=OPAQUE_INTENT_ID
+ADMOB_USER_ID_SET=NO
+CLIENT_REWARD_CALLBACK=PASS
+CLIENT_CALLBACK_CREDITS_COINS=NO
+SHOW_WITHOUT_REWARD_INTENT=BLOCKED
+VERIFICATION_STATE=NONE / INTENT_CREATED / CLIENT_EARNED / VERIFYING / VERIFIED / EXPIRED / FAILED
+STATUS_REFRESH=Manual Editor menu; no automatic polling
+EDITOR_STATUS_COMMAND=Domino > Ads > Refresh Reward Intent Status
+
+ADMOB SSV
+SSV_ENDPOINT=GET /api/v1/admob/rewarded/ssv
+SSV_FIREBASE_AUTH_REQUIRED=NO
+SSV_SIGNATURE_REQUIRED=YES
+SSV_CRYPTO_LIBRARY=Java 21 JCA / SunEC (no extra dependency)
+SSV_SIGNATURE_ALGORITHM=SHA256withECDSA; P-256 public keys; DER signatures
+GOOGLE_PUBLIC_KEY_PROVIDER=YES
+PUBLIC_KEY_CACHE_TTL=12h (max allowed 24h)
+KEY_REFRESH_COOLDOWN=60s
+KEY_FAILURE_POLICY=Fail closed; 503 for unavailable dependency
+QUERY_POLICY=Original raw signed bytes; decode custom_data after signature verification
+
+VALIDATION
+AD_UNIT_VALIDATION=PASS
+TIMESTAMP_VALIDATION=PASS
+CUSTOM_DATA_VALIDATION=PASS
+INTENT_EXPIRATION=PASS
+CLOCK_SKEW=2m
+MAX_EVENT_AGE=10m
+DEVELOPMENT_SSV_AD_UNIT=5224354917 (numeric SSV component)
+PRODUCTION_SSV_AD_UNIT=8685423732 (numeric SSV component; not exercised)
+
+IDEMPOTENCY
+ADMOB_TRANSACTION_ID_USED=YES
+DUPLICATE_CALLBACK=PASS
+SIMULTANEOUS_DUPLICATE=PASS (transactional SDK test double; not remote Firestore)
+DIFFERENT_TRANSACTION_SAME_INTENT=PASS
+ONE_INTENT_ONE_REWARD=PASS (one verification, no credit)
+IDENTICAL_DUPLICATE_AFTER_TTL=PASS
+
+INTENT TRANSITION
+VALID_TRANSITION=ISSUED -> VERIFIED
+VERIFIED_AT_SERVER_TIMESTAMP=YES
+WALLET_MUTATED=NO
+COINS_CREDITED=0
+LIFETIME_COINS_EARNED_CHANGED=NO
+LIFETIME_COINS_SPENT_CHANGED=NO
+
+LOCAL LIMITATION
+REAL_ADMOB_SSV_TO_LOCALHOST=NOT_POSSIBLE
+EDITOR_MOCK_PRODUCES_REAL_SSV=NO
+REAL_SSV_TEST=NOT_RUN
+REAL_SSV_ANDROID=NOT_RUN
+FAKE_VERIFIER_TESTS=PASS
+LIVE_FIRESTORE_H3_TEST=NOT_RUN
+EDITOR_INTENT_API=Test fake in isolated automated validation
+LIVE_EDITOR_TO_LOCAL_BACKEND_INTENT_TEST=NOT_RUN
+SSV_FIXTURES=Locally signed ECDSA fixtures, no real Google keys/network in tests
+
+TESTS
+BACKEND_TEST_COUNT=224
+BACKEND_H3_TEST_COUNT=38
+BACKEND_TESTS=PASS
+BACKEND_BUILD=PASS
+H3_INTENT_TESTS=PASS
+H3_SSV_TESTS=PASS
+H3_IDEMPOTENCY_TESTS=PASS
+UNITY_H3_TESTS=PASS (30 checks)
+H1_REGRESSION=PASS (31 checks)
+H2_REGRESSION=PASS (46 checks and fresh SDK Editor mock cycle)
+GUEST_AUTH=PASS (43 checks)
+PLAYER_FOUNDATION=PASS (469 combined client checks incl. G1/G2/G2.1/G3)
+REALTIME_G3=PASS (existing backend/client suite and EN/ES UI)
+PORTRAIT=PASS (139392 checks; 9 sizes; 4 seats; complete round)
+GAMEPLAY=PASS (2981089 checks; 1000 games)
+SCORING=PASS (32679 checks)
+CONFIGURATION=PASS (82 checks)
+UNITY_COMPILATION=PASS
+CONSOLE_ERRORS=0
+REWARD_VERIFICATION_AFTER_EDITOR_EARNED=CLIENT_EARNED (not VERIFIED)
+SECOND_READY=PASS
+SDK_EDITOR_LOADS_FINAL_RUN=2
+SDK_EDITOR_SHOWS_FINAL_RUN=1
+SDK_EDITOR_REWARDS_FINAL_RUN=1
+SDK_EDITOR_LOADS_ALL_H3_RUNS=4
+SDK_EDITOR_SHOWS_ALL_H3_RUNS=2
+REAL_AD_REQUESTS=0
+
+SECURITY
+TOKEN_LOGGED=NO
+SSV_SIGNATURE_LOGGED=NO
+RAW_SSV_QUERY_LOGGED=NO
+FIREBASE_TOKEN_PERSISTED=NO
+CLIENT_CAN_MARK_VERIFIED=NO
+CLIENT_CAN_SET_TRANSACTION_ID=NO
+
+EXTERNAL
+WALLET_CHANGED=NO
+COINS_CHANGED=NO
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+ADMOB_PRODUCTION_SSV_URL_CONFIGURED=NO
+ADS_ENABLED=false
+ADS_ENVIRONMENT=DEVELOPMENT
+SDK_ASSETS_CHANGED=NO (automatic Unity import/mock changes restored after testing)
+
+FILES CREATED (relative to PROJECT_ROOT)
+client/DominoGame/Assets/_Domino/Scripts/Ads/RewardIntentContracts.cs (+ .meta)
+client/DominoGame/Assets/_Domino/Scripts/Ads/RewardIntentApiClient.cs (+ .meta)
+client/DominoGame/Assets/_Domino/Scripts/Ads/RewardVerificationService.cs (+ .meta)
+client/DominoGame/Assets/_Domino/Scripts/Ads/UnityRewardIntentCodec.cs (+ .meta)
+client/Validation/RewardIntentClientTests.cs
+client/Validation/RunRewardIntentClientTests.ps1
+client/Validation/REWARD_INTENTS_H3_REPORT.txt
+server/domino/docs/REWARD_INTENTS_H3.md
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/RewardIntent.kt
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/RewardController.kt
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/RewardConfiguration.kt
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/FirestoreRewardIntentRepository.kt
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/AdMobSsvVerifier.kt
+server/domino/src/main/kotlin/com/teamfho/domino/economy/reward/AdMobPublicKeyProvider.kt
+server/domino/src/test/kotlin/com/teamfho/domino/economy/reward/RewardIntentTests.kt
+server/domino/src/test/kotlin/com/teamfho/domino/economy/reward/RewardControllerTests.kt
+server/domino/src/test/kotlin/com/teamfho/domino/economy/reward/AdMobSsvTests.kt
+server/domino/src/test/kotlin/com/teamfho/domino/economy/reward/RewardFirestoreTransactions.kt
+
+FILES MODIFIED (relative to PROJECT_ROOT)
+client/DominoGame/Assets/_Domino/Scripts/Ads/GoogleRewardedAdsService.cs
+client/DominoGame/Assets/_Domino/Scripts/Ads/RewardedContracts.cs
+client/DominoGame/Assets/_Domino/Scripts/Ads/UnityRewardedAdLoader.cs
+client/DominoGame/Assets/_Domino/Scripts/Client/Editor/RewardedAdsValidation.cs
+client/DominoGame/Assets/_Domino/Scripts/Client/Editor/RewardedTestMenu.cs
+client/DominoGame/Assets/_Domino/Scripts/Infrastructure/Api/UnityApiTransport.cs
+client/DominoGame/Assets/_Domino/Scripts/Infrastructure/ApplicationServices.cs
+client/Validation/RewardedAdsTests.cs
+client/Validation/RunRewardedAdsTests.ps1
+server/domino/src/main/kotlin/com/teamfho/domino/security/SecurityConfiguration.kt
+
+EVIDENCE (ignored artifacts, relative to PROJECT_ROOT)
+server/domino/build/test-results/test/
+server/domino/build/reports/tests/test/index.html
+client/Validation/Generated/H3/editor-final-result.txt
+client/Validation/Generated/H3/portrait-unity-result.txt
+client/Validation/Generated/H3/Profile/result-1.txt
+client/Validation/Generated/H3/portrait-*.png
+client/Validation/Generated/H3Tests/
+
+GIT
+COMMIT=NONE
+PUSH=NONE
+
+RECOMMENDED NEXT TASK=PHASE H4: atomic Wallet + ledger credit, consume VERIFIED intent
+H4_IMPLEMENTED=NO

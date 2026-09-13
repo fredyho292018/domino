@@ -19,6 +19,12 @@ namespace Domino.Editor
     {
         const string Running = "Domino.H2Validation";
         static int errors;
+        sealed class TestIntents : IRewardIntentApi
+        {
+            public Task<RewardIntentReceipt> CreateAsync(CancellationToken token) =>
+                Task.FromResult(new RewardIntentReceipt("12345678-1234-4234-8234-123456789012", "ISSUED", DateTimeOffset.UtcNow.AddMinutes(10)));
+            public Task<RewardIntentReceipt> StatusAsync(string id, CancellationToken token) => CreateAsync(token);
+        }
         sealed class NoFirebase : Domino.Infrastructure.Firebase.IFirebaseClient, Domino.Identity.IAuthTokenProvider
         {
             public Task<string> CheckDependenciesAsync() => Task.FromResult("Unavailable");
@@ -32,6 +38,7 @@ namespace Domino.Editor
         {
             if (!SessionState.GetBool(Running, false)) return;
             ApplicationServices.ValidationFirebaseFactory = () => new NoFirebase();
+            ApplicationServices.ValidationRewardIntentApiFactory = () => new TestIntents();
             Application.logMessageReceived += (_, __, type) => { if (type == LogType.Error || type == LogType.Exception) errors++; };
             EditorApplication.playModeStateChanged += state => { if (state == PlayModeStateChange.EnteredPlayMode) Validate(); };
         }
@@ -136,6 +143,8 @@ namespace Domino.Editor
             Check(UnityRewardedAdLoader.MockCompletedLoads == 1, "FIRST_TASK");
             RewardedTestMenu.Show(); // Exactly one show; no menu action after closing.
             await Until(() => rewards == 1, 20, "FIRST_REWARD");
+            Check(UnityRewardedAdLoader.MockSsvOptionsSet == 1 &&
+                ApplicationServices.RewardVerification.State == RewardVerificationState.CLIENT_EARNED, "H3_CLIENT_ONLY_SSV_ATTACHED");
             var close = UnityEngine.Object.FindObjectsByType<Button>(FindObjectsSortMode.None).Single(b =>
                 b.GetComponentsInChildren<Button>().Length == 1 && b.GetComponentInChildren<Text>()?.text == "Close Ad");
             Check(close.interactable, "CLOSE_ENABLED");
@@ -158,7 +167,8 @@ namespace Domino.Editor
                 "SECOND_LOAD_FAILURE_CALLBACK=NO\nSECOND_LOAD_TASK_COMPLETED=YES\nSECOND_READY=PASS\n" +
                 "EDITOR_MOCK_AUTHORIZATION_ONE_SHOT=NO\nAUTO_RELOAD_CALL_COUNT=1\nOLD_AD_DISPOSED=PASS\n" +
                 "STATE_BEFORE_SECOND_LOAD=NOT_LOADED\nSTATE_AFTER_SECOND_LOAD=READY\nLOAD_COUNT=2\n" +
-                "REWARD_COUNT=1\nACTIVE_AD_COUNT=1\nWALLET_MUTATIONS=0\nCOINS_MUTATIONS=0\nCONSOLE_ERRORS=0";
+                "REWARD_COUNT=1\nACTIVE_AD_COUNT=1\nWALLET_MUTATIONS=0\nCOINS_MUTATIONS=0\nCONSOLE_ERRORS=0\n" +
+                "SSV_OPTIONS_ATTACHED=PASS\nCLIENT_EARNED_NOT_VERIFIED=PASS\nINTENT_API=TEST_FAKE\nREAL_SSV=NOT_RUN";
         }
         static System.Collections.IEnumerator Capture(string path)
         {

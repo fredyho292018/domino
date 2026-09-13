@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Domino.Ads
 {
@@ -12,6 +13,9 @@ namespace Domino.Ads
         readonly IRewardedAdLoader loader;
         readonly Func<DateTimeOffset> now;
         readonly Action<string> log;
+        readonly IRewardIntentAuthorization intents;
+        readonly CancellationTokenSource shutdown = new CancellationTokenSource();
+        Task<RewardedShowResult> preparing;
         IRewardedAd current;
         Task load;
         TaskCompletionSource<RewardedShowResult> show;
@@ -29,10 +33,12 @@ namespace Domino.Ads
         public event Action<RewardedCompletionResult> RewardEarned;
 
         public GoogleRewardedAdsService(AdsConfiguration configuration, IAdsService initialization,
-            IAdsConsentGate consent, IRewardedAdLoader loader, Action<string> log = null, Func<DateTimeOffset> now = null)
+            IAdsConsentGate consent, IRewardedAdLoader loader, Action<string> log = null, Func<DateTimeOffset> now = null,
+            IRewardIntentAuthorization intents = null)
         {
             this.configuration = configuration; this.initialization = initialization; this.consent = consent;
             this.loader = loader; this.log = log; this.now = now ?? (() => DateTimeOffset.UtcNow);
+            this.intents = intents;
             State = configuration.Enabled ? RewardedState.NOT_LOADED : RewardedState.DISABLED;
         }
         public Task InitializeAsync() => LoadRewardedAsync();
@@ -78,6 +84,35 @@ namespace Domino.Ads
         public Task<RewardedShowResult> ShowRewardedAsync()
         {
             if (!disposed && Allowed && State == RewardedState.READY && !Fresh) PreloadIfNeeded();
+            if (preparing != null || !IsAvailable || intents == null)
+                return Task.FromResult(RewardedShowResult.Unavailable);
+            var completion = new TaskCompletionSource<RewardedShowResult>();
+            preparing = completion.Task;
+            _ = PrepareAsync(completion);
+            return completion.Task;
+        }
+        async Task PrepareAsync(TaskCompletionSource<RewardedShowResult> completion)
+        {
+            var captured = current;
+            try
+            {
+                var intent = await intents.CreateAsync(shutdown.Token);
+                if (disposed || current != captured || !IsAvailable || intent == null ||
+                    intent.Status != "ISSUED" || intent.ExpiresAt <= now())
+                { completion.TrySetResult(RewardedShowResult.Unavailable); return; }
+                captured.SetVerificationIntent(intent.IntentId);
+                completion.TrySetResult(await ShowPreparedAsync(intent.IntentId));
+            }
+            catch
+            {
+                log?.Invoke("[ADS] rewarded unavailable reason=REWARD_INTENT");
+                completion.TrySetResult(RewardedShowResult.Unavailable);
+            }
+            finally { preparing = null; }
+        }
+        Task<RewardedShowResult> ShowPreparedAsync(string intentId)
+        {
+            if (!disposed && Allowed && State == RewardedState.READY && !Fresh) PreloadIfNeeded();
             if (!IsAvailable) return Task.FromResult(RewardedShowResult.Unavailable);
             earned = false;
             var completion = new TaskCompletionSource<RewardedShowResult>();
@@ -93,6 +128,8 @@ namespace Domino.Ads
                     earned = true;
                     // EARNED lasts until the same fullscreen instance closes; no second load/show.
                     SetState(RewardedState.EARNED);
+                    intents.ClientEarned(intentId);
+                    log?.Invoke("[ADS] rewarded client completion received");
                     log?.Invoke("[ADS] rewarded earned");
                     Publish(RewardEarned, result);
                 });
@@ -130,6 +167,7 @@ namespace Domino.Ads
         {
             if (disposed) return;
             disposed = true; Release(); show?.TrySetResult(RewardedShowResult.Unavailable); show = null;
+            shutdown.Cancel(); shutdown.Dispose();
             RewardedStateChanged = null; RewardedAvailabilityChanged = null; RewardEarned = null;
             State = RewardedState.DISABLED;
         }

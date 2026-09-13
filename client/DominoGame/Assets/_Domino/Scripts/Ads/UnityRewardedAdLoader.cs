@@ -13,6 +13,7 @@ namespace Domino.Ads
         public static int MockFailureCallbacks { get; private set; }
         public static int MockCompletedLoads { get; private set; }
         public static int MockInstancesCreated { get; private set; }
+        public static int MockSsvOptionsSet { get; private set; }
         public static int MockInstancesDisposed { get; private set; }
         public static int MockActiveInstances => MockInstancesCreated - MockInstancesDisposed;
 #endif
@@ -94,6 +95,15 @@ namespace Domino.Ads
             void OnOpened() => Post(() => Opened?.Invoke());
             void OnClosed() => Post(() => Closed?.Invoke());
             void OnFailed(AdError ignored) => Post(() => Failed?.Invoke());
+            public void SetVerificationIntent(string intentId)
+            {
+                if (ad == null || !Guid.TryParseExact(intentId, "D", out var id) || id == Guid.Empty)
+                    throw new InvalidOperationException("INTENT_REQUIRED");
+                ad.SetServerSideVerificationOptions(new ServerSideVerificationOptions { CustomData = intentId });
+#if UNITY_EDITOR
+                MockSsvOptionsSet++;
+#endif
+            }
             public void Show(Action<RewardedCompletionResult> earned)
             {
                 if (!CanShow) throw new InvalidOperationException("NOT_READY");

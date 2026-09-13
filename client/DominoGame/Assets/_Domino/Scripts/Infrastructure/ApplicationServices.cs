@@ -23,10 +23,12 @@ namespace Domino.Infrastructure
         public static IRealtimeConnectionService Realtime { get; private set; }
         public static IAdsService Ads { get; private set; }
         public static IRewardedAdsService Rewarded { get; private set; }
+        public static RewardVerificationService RewardVerification { get; private set; }
 #if UNITY_EDITOR
         public static EditorMockAdsConsent EditorAdsConsent { get; private set; }
         // Opt-in editor validation only; never compiled into a player build.
         public static Func<IFirebaseClient> ValidationFirebaseFactory;
+        public static Func<IRewardIntentApi> ValidationRewardIntentApiFactory;
 #endif
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset()
@@ -36,6 +38,7 @@ namespace Domino.Infrastructure
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
             Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null; Rewarded = null;
+            RewardVerification = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -51,8 +54,6 @@ namespace Domino.Infrastructure
             adsConsent = EditorAdsConsent;
 #endif
             Ads = new GoogleMobileAdsService(adsConfiguration, adsConsent, new UnityGoogleAdsSdk(), Debug.Log);
-            Rewarded = new GoogleRewardedAdsService(adsConfiguration, Ads, adsConsent, new UnityRewardedAdLoader(), Debug.Log);
-            _ = Rewarded.InitializeAsync();
             IFirebaseClient client = new FirebaseSdkClient(() => Identity?.Current);
 #if UNITY_EDITOR
             client = ValidationFirebaseFactory?.Invoke() ?? client;
@@ -62,6 +63,14 @@ namespace Domino.Infrastructure
             var asset = Resources.Load<DominoApiSettings>("ApiSettings");
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
             var api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
+            IRewardIntentApi rewardApi = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
+#if UNITY_EDITOR
+            rewardApi = ValidationRewardIntentApiFactory?.Invoke() ?? rewardApi;
+#endif
+            RewardVerification = new RewardVerificationService(rewardApi, lifetime.Token);
+            Rewarded = new GoogleRewardedAdsService(adsConfiguration, Ads, adsConsent, new UnityRewardedAdLoader(), Debug.Log,
+                intents: RewardVerification);
+            _ = Rewarded.InitializeAsync();
             Player = new PlayerService(Identity, api, CurrentLanguageAsync, lifetime.Token, Debug.Log);
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
             var lifecycle = new GameObject("Realtime lifecycle");

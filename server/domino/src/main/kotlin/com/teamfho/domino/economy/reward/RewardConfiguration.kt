@@ -1,0 +1,26 @@
+package com.teamfho.domino.economy.reward
+
+import com.google.cloud.firestore.Firestore
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import tools.jackson.databind.ObjectMapper
+import java.time.Clock
+
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(RewardPolicy::class)
+class RewardConfiguration {
+    @Bean fun rewardIntentRepository(firestore: ObjectProvider<Firestore>, policy: RewardPolicy): RewardIntentRepository {
+        // Firebase disabled (e.g. tests) must not introduce a verification bypass.
+        val db = firestore.ifAvailable ?: return object : RewardIntentRepository {
+            override fun issue(uid: String): RewardIntent = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
+            override fun status(uid: String, intentId: String): RewardIntent = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
+            override fun verify(event: VerifiedAdMobEvent): Boolean = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
+        }
+        return FirestoreRewardIntentRepository(db, Clock.systemUTC(), policy)
+    }
+    @Bean fun adMobPublicKeyProvider(mapper: ObjectMapper, policy: RewardPolicy): AdMobPublicKeyProvider =
+        CachedAdMobPublicKeyProvider(GoogleAdMobKeyFetcher(mapper), Clock.systemUTC(), policy.keyCacheTtl)
+    @Bean fun adMobSsvVerifier(keys: AdMobPublicKeyProvider): AdMobSsvVerifier = GoogleAdMobSsvVerifier(keys)
+}
