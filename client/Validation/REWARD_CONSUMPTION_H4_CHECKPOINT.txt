@@ -1,0 +1,65 @@
+DOMINO MONETIZATION — PHASE H4 CHECKPOINT VALIDATION
+==================================================
+BRANCH=main
+H3_COMMIT=cb486c494cdff4ea44958d59ca2f92db50417ce2
+H3_PUSHED=YES
+SOURCE_SHA_BEFORE=cb486c494cdff4ea44958d59ca2f92db50417ce2
+H4_SOURCE=codex/h4-economy-ledger working changes, copied into main
+INTEGRATED_SOURCE_MATCH=PASS (file hashes before validation)
+COMMIT_MESSAGE=feat: add atomic reward wallet credit
+CHECKPOINT_SHA=see the commit containing this file
+
+REWARDED_AD_COINS=10
+LEDGER_IMPLEMENTED=YES
+ATOMIC_WALLET_CREDIT=PASS
+FIRST_CONSUME=PASS
+SECOND_CONSUME_ADDITIONAL_COINS=0
+PARALLEL_CONSUME=PASS
+LEDGER_ENTRY_COUNT=1
+INTENT_BEFORE=VERIFIED
+INTENT_AFTER=CONSUMED
+CLIENT_CAN_SET_UID=NO
+CLIENT_CAN_SET_COINS=NO
+CLIENT_CAN_SET_AMOUNT=NO
+CLIENT_CAN_SET_LEDGER_ID=NO
+BACKEND_POLICY_DETERMINES_REWARD=YES
+CLIENT_LOCAL_CREDIT=NO
+WALLET_UPDATED_FROM_BACKEND=PASS
+
+BACKEND_TEST_COUNT=259
+BACKEND_TESTS=258 PASS, 1 Redis real integration skipped, 0 failures/errors
+BACKEND_BUILD=PASS (test build --rerun-tasks)
+UNITY_H4_TESTS=35 PASS
+H3_REGRESSION=PASS (30 client checks and backend reward regression)
+H2_REGRESSION=PASS (46 checks and Unity mock load/show/reload)
+PLAYER_FOUNDATION=PASS (469 checks)
+REALTIME_G3=PASS (client and backend unit regressions; real Redis test skipped)
+PORTRAIT=PASS (139392 checks, 9 sizes, all 4 seats, full round)
+GAMEPLAY=PASS (2981089 checks, 1000 games)
+SCORING=PASS (32679 checks)
+CONFIGURATION=PASS (82 checks)
+UNITY_COMPILATION=PASS (6000.0.41f1)
+CONSOLE_ERRORS=0
+
+VALIDATION_SCOPE=Backend and client suites rerun from main after integration.
+Unity rerun in isolated H3Source project with matching integrated code hashes,
+to protect the user's open project. Mock and Portrait both completed successfully.
+Atomicity/credit assertions use transaction test doubles, not real Firestore.
+EVIDENCE=client/Validation/Generated/H4Checkpoint/ (ignored runtime artifacts)
+REAL_FIRESTORE_H4=NOT_RUN
+REAL_SSV=NOT_RUN
+REAL_AD_REQUESTS=0
+REAL_WALLET_CREDITED=0
+ADS_ENABLED=false
+ADS_ENVIRONMENT=DEVELOPMENT
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+
+LOCAL_CONFIGURATION_PRESERVED=Git stash named
+local: preserve API enabled setting before H4 checkpoint
+The API enabled=1 local override is not included in H4 and was not discarded.
+No H5 UI, cooldowns, production verification bypass or deployment added.
+The earlier REWARD_CONSUMPTION_H4_REPORT.txt is a historical pre-integration report.
+
+NEXT=PHASE H5 — round-end Reward UI + confirmed wallet balance.

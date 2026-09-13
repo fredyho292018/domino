@@ -15,6 +15,7 @@ internal class RewardFirestoreTransactions(val now: Instant) {
     val callbacks = mutableListOf<List<String>>()
     var retryFirstCallback = false
     var injectedFailure: Throwable? = null
+    var failAfterCommitOnce = false
     private val refs = ConcurrentHashMap<String, DocumentReference>()
     private val lock = Any()
 
@@ -81,9 +82,10 @@ internal class RewardFirestoreTransactions(val now: Instant) {
                                     }
                                 }
                                 documents.clear(); documents.putAll(staged)
+                                if (failAfterCommitOnce) { failAfterCommitOnce = false; throw java.util.concurrent.TimeoutException() }
                             }
                         }
-                        ApiFutures.immediateFuture(result!!)
+                        ApiFutures.immediateFuture(result)
                     } catch (error: Throwable) { ApiFutures.immediateFailedFuture<Any>(error) }
                 }
             }

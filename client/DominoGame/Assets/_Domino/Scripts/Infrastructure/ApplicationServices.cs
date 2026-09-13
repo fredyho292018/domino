@@ -67,11 +67,11 @@ namespace Domino.Infrastructure
 #if UNITY_EDITOR
             rewardApi = ValidationRewardIntentApiFactory?.Invoke() ?? rewardApi;
 #endif
-            RewardVerification = new RewardVerificationService(rewardApi, lifetime.Token);
+            Player = new PlayerService(Identity, api, CurrentLanguageAsync, lifetime.Token, Debug.Log);
+            RewardVerification = new RewardVerificationService(rewardApi, lifetime.Token, new PlayerRewardWalletReceiver(Player));
             Rewarded = new GoogleRewardedAdsService(adsConfiguration, Ads, adsConsent, new UnityRewardedAdLoader(), Debug.Log,
                 intents: RewardVerification);
             _ = Rewarded.InitializeAsync();
-            Player = new PlayerService(Identity, api, CurrentLanguageAsync, lifetime.Token, Debug.Log);
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
             var lifecycle = new GameObject("Realtime lifecycle");
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);

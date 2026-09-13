@@ -8,6 +8,20 @@ namespace Domino.Editor
 {
     public static class RewardedTestMenu
     {
+        [MenuItem("Domino/Ads/Recover Pending Verified Reward")]
+        public static async void RecoverPending()
+        {
+            if (!Application.isPlaying || ApplicationServices.RewardVerification == null) return;
+            await ApplicationServices.RewardVerification.RecoverPendingAsync();
+            Debug.Log("[ECONOMY] pending state=" + ApplicationServices.RewardVerification.State);
+        }
+        [MenuItem("Domino/Ads/Consume Verified Reward")]
+        public static async void Consume()
+        {
+            if (!Application.isPlaying || ApplicationServices.RewardVerification == null) return;
+            bool applied = await ApplicationServices.RewardVerification.ConsumeRewardAsync();
+            Debug.Log(applied ? "[ECONOMY] confirmed wallet received" : "[ECONOMY] consume unavailable or failed");
+        }
         [MenuItem("Domino/Ads/Refresh Reward Intent Status")]
         public static async void RefreshStatus()
         {

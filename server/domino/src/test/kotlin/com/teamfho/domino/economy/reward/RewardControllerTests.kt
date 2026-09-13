@@ -76,4 +76,25 @@ class RewardControllerTests {
         mvc.perform(get("/api/v1/admob/rewarded/ssv")).andExpect(status().isServiceUnavailable)
         verifyNoInteractions(repository)
     }
+    @Test fun `consume authentication and authoritative response`() {
+        mvc.perform(post("$path/$id/consume").contentType("application/json").content("{}")).andExpect(status().isUnauthorized)
+        `when`(repository.consume("verified-guest", id)).thenReturn(RewardConsumeResponse(RewardCredit(amount = 10),
+            RewardWallet(10), ConsumedIntent(id)))
+        mvc.perform(post("$path/$id/consume").header("Authorization", "Bearer valid-guest").contentType("application/json").content("{}"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.wallet.coins").value(10))
+            .andExpect(jsonPath("$.intent.status").value("CONSUMED"))
+        verify(repository).consume("verified-guest", id)
+    }
+    @ParameterizedTest @ValueSource(strings = ["uid", "coins", "amount", "transactionId", "walletBalance", "lifetimeEarned", "rewardAmount"])
+    fun `consume never accepts client economy authority`(field: String) {
+        mvc.perform(post("$path/$id/consume").header("Authorization", "Bearer valid-guest").contentType("application/json").content("{\"$field\":10}"))
+            .andExpect(status().isBadRequest)
+        verifyNoInteractions(repository)
+    }
+    @Test fun `pending lookup requires auth and uses owner only`() {
+        mvc.perform(get("/api/v1/economy/ad-rewards/pending")).andExpect(status().isUnauthorized)
+        mvc.perform(get("/api/v1/economy/ad-rewards/pending").header("Authorization", "Bearer valid-guest"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.intent").isEmpty)
+        verify(repository).pending("verified-guest")
+    }
 }

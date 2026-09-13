@@ -1,0 +1,111 @@
+DOMINO MONETIZATION — PHASE H4 REPORT
+=====================================
+HISTORICAL_IMPLEMENTATION_REPORT=pre-integration; see REWARD_CONSUMPTION_H4_CHECKPOINT.txt for the main checkpoint
+BRANCH=codex/h4-economy-ledger
+SOURCE_SHA_BEFORE=cb486c494cdff4ea44958d59ca2f92db50417ce2
+SOURCE_SHA_AFTER=cb486c494cdff4ea44958d59ca2f92db50417ce2
+H3_COMMIT_SHA=cb486c494cdff4ea44958d59ca2f92db50417ce2
+WORKTREE_CLEAN_BEFORE_H4=YES
+PROJECT_WORKTREE=D:/Fredy/development/2026/domino/client/Validation/Generated/H3Source
+
+ECONOMY
+REWARD_POLICY_IMPLEMENTED=YES
+REWARDED_AD_COINS=10
+CLIENT_CAN_SET_REWARD_AMOUNT=NO
+
+LEDGER
+LEDGER_IMPLEMENTED=YES
+LEDGER_PATH=players/{uid}/walletTransactions/{transactionId}
+LEDGER_TRANSACTION_ID_POLICY=reward:{intentId}
+LEDGER_IMMUTABLE=PASS
+
+CONSUME
+CONSUME_ENDPOINT=POST /api/v1/economy/ad-rewards/intents/{intentId}/consume
+AUTH_REQUIRED=YES
+UID_FROM_SECURITY_PRINCIPAL=YES
+VERIFIED_REQUIRED=YES (first credit; CONSUMED allows idempotent replay)
+ATOMIC_FIRESTORE_TRANSACTION=YES
+
+WALLET
+WALLET_VALIDATION_SCOPE=ISOLATED TRANSACTION TEST DOUBLE; NO LIVE WALLET MODIFIED
+COINS_BEFORE=0
+COINS_AFTER=10
+LIFETIME_EARNED_BEFORE=0
+LIFETIME_EARNED_AFTER=10
+LIFETIME_SPENT_CHANGED=NO
+
+IDEMPOTENCY
+FIRST_CONSUME=PASS
+SECOND_CONSUME=PASS
+SECOND_CONSUME_ADDITIONAL_COINS=0
+PARALLEL_CONSUME=PASS (30 requests, transaction harness)
+LEDGER_ENTRY_COUNT=1
+TIMEOUT_AFTER_COMMIT_RETRY=PASS
+FROZEN_REWARD_AMOUNT_REPLAY=PASS
+OVERFLOW_REJECTION=PASS
+
+INTENT
+STATE_BEFORE=VERIFIED
+STATE_AFTER=CONSUMED
+PENDING_RECOVERY=GET /api/v1/economy/ad-rewards/pending
+PENDING_RECOVERY_SCOPE=latest verified intent, manual Editor command
+
+UNITY
+CLIENT_SENDS_AMOUNT=NO
+WALLET_UPDATED_FROM_BACKEND_RESPONSE=PASS
+TRANSPORT_FAILURE_FAKE_CREDIT=NO
+SHARED_PLAYER_OPERATION_GATE=PASS
+CREATE_CONSUME_MUTUAL_EXCLUSION=PASS
+
+TESTS
+BACKEND_TEST_COUNT=259
+BACKEND_TESTS=PASS (258 passed, 1 skipped, 0 failures)
+BACKEND_BUILD=PASS
+H4_TESTS=PASS (35 backend additions; 35 Unity client checks)
+H3_REGRESSION=PASS (38 backend reward tests; 30 client checks)
+H2_REGRESSION=PASS (46 checks; final Unity mock lifecycle PASS)
+PLAYER_FOUNDATION=PASS (469 client checks)
+REALTIME_G3=PASS (unit/client regressions)
+REDIS_LIVE_INTEGRATION=SKIPPED (existing DOMINO_REDIS_TESTS opt-in condition)
+PORTRAIT=PASS (139392 checks, 9 sizes, 4 local seats)
+GAMEPLAY=PASS (2981089 checks, 1000 games)
+SCORING=PASS (32679 checks)
+RULE_CONFIGURATION=PASS (82 checks)
+PLAYER_PERSPECTIVE=PASS (4 seats)
+UNITY_COMPILATION=PASS (Unity 6000.0.41f1; final Editor mock run after last code change)
+CONSOLE_ERRORS=0
+GIT_DIFF_CHECK=PASS
+
+EXTERNAL
+REDIS_CHANGED=NO
+WEBSOCKET_CHANGED=NO
+CLOUD_RUN_DEPLOYED=NO
+REAL_SSV=NOT_RUN
+REAL_FIRESTORE_CONSUMPTION=NOT_RUN
+FIRESTORE_EMULATOR=NOT_RUN
+REAL_AD_REQUESTS=0
+REAL_WALLET_CREDITED=0
+ADS_ENABLED=false
+ADS_ENVIRONMENT=DEVELOPMENT
+PRODUCTION_AD_UNIT_USED=NO
+
+GIT
+COMMIT=NONE (H4)
+PUSH=NONE
+H3_PRECONDITION_COMMIT=created separately and fast-forwarded into local main
+H3_COMMIT_MESSAGE=feat: add authenticated reward intents and admob ssv
+H4_LOCATION=isolated worktree above; changes uncommitted, not integrated into main
+MAIN_EXISTING_API_SETTINGS_CHANGE=preserved, excluded
+
+LIMITATIONS
+Firestore atomic logic was validated with the actual repository and a transaction double,
+not a live Firestore service or emulator. Real SSV and Android device validation remain pending.
+Pending recovery uses the latest owner pointer; legacy orphan intents require their known ID.
+No automatic consumption, final reward UI, limits, cooldowns or anti-abuse were added.
+Wallet cap remains the existing safe integer maximum; no silent clamping.
+Backend policy amount is frozen into the consumed intent and ledger for replay consistency.
+
+RECOMMENDED NEXT TASK
+PHASE H5: Reward UI, confirmation, Wallet refresh and round-end rewarded CTA.
+PHASE H6: limits, cooldowns and anti-abuse.
+PHASE H7: physical Android and public SSV validation.

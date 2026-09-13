@@ -14,6 +14,8 @@ class RewardConfiguration {
     @Bean fun rewardIntentRepository(firestore: ObjectProvider<Firestore>, policy: RewardPolicy): RewardIntentRepository {
         // Firebase disabled (e.g. tests) must not introduce a verification bypass.
         val db = firestore.ifAvailable ?: return object : RewardIntentRepository {
+            override fun consume(uid: String, intentId: String): RewardConsumeResponse = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
+            override fun pending(uid: String): RewardIntent? = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
             override fun issue(uid: String): RewardIntent = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
             override fun status(uid: String, intentId: String): RewardIntent = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)
             override fun verify(event: VerifiedAdMobEvent): Boolean = reject("SSV_DEPENDENCY_UNAVAILABLE", 503)

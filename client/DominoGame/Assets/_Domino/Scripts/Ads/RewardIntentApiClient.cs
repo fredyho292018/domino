@@ -7,7 +7,7 @@ using Domino.Infrastructure;
 
 namespace Domino.Ads
 {
-    public sealed class RewardIntentApiClient : IRewardIntentApi
+    public sealed class RewardIntentApiClient : IRewardIntentApi, IRewardConsumptionApi
     {
         readonly DominoApiConfiguration settings;
         readonly IAuthTokenProvider tokens;
@@ -15,17 +15,24 @@ namespace Domino.Ads
         readonly IRewardIntentCodec codec;
         public RewardIntentApiClient(DominoApiConfiguration settings, IAuthTokenProvider tokens, IApiTransport transport, IRewardIntentCodec codec)
         { this.settings = settings; this.tokens = tokens; this.transport = transport; this.codec = codec; }
-        public Task<RewardIntentReceipt> CreateAsync(CancellationToken token) => Send("POST", "", token);
+        public Task<RewardIntentReceipt> CreateAsync(CancellationToken token) => Send("POST", "intents", token, codec.Read);
+        public Task<RewardConsumeReceipt> ConsumeRewardAsync(string id, CancellationToken token)
+        {
+            if (!Guid.TryParseExact(id, "D", out var guid) || guid == Guid.Empty) throw new FormatException("INTENT_CONTRACT");
+            return Send("POST", "intents/" + guid.ToString("D") + "/consume", token, ((IRewardConsumptionCodec)codec).ReadConsume);
+        }
+        public Task<RewardIntentReceipt> PendingAsync(CancellationToken token) =>
+            Send("GET", "pending", token, ((IRewardConsumptionCodec)codec).ReadPending);
         public Task<RewardIntentReceipt> StatusAsync(string id, CancellationToken token)
         {
             if (!Guid.TryParseExact(id, "D", out var guid) || guid == Guid.Empty) throw new FormatException("INTENT_CONTRACT");
-            return Send("GET", "/" + guid.ToString("D"), token);
+            return Send("GET", "intents/" + guid.ToString("D"), token, codec.Read);
         }
-        async Task<RewardIntentReceipt> Send(string method, string suffix, CancellationToken cancellationToken)
+        async Task<T> Send<T>(string method, string resource, CancellationToken cancellationToken, Func<string, T> read)
         {
             if (!settings.IsAvailable) throw new DominoApiException(ApiFailure.Configuration);
             // Preserve any configured base path, using the existing validated REST endpoint.
-            var endpoint = new Uri(settings.Endpoint, "../economy/ad-rewards/intents" + suffix);
+            var endpoint = new Uri(settings.Endpoint, "../economy/ad-rewards/" + resource);
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -40,7 +47,7 @@ namespace Domino.Ads
                     timeout.Token.ThrowIfCancellationRequested();
                     if (response.Status == 401 && attempt == 0) continue;
                     if (response.Status != 200) throw new DominoApiException(response.Status == 401 ? ApiFailure.Authentication : ApiFailure.Server, response.Status);
-                    try { return codec.Read(response.Body); } catch { throw new DominoApiException(ApiFailure.Contract); }
+                    try { return read(response.Body); } catch { throw new DominoApiException(ApiFailure.Contract); }
                 }
                 catch (OperationCanceledException)
                 {

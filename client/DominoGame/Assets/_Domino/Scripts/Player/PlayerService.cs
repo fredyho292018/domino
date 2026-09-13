@@ -122,6 +122,55 @@ namespace Domino.Player
             }
             finally { completion.TrySetResult(true); }
         }
+        // Share the existing operation gate with bootstrap/alias: a late response cannot
+        // overwrite a newer reward balance. The callback must return the backend balance.
+        internal Task<bool> ApplyConfirmedRewardWalletAsync(Func<CancellationToken, Task<long>> loadWallet, CancellationToken caller)
+        {
+            TaskCompletionSource<bool> completion;
+            lock (gate)
+            {
+                if (disposed || lifetime.IsCancellationRequested || !HasConfirmedSnapshots ||
+                    identity.Current?.Uid != Player.Uid || (operation != null && !operation.IsCompleted))
+                    return Task.FromResult(false);
+                completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                operation = completion.Task;
+            }
+            if (context != null && SynchronizationContext.Current != context)
+                context.Post(_ => { _ = ReceiveRewardWallet(completion, loadWallet, caller); }, null);
+            else _ = ReceiveRewardWallet(completion, loadWallet, caller);
+            return completion.Task;
+        }
+        async Task ReceiveRewardWallet(TaskCompletionSource<bool> completion, Func<CancellationToken, Task<long>> loadWallet,
+            CancellationToken caller)
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(lifetime, disposalToken, caller);
+            deadline.CancelAfter(TimeSpan.FromSeconds(45));
+            var uid = identity.Current?.Uid;
+            Error = null; ChangeState(PlayerSyncState.SYNCING);
+            try
+            {
+                deadline.Token.ThrowIfCancellationRequested();
+                var coins = await CancellableTask.Wait(loadWallet(deadline.Token), deadline.Token);
+                deadline.Token.ThrowIfCancellationRequested();
+                if (uid == null || uid != identity.Current?.Uid || Player?.Uid != uid)
+                    throw new DominoApiException(ApiFailure.Authentication);
+                Wallet = new WalletSnapshot(coins);
+                Notify(SnapshotChanged, Player);
+                ChangeAvailability(BackendAvailability.AVAILABLE);
+                ChangeState(PlayerSyncState.SYNCED);
+                completion.TrySetResult(true);
+            }
+            catch (Exception error)
+            {
+                Error = error as DominoApiException ?? new DominoApiException(error is OperationCanceledException
+                    ? ApiFailure.Cancelled : ApiFailure.Contract);
+                if (Error.Category == ApiFailure.Transport || Error.Category == ApiFailure.Timeout || Error.HttpStatus >= 500)
+                    ChangeAvailability(BackendAvailability.UNAVAILABLE);
+                ChangeState(PlayerSyncState.FAILED);
+                Log("[ECONOMY] reward consume failed category=" + Error.Category);
+                completion.TrySetResult(false);
+            }
+        }
         static bool IsRetryable(DominoApiException error) => error != null &&
             (error.Category == ApiFailure.Transport || error.Category == ApiFailure.Timeout || error.Category == ApiFailure.Cancelled ||
              (error.Category == ApiFailure.Server && (error.HttpStatus == 500 || error.HttpStatus == 502 || error.HttpStatus == 503 || error.HttpStatus == 504)));

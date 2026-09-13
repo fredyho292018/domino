@@ -46,7 +46,7 @@ class RewardIntentTests {
         assertEquals(RewardIntentStatus.VERIFIED, verified.status)
         assertEquals(clock.instant(), verified.verifiedAt)
         assertEquals("aabbcc", verified.adMobTransactionId)
-        val b = repo.issue("owner")
+        val b = repo.issue("other-owner")
         assertFailsWith<RewardFailure> { repo.verify(event(b.intentId)) }
         assertFailsWith<RewardFailure> { repo.verify(event(a.intentId, "bbccdd")) }
         clock.value = clock.value.plusSeconds(86400)

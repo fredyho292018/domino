@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Domino.Ads
 {
-    public enum RewardVerificationState { NONE, INTENT_CREATED, CLIENT_EARNED, VERIFYING, VERIFIED, EXPIRED, FAILED }
+    public enum RewardVerificationState { NONE, INTENT_CREATED, CLIENT_EARNED, VERIFYING, VERIFIED, EXPIRED, FAILED, CONSUMING, CONSUMED }
     public sealed class RewardIntentReceipt
     {
         public string IntentId { get; }
@@ -13,7 +13,7 @@ namespace Domino.Ads
         public RewardIntentReceipt(string id, string status, DateTimeOffset expiresAt)
         {
             if (!Guid.TryParseExact(id, "D", out var guid) || guid == Guid.Empty ||
-                (status != "ISSUED" && status != "VERIFIED" && status != "EXPIRED" && status != "REJECTED"))
+                (status != "ISSUED" && status != "VERIFIED" && status != "EXPIRED" && status != "REJECTED" && status != "CONSUMED"))
                 throw new FormatException("INTENT_CONTRACT");
             IntentId = id; Status = status; ExpiresAt = expiresAt;
         }

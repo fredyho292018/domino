@@ -4,7 +4,7 @@ import java.time.Duration
 import java.time.Instant
 import org.springframework.boot.context.properties.ConfigurationProperties
 
-enum class RewardIntentStatus { ISSUED, VERIFIED, EXPIRED, REJECTED }
+enum class RewardIntentStatus { ISSUED, VERIFIED, EXPIRED, REJECTED, CONSUMED }
 enum class AdUnitEnvironment { DEVELOPMENT, PRODUCTION }
 data class RewardIntent(
     val intentId: String, val uid: String, val status: RewardIntentStatus,
@@ -12,10 +12,10 @@ data class RewardIntent(
     val verifiedAt: Instant? = null, val adMobTransactionId: String? = null,
     val source: String = "REWARDED_AD", val rewardPolicyKey: String = "REWARDED_AD_STANDARD"
 )
-data class RewardPreview(val type: String = "COINS", val previewAmount: Int = 10)
+data class RewardPreview(val type: String = "COINS", val previewAmount: Long = 10)
 data class RewardIntentResponse(val intentId: String, val status: RewardIntentStatus,
     val expiresAt: Instant, val reward: RewardPreview = RewardPreview()) {
-    companion object { fun from(intent: RewardIntent) = RewardIntentResponse(intent.intentId, intent.status, intent.expiresAt) }
+    companion object { fun from(intent: RewardIntent, coins: Long = 10) = RewardIntentResponse(intent.intentId, intent.status, intent.expiresAt, RewardPreview(previewAmount = coins)) }
 }
 class RewardFailure(val category: String, val httpStatus: Int = 400) : RuntimeException(category)
 fun reject(category: String, status: Int = 400): Nothing = throw RewardFailure(category, status)
@@ -23,6 +23,7 @@ fun opaqueId(id: String) = Regex("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-
 
 @ConfigurationProperties("domino.economy.rewarded-ad")
 data class RewardPolicy(
+    val rewardCoins: Long = 10,
     val intentTtl: Duration = Duration.ofMinutes(10),
     val environment: AdUnitEnvironment = AdUnitEnvironment.DEVELOPMENT,
     // SSV ad_unit is the numeric unit component, not the publisher/unit SDK string.
@@ -33,6 +34,7 @@ data class RewardPolicy(
     val keyCacheTtl: Duration = Duration.ofHours(12)
 ) {
     init {
+        require(rewardCoins in 1..com.teamfho.domino.economy.Wallet.MAX_COINS)
         require(!intentTtl.isNegative && !intentTtl.isZero && intentTtl <= Duration.ofHours(1))
         require(!clockSkew.isNegative && clockSkew <= Duration.ofMinutes(5))
         require(!maxEventAge.isNegative && !maxEventAge.isZero && maxEventAge <= Duration.ofHours(1))
@@ -55,6 +57,8 @@ data class RewardPolicy(
 }
 
 interface RewardIntentRepository {
+    fun consume(uid: String, intentId: String): RewardConsumeResponse
+    fun pending(uid: String): RewardIntent?
     fun issue(uid: String): RewardIntent
     fun status(uid: String, intentId: String): RewardIntent
     fun verify(event: VerifiedAdMobEvent): Boolean // true=new transition; false=identical duplicate
