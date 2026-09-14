@@ -210,6 +210,7 @@ namespace Domino.UI
         }
         public void Clear()
         {
+            if (StarterView) StarterView.Hide();
             Domino.Infrastructure.ApplicationServices.RoundRewards?.LeaveRound();
             if (RoundRewardPanel) { RoundRewardPanel.gameObject.SetActive(false); Destroy(RoundRewardPanel.gameObject); RoundRewardPanel = null; }
             prompt.gameObject.SetActive(true);

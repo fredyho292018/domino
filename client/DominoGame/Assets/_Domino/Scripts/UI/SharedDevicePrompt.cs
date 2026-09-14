@@ -10,6 +10,7 @@ namespace Domino.UI
     public sealed class SharedDevicePrompt : MonoBehaviour
     {
         RectTransform body;
+        GameObject backdrop;
         public Button ContinueButton { get; private set; }
         public Button FirstChoice { get; private set; }
         public Button SecondChoice { get; private set; }
@@ -18,8 +19,9 @@ namespace Domino.UI
         {
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=100;
             BoardView.ConfigureCanvas(gameObject);gameObject.AddComponent<GraphicRaycaster>();
-            var backdrop=UiKit.Panel("Private handoff",transform,Vector2.zero,Vector2.zero,UiKit.Hex("102C2B")).rectTransform;
-            backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.sizeDelta=Vector2.zero;
+            var background=UiKit.Panel("Private handoff",transform,Vector2.zero,Vector2.zero,UiKit.Hex("102C2B")).rectTransform;
+            background.anchorMin=Vector2.zero;background.anchorMax=Vector2.one;background.sizeDelta=Vector2.zero;
+            backdrop=background.gameObject;
             var safe=UiKit.Rect("Safe area",transform,Vector2.zero,Vector2.zero);safe.gameObject.AddComponent<SafeArea>();
             body=UiKit.Rect("Choices",safe,new Vector2(900,600),Vector2.zero);
         }
@@ -35,6 +37,7 @@ namespace Domino.UI
         }
         public IEnumerator Handoff(int seat)
         {
+            backdrop.SetActive(true);body.gameObject.SetActive(true);
             gameObject.SetActive(true);Clear();AwaitingInput=true;
             DominoLocalization.Set(UiKit.Label("Player",body,"",new Vector2(860,85),new Vector2(0,100),36,UiKit.Cream),"duel.handoff",seat+1);
             UiKit.LLabel("Privacy",body,"duel.privacy",new Vector2(800,100),Vector2.zero,24,UiKit.Muted);
@@ -42,8 +45,12 @@ namespace Domino.UI
             while(AwaitingInput)yield return null;
             gameObject.SetActive(false);
         }
-        public IEnumerator ChooseStarter(StarterSelection selection)
+        public IEnumerator ChooseStarter(StarterSelection selection, BoardView board)
         {
+            if(selection.Method==StarterMethod.HIGH_TILE_SELECTION) {
+                yield return ChooseHighTiles(selection,board);
+                yield break;
+            }
             while(!selection.Complete) {
                 int seat=selection.WaitingForGuess?selection.GuesserSeat:selection.NextSelectionSeat;
                 yield return Handoff(seat);gameObject.SetActive(true);Clear();
@@ -70,6 +77,35 @@ namespace Domino.UI
                 }
             }
             gameObject.SetActive(false);
+        }
+        IEnumerator ChooseHighTiles(StarterSelection selection,BoardView board)
+        {
+            gameObject.SetActive(true);Clear();backdrop.SetActive(false);body.gameObject.SetActive(false);
+            var view=board.GetStarterView();view.Show();
+            try {
+                while(!selection.Complete) {
+                    view.ResetTiles();
+                    int firstIndex=-1;
+                    for(int choice=0;choice<2;choice++) {
+                        int seat=selection.NextSelectionSeat;int picked=-1;
+                        view.Prompt(seat,firstIndex,index=> {
+                            if(!AwaitingInput||!selection.Choose(seat,index))return;
+                            picked=index;AwaitingInput=false;view.Highlight(index);
+                        });
+                        FirstChoice=view.Choices[0];SecondChoice=view.Choices[1];AwaitingInput=true;
+                        while(picked<0)yield return null;
+                        yield return new WaitForSecondsRealtime(.22f);
+                        if(choice==0)firstIndex=picked;
+                    }
+                    // The model reveals only after both selections, including a tied attempt.
+                    yield return view.Reveal(firstIndex,selection.FirstRevealed.Value,selection.SecondRevealed.Value);
+                    view.Result(selection.Complete,selection.WinnerSeat);
+                    yield return new WaitForSecondsRealtime(1.35f);
+                }
+            } finally {
+                AwaitingInput=false;FirstChoice=null;SecondChoice=null;view.Hide();
+                body.gameObject.SetActive(true);backdrop.SetActive(true);gameObject.SetActive(false);
+            }
         }
     }
 }

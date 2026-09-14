@@ -95,7 +95,7 @@ namespace Domino.Client
         {
             if(!sharedPrompt)sharedPrompt=new GameObject("Shared device prompt",typeof(RectTransform)).AddComponent<SharedDevicePrompt>();
             StarterSelection=new StarterSelection(Session.Configuration,Environment.TickCount);
-            yield return sharedPrompt.ChooseStarter(StarterSelection);
+            yield return sharedPrompt.ChooseStarter(StarterSelection,board);
             game.Start(Environment.TickCount,StarterSelection.WinnerSeat);
             yield return PresentEvents();
         }
