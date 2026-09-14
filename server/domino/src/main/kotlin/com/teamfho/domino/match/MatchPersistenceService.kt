@@ -52,6 +52,7 @@ class MatchPersistenceService(private val catalog: GameCatalogService, private v
         val now=clock.instant()
         return repository.transact(matchId,expectedSequence,commandId) { aggregate ->
             val m=aggregate.match;val p=input.payload;val sequence=m.lastSequence+1
+            require(m.executionMode==MatchExecutionMode.LOCAL){"ONLINE_COMMAND_SERVICE_REQUIRED"}
             require(now>=m.updatedAt);require(m.status !in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED))
             fun seat(s: Int) {require(s in m.participants.indices)}
             input.actorSeat?.let(::seat);input.targetSeat?.let(::seat)

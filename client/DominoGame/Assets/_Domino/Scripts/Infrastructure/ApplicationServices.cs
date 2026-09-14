@@ -21,6 +21,7 @@ namespace Domino.Infrastructure
         public static FirebaseBootstrap Firebase { get; private set; }
         public static PlayerService Player { get; private set; }
         public static IRealtimeConnectionService Realtime { get; private set; }
+        public static Domino.Online.IOnlineMatchApi OnlineApi { get; private set; }
         public static IAdsService Ads { get; private set; }
         public static IRewardedAdsService Rewarded { get; private set; }
         public static RewardVerificationService RewardVerification { get; private set; }
@@ -104,6 +105,7 @@ namespace Domino.Infrastructure
                 () => Player.HasConfirmedSnapshots && Player.State == PlayerSyncState.SYNCED, lifetime.Token,
                 recoveryReady: () => Player.HasConfirmedSnapshots, policy: Monetization);
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
+            OnlineApi = new Domino.Online.OnlineMatchApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
             var lifecycle = new GameObject("Realtime lifecycle");
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);
             lifecycle.AddComponent<RealtimeLifecycle>();

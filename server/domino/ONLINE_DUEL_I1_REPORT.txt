@@ -1,0 +1,196 @@
+DOMINO ONLINE — PHASE I1 REPORT
+===============================
+
+BRANCH=main
+SOURCE_SHA_BEFORE=786073aed2d1c45cab87540dbe8b7ff67b895205
+SOURCE_SHA_AFTER=786073aed2d1c45cab87540dbe8b7ff67b895205
+M4_COMMIT=786073aed2d1c45cab87540dbe8b7ff67b895205
+
+--------------------------------
+ONLINE MATCH
+--------------------------------
+ONLINE_DUEL_IMPLEMENTED=YES
+MATCH_CREATE_ENDPOINT=POST /api/v1/matches
+MATCH_JOIN_ENDPOINT=POST /api/v1/matches/{id}/join
+MATCH_SNAPSHOT_ENDPOINT=GET /api/v1/matches/{id}/snapshot
+EVENT_RESYNC_ENDPOINT=GET /api/v1/matches/{id}/events?afterSequence=N
+PLAYERS=2 REMOTE_HUMAN
+BOTS=0
+
+--------------------------------
+AUTHORITY
+--------------------------------
+SERVER_AUTHORITATIVE=YES
+CLIENT_STATE_AUTHORITY=NO
+SERVER_RNG=YES (injectable SecureRandom adapter)
+SERVER_DEAL=YES
+SERVER_SCORING=YES
+MATCH_RULE_SNAPSHOT_FROZEN=PASS
+
+--------------------------------
+STARTER
+--------------------------------
+HIGH_TILE_ONLINE=PASS
+EVEN_ODD_ONLINE=PASS
+PRIVATE_STARTER_LEAK=NO
+
+--------------------------------
+PRIVATE HANDS
+--------------------------------
+P0_PRIVATE_HAND=PASS
+P1_PRIVATE_HAND=PASS
+PUBLIC_HAND_LEAK=NO
+OPPONENT_HAND_LEAK=NO
+MULTIPLE_CONNECTIONS_SAME_UID=PASS (all participant connections receive only that seat's private updates)
+
+--------------------------------
+COMMANDS
+--------------------------------
+COMMAND_PROTOCOL_VERSION=1 (MATCH_COMMAND inside the G3 v1 envelope)
+COMMAND_ID_REQUIRED=YES
+PLAY_TILE=PASS
+PASS=PASS
+OUT_OF_TURN_REJECTED=PASS
+TILE_NOT_IN_HAND_REJECTED=PASS
+ILLEGAL_MOVE_REJECTED=PASS
+PASS_NOT_ALLOWED_REJECTED=PASS
+UID_AND_SCORE_TAMPERING_REJECTED=PASS
+
+--------------------------------
+IDEMPOTENCY
+--------------------------------
+DUPLICATE_COMMAND=PASS
+COMMAND_ID_CONFLICT=PASS
+DURABLE_DEDUPE=YES (Firestore command receipt, UID-bound canonical payload fingerprint)
+
+--------------------------------
+CONCURRENCY
+--------------------------------
+DOUBLE_PLAY_RACE=PASS
+CROSS_PLAYER_RACE=PASS
+MULTI_INSTANCE_SAFE_DESIGN=YES (Firestore state transaction/revision and durable command dedupe)
+CROSS_INSTANCE_WEBSOCKET_FANOUT=NOT_IMPLEMENTED (single LOCAL server routing in I1)
+
+--------------------------------
+GAMEPLAY
+--------------------------------
+DEAL=PASS (55 unique; 10+10; reserve 35)
+TURN_ORDER=PASS
+CAPICUA=PASS
+TRANQUE=PASS
+NORMAL_SCORING=PASS (opponent pips +10)
+CAPICUA_SCORING=PASS (opponent pips *2 +10)
+TRANQUE_SCORING=PASS (opponent pips, no bonus)
+ROUND_TRANSITION=PASS (explicit NEXT_ROUND; prior winner starts)
+MATCH_TARGET_150=PASS
+
+--------------------------------
+EVENTS
+--------------------------------
+MATCH_EVENT_PERSISTENCE=PASS
+ATOMIC_APPEND=PASS
+STRICT_SEQUENCE=PASS
+PUBLIC_PRIVATE_VISIBILITY=PASS
+WEBSOCKET_BROADCAST=PASS
+PRIVATE_HAND_DELIVERY=own snapshot within MATCH_UPDATE + authorized HAND_DEALT event
+
+--------------------------------
+RESYNC
+--------------------------------
+LAST_SEQUENCE_TRACKING=PASS
+GAP_DETECTION=PASS
+SNAPSHOT_RESYNC=PASS
+EVENTS_AFTER_SEQUENCE=PASS (500-position pages, redacted cursors preserve sequence)
+SERVER_TO_UNITY_WIRE_CONTRACT=PASS (actual server JSON parsed by RealtimeProtocol)
+
+--------------------------------
+HISTORY
+--------------------------------
+ONLINE_HISTORY_PROJECTION=PASS
+
+--------------------------------
+REAL VALIDATION
+--------------------------------
+REAL_TWO_CLIENT_TEST=PASS (two independent JVM clients, distinct Firebase UIDs)
+REAL_FIRESTORE_ONLINE_MATCH=PASS
+REAL_WEBSOCKET=PASS (real G3 endpoint, local port 18083, existing loopback Redis)
+REAL_MATCH_ID=85e8edfd-5c4d-40f4-aa91-0d988b8941af
+REAL_MATCH_EVENTS=320
+REAL_HISTORY_ENTRIES=2 (WIN/LOSS)
+VALIDATION_DATA=PRESERVED_AS_VALIDATION
+TEMPORARY_FIREBASE_IDENTITIES=2 CREATED_FOR_TEST_AND_DELETED
+VALIDATION_SERVER=STOPPED_AFTER_TEST
+REAL_WALLET_WRITES=0
+REAL_AD_REQUESTS=0
+REDIS_STOP_RESTORE_TEST=NOT_RUN (existing Redis was left running)
+REAL_UNITY_NETWORK_PAIR=NOT_RUN (Unity presentation and real authenticated transport validated separately)
+ANDROID_PHYSICAL_TEST=NOT_RUN
+
+--------------------------------
+REGRESSION
+--------------------------------
+BACKEND_TESTS=414 PASS / 2 OPTIONAL SKIPPED / 0 FAILURES
+BACKEND_I1_TESTS=17 PASS
+UNITY_I1_CLIENT_TESTS=24 PASS
+UNITY_I1_PORTRAIT_CHECKS=265 PASS (nine sizes, both local seats, hidden opponents, selection, reserve, safe area)
+LOCAL_DUEL=PASS (14720 checks, 200 rounds)
+PARTNERS_2V2=PASS (2981089 domain checks, 1000 games)
+M2_PARITY=PASS (251685 checks, 250 differential rounds, 100 golden matches)
+M4=PASS
+REALTIME_G3=PASS
+PLAYER_FOUNDATION=PASS (469 client checks)
+GUEST_AUTH=PASS (43 checks)
+MONETIZATION=PASS (H1 31, H2 46, H3 30, H4 35, H5 27, H6 26 client checks; backend suite includes H6.1)
+PORTRAIT=PASS
+UNITY_COMPILATION=PASS
+UNITY_PLAY_MODE=PASS
+CONSOLE_ERRORS=0 (final isolated Unity validation)
+
+--------------------------------
+NOT IMPLEMENTED
+--------------------------------
+TURN_TIMER_RUNTIME=NO
+AUTOPLAY_RUNTIME=NO
+RECONNECT_RUNTIME=NO (Match lifecycle; existing G3 transport reconnect unchanged)
+MATCHMAKING=NO
+SPECTATOR_RUNTIME=NO
+REPLAY_UI=NO
+H7_STARTED=NO
+
+--------------------------------
+LOCAL USER FILES
+--------------------------------
+ADS_SETTINGS_USER_CHANGE_PRESERVED=YES (byte-for-byte SHA-256 verified)
+API_SETTINGS_USER_CHANGE_PRESERVED=YES (byte-for-byte SHA-256 verified)
+ADS_SETTINGS_HASH=C377416E334727264806761518A4B5EDF381A837A927A1C3F3D523A1ACBDB5D6
+API_SETTINGS_HASH=AC6B0ED6D30240BC531B235E43E8B9B55D3B48DCBCCCF365ADEC62D3EE6BCB37
+ISOLATED_VALIDATION_ADS_ENABLED=false
+ISOLATED_VALIDATION_API_ENABLED=false
+
+--------------------------------
+GIT
+--------------------------------
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NONE
+WORKTREE=I1 CHANGES + TWO PRESERVED USER ASSETS
+DIFF_CHECK=PASS_FOR_I1_TRACKED_CHANGES (user Ads asset retains its preexisting whitespace)
+
+--------------------------------
+ENTRY POINT AND LIMITATIONS
+--------------------------------
+UNITY_MENU=Domino > Online > Open DUEL development controls
+CATALOG_ENABLEMENT=explicit DUEL-only I1 development service; immutable catalog v2 LOCAL metadata not republished
+DISPLAY_NAMES=generic server Player 1/Player 2; enriched profile integration deferred
+TRANSPORT=single LOCAL backend fan-out; multi-instance durable state is implemented, distributed delivery is not
+DELIVERY_RECOVERY=snapshot/gap resync; durable outbox and full Match reconnect belong to subsequent work
+ROUND_READY=explicit NEXT_ROUND lets users review the authoritative result; no timer or autoplay
+DOCUMENTATION=server/domino/ONLINE_DUEL_I1.md
+EVIDENCE_DIRECTORY=client/Validation/Generated
+
+=============================================
+RECOMMENDED NEXT TASK
+=============================================
+Review I1 before any commit/push.
+I2 — Authoritative turn timer + autoplay + disconnect/reconnect + 180-second window.
+Then I3 matchmaking, I4 delayed spectators.

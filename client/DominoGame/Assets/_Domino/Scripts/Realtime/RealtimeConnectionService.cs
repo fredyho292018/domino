@@ -7,6 +7,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Domino.Realtime
 {
+    public interface IRealtimeMatchChannel
+    {
+        event Action<string, JObject> MatchMessage;
+        Task SendMatchCommandAsync(JObject command);
+    }
     public interface IRealtimeConnectionService : IDisposable
     {
         RealtimeConnectionState State { get; }
@@ -17,7 +22,7 @@ namespace Domino.Realtime
     }
     // Owned by the application, not by menus. All continuations/events use the captured
     // Unity context. Background cancellation fully drains before another socket is created.
-    public sealed class RealtimeConnectionService : IRealtimeConnectionService
+    public sealed class RealtimeConnectionService : IRealtimeConnectionService, IRealtimeMatchChannel
     {
         readonly RealtimeConfiguration config;
         readonly IPlayerIdentityService identity;
@@ -33,6 +38,13 @@ namespace Domino.Realtime
         public RealtimeConnectionState State { get; private set; }
         public GlobalActivitySnapshot Activity { get; private set; }
         public event Action Changed;
+        public event Action<string, JObject> MatchMessage;
+        Func<string, JObject, Task> matchSender;
+        public Task SendMatchCommandAsync(JObject command)
+        {
+            if (State != RealtimeConnectionState.CONNECTED || matchSender == null) throw new InvalidOperationException("Realtime unavailable");
+            return matchSender("MATCH_COMMAND", (JObject)command.DeepClone());
+        }
         public RealtimeConnectionService(RealtimeConfiguration config, IPlayerIdentityService identity, IAuthTokenProvider tokens,
             Func<IRealtimeSocket> factory = null, Func<double> jitter = null, Func<TimeSpan, CancellationToken, Task> delay = null)
         {
@@ -93,7 +105,12 @@ namespace Domino.Realtime
             using var socket = factory();
             using var session = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
             long sequence = 0, incoming = 0;
-            async Task Send(string type, JObject payload) => await socket.SendAsync(RealtimeProtocol.Write(type, ++sequence, payload), session.Token);
+            using var sendGate = new SemaphoreSlim(1, 1);
+            async Task Send(string type, JObject payload) {
+                await sendGate.WaitAsync(session.Token);
+                try { await socket.SendAsync(RealtimeProtocol.Write(type, ++sequence, payload), session.Token); }
+                finally { sendGate.Release(); }
+            }
             using (var opening = CancellationTokenSource.CreateLinkedTokenSource(session.Token)) {
                 opening.CancelAfter(TimeSpan.FromSeconds(15));
                 // Acquire current SDK token before opening: slow SDK refresh does not consume server auth deadline.
@@ -118,6 +135,7 @@ namespace Domino.Realtime
                 if (interval < 5 || interval > 60 || timeout <= interval || timeout > 300) throw new RealtimeFailure("PROTOCOL");
             }
             Set(RealtimeConnectionState.CONNECTED);
+            matchSender = Send;
             await Send("GLOBAL_ACTIVITY_SUBSCRIBE", new JObject());
             // .NET's Unity-compatible ClientWebSocket does not expose native pong callbacks.
             // Application PING/PONG gives both peers a verifiable timeout, at 20s (not polling).
@@ -137,6 +155,10 @@ namespace Domino.Realtime
                     if (identity.Current?.Uid != uid) throw new RealtimeFailure("IDENTITY");
                     Reject(response);
                     switch ((string)response["type"]) {
+                        case "MATCH_UPDATE": case "COMMAND_ACCEPTED": case "COMMAND_REJECTED":
+                            foreach(Action<string,JObject> listener in MatchMessage?.GetInvocationList() ?? Array.Empty<Delegate>())
+                                try {listener((string)response["type"],(JObject)response["payload"]);} catch { }
+                            break;
                         case "PONG": lastPong.Restart(); break;
                         case "PRESENCE_READY": break;
                         case "GLOBAL_ACTIVITY_SNAPSHOT": case "GLOBAL_ACTIVITY_UPDATED":
@@ -144,7 +166,7 @@ namespace Domino.Realtime
                         default: throw new RealtimeFailure("PROTOCOL");
                     }
                 }
-            } finally { session.Cancel(); await heartbeat; }
+            } finally { matchSender = null; session.Cancel(); await heartbeat; }
         }
         static void Reject(JObject message) {
             string type = (string)message["type"];

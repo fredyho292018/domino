@@ -81,3 +81,28 @@ tasks.register<JavaExec>("validateMatchM4Firestore") {
     args("--validate-m4")
     providers.gradleProperty("m4MatchId").orNull?.let { args("--inspect-match=$it") }
 }
+
+tasks.register<JavaExec>("exportOnlineFixtures") {
+    group = "verification"
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.OnlineFixtureExporter")
+}
+
+tasks.register<JavaExec>("validateOnlineI1Real") {
+    group = "verification"
+    description = "Explicit real Firebase + local WebSocket + synthetic Firestore Match validation; no wallet calls."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.OnlineRealValidation")
+    args("--validate-i1")
+}
+
+tasks.register<JavaExec>("validateOnlineUnityI11") {
+    group = "verification"
+    description = "Explicit JVM companion and local server for real Unity I1.1 validation."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.OnlineUnityValidation")
+    args("--validate-i11")
+}

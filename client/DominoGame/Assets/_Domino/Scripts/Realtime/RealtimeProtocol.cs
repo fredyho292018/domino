@@ -46,14 +46,24 @@ namespace Domino.Realtime
         public static JObject Read(string text, ref long previous)
         {
             try {
-                using var reader = new JsonTextReader(new StringReader(text)) { MaxDepth = 8, DateParseHandling = DateParseHandling.None };
+                // Match event batches include event -> payload -> hand -> tile (nine containers).
+                // Keep G3's original depth bound for every other message family.
+                using var reader = new JsonTextReader(new StringReader(text)) { MaxDepth = 12, DateParseHandling = DateParseHandling.None };
                 var root = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read() || root.Count != 5 || root["type"]?.Type != JTokenType.String || root["version"]?.Type != JTokenType.Integer || (int)root["version"] != 1 ||
                     root["sequence"]?.Type != JTokenType.Integer || (long)root["sequence"] <= previous || root["payload"]?.Type != JTokenType.Object ||
                     root["timestamp"]?.Type != JTokenType.String || !DateTimeOffset.TryParse((string)root["timestamp"], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
                     throw new RealtimeFailure("PROTOCOL");
+                if((string)root["type"]!="MATCH_UPDATE" && ContainerDepth(root)>8)throw new RealtimeFailure("PROTOCOL");
                 previous = (long)root["sequence"]; return root;
             } catch (RealtimeFailure) { throw; } catch { throw new RealtimeFailure("PROTOCOL"); }
+        }
+        static int ContainerDepth(JToken token)
+        {
+            int depth=0;
+            if(token is JObject obj) {foreach(var p in obj.Properties())depth=Math.Max(depth,ContainerDepth(p.Value));return depth+1;}
+            if(token is JArray array) {foreach(var item in array)depth=Math.Max(depth,ContainerDepth(item));return depth+1;}
+            return 0;
         }
         public static GlobalActivitySnapshot Activity(JObject payload)
         {

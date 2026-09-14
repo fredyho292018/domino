@@ -4,12 +4,13 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.Instant
 
-enum class MatchEventType { MATCH_STARTED, ROUND_STARTED, HAND_DEALT, STARTER_SELECTION_PRIVATE,
+enum class MatchEventType { STARTER_PROGRESS, MATCH_STARTED, ROUND_STARTED, HAND_DEALT, STARTER_SELECTION_PRIVATE,
     TURN_STARTED, TILE_PLAYED, TURN_CHANGED, PLAYER_PASSED, ROUND_FINISHED, MATCH_FINISHED,
     TURN_TIMEOUT, AUTO_PLAYED, PLAYER_DISCONNECTED, PLAYER_RECONNECTED, PLAYER_ABANDONED }
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, property="kind")
 @JsonSubTypes(
+    JsonSubTypes.Type(StarterProgress::class,name="STARTER_PROGRESS"),
     JsonSubTypes.Type(MatchStarted::class,name="MATCH_STARTED"), JsonSubTypes.Type(RoundStarted::class,name="ROUND_STARTED"),
     JsonSubTypes.Type(HandDealt::class,name="HAND_DEALT"), JsonSubTypes.Type(PrivateStarterSelection::class,name="STARTER_SELECTION_PRIVATE"),
     JsonSubTypes.Type(TurnStarted::class,name="TURN_STARTED"), JsonSubTypes.Type(TilePlayed::class,name="TILE_PLAYED"),
@@ -19,6 +20,8 @@ enum class MatchEventType { MATCH_STARTED, ROUND_STARTED, HAND_DEALT, STARTER_SE
     JsonSubTypes.Type(PlayerDisconnected::class,name="PLAYER_DISCONNECTED"), JsonSubTypes.Type(PlayerReconnected::class,name="PLAYER_RECONNECTED"),
     JsonSubTypes.Type(PlayerAbandoned::class,name="PLAYER_ABANDONED"))
 sealed interface MatchPayload
+data class StarterProgress(val method: com.teamfho.domino.catalog.StarterMethod, val attempt: Int,
+    val selectedSeats: List<Int>, val guessingSeat: Int, val resolvedSeat: Int? = null): MatchPayload
 data class MatchStarted(val initialScores: List<Int>): MatchPayload
 data class RoundStarted(val starterSeat: Int, val tilesRemainingPerSeat: List<Int>): MatchPayload
 data class HandDealt(val seat: Int, val tiles: List<DominoPips>): MatchPayload
@@ -38,6 +41,7 @@ data class PlayerReconnected(val seat: Int): MatchPayload
 data class PlayerAbandoned(val seat: Int): MatchPayload
 
 fun MatchPayload.type(): MatchEventType = when(this) {
+    is StarterProgress->MatchEventType.STARTER_PROGRESS
     is MatchStarted->MatchEventType.MATCH_STARTED; is RoundStarted->MatchEventType.ROUND_STARTED
     is HandDealt->MatchEventType.HAND_DEALT; is PrivateStarterSelection->MatchEventType.STARTER_SELECTION_PRIVATE
     is TurnStarted->MatchEventType.TURN_STARTED; is TilePlayed->MatchEventType.TILE_PLAYED

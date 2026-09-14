@@ -1,5 +1,8 @@
 package com.teamfho.domino.realtime
 
+import com.teamfho.domino.online.*
+import com.teamfho.domino.catalog.GameCatalogCodec
+import com.teamfho.domino.match.MatchCodec
 import com.teamfho.domino.security.AuthFailure
 import com.teamfho.domino.security.FirebaseTokenVerifier
 import org.springframework.scheduling.annotation.Scheduled
@@ -19,6 +22,7 @@ class RealtimeHandler(
     private val verifier: FirebaseTokenVerifier,
     private val presence: PresenceStore,
     private val properties: RealtimeProperties,
+    private val online: OnlineMatchService? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -40,6 +44,22 @@ class RealtimeHandler(
     private var lastCount = -1L
     companion object { const val MAX_BYTES = 32768 }
 
+    init {
+        online?.committed = { write ->
+            connections.values.forEach { c ->
+                val uid=c.uid
+                val participant=write.state.match.participants.singleOrNull {it.playerUid==uid}
+                if(uid!=null && participant!=null) synchronized(c) {
+                    if(c.socket.isOpen) try {
+                        send(c,"MATCH_UPDATE",mapOf("matchId" to write.state.match.matchId,
+                            "firstSequence" to write.events.first().sequence,
+                            "events" to write.events.map {MatchCodec.map(OnlineMatchService.authorized(it,participant.seatIndex))},
+                            "snapshot" to MatchCodec.map(OnlineMatchService.snapshot(write.state,uid))))
+                    } catch(_: Exception) { close(c,1011) }
+                }
+            }
+        }
+    }
     override fun afterConnectionEstablished(session: WebSocketSession) {
         if (connections.size >= 1000) { session.close(CloseStatus.SERVICE_OVERLOAD); return }
         session.textMessageSizeLimit = MAX_BYTES
@@ -48,6 +68,7 @@ class RealtimeHandler(
     }
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         val c = connections[session.id] ?: return
+        var onlineCommand: OnlineCommand? = null
         try {
             synchronized(c) {
                 if (!session.isOpen) return
@@ -96,7 +117,26 @@ class RealtimeHandler(
                             else -> c.subscribed = false
                         }
                     }
+                    "MATCH_COMMAND" -> {
+                        if(c.uid==null || online==null) { fail(c,"PROTOCOL");return }
+                        try { onlineCommand=GameCatalogCodec.mapper.readValue(payload.toString(),OnlineCommand::class.java) }
+                        catch(_: Exception) {
+                            val id=payload.path("commandId").asString("").take(128)
+                            send(c,"COMMAND_REJECTED",mapOf("commandId" to id,"code" to "INVALID_COMMAND"));return
+                        }
+                    }
                     else -> fail(c, "PROTOCOL")
+                }
+            }
+            onlineCommand?.let {command ->
+                try {
+                    val result=online!!.command(c.uid!!,command)
+                    synchronized(c) {send(c,"COMMAND_ACCEPTED",mapOf("commandId" to command.commandId,"matchId" to command.matchId,"resultingSequence" to result.receipt.resultingSequence))}
+                } catch(e: OnlineFailure) {
+                    org.slf4j.LoggerFactory.getLogger(javaClass).info("ONLINE_COMMAND_REJECTED code={}",e.code.name)
+                    synchronized(c) {send(c,"COMMAND_REJECTED",mapOf("commandId" to command.commandId,"code" to e.code.name))}
+                } catch(_: Exception) {
+                    synchronized(c) {send(c,"COMMAND_REJECTED",mapOf("commandId" to command.commandId,"code" to "STORAGE_UNAVAILABLE"))}
                 }
             }
         } catch (failure: AuthFailure) {

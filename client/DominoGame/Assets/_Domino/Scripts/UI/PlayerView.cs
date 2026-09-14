@@ -13,6 +13,12 @@ namespace Domino.UI
         Image plate, rim, shadow;
         public RectTransform PanelRect => plate ? plate.rectTransform : null;
         public string DisplayName { get; private set; }
+        public void SetDisplayName(string value)
+        {
+            DisplayName = value;
+            var label = transform.Find("Name");
+            if (label) label.GetComponent<Text>().text = value;
+        }
         bool active;
         float intensity;
         public void Initialize(string playerName, string initials, Color accent, bool horizontal = false)

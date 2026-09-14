@@ -48,8 +48,8 @@ class MatchHistoryHttpTests {
         mvc.perform(get("/api/v1/players/me/matches?limit=101").header("Authorization","Bearer valid-guest"))
             .andExpect(status().isBadRequest).andExpect(jsonPath("$.code").value("HISTORY_PAGE_INVALID"))
     }
-    @Test fun `public events endpoint not implemented`() {
-        assertFalse(mappings.handlerMethods.keys.any {it.patternValues.any {path->path.startsWith("/api/v1/matches/")}})
+    @Test fun `I1 events endpoint remains authenticated and does not expose arbitrary match data`() {
+        mvc.perform(get("/api/v1/matches/arbitrary/events")).andExpect(status().isUnauthorized)
         val response=mvc.perform(get("/api/v1/matches/arbitrary/events").header("Authorization","Bearer valid-guest")).andReturn().response
         // Existing global exception mapping may map absent routes to INTERNAL_ERROR, not 404.
         assertTrue(response.status>=400);assertFalse(response.contentAsString.contains("sideA"))

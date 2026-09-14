@@ -44,6 +44,7 @@ object MatchReplayReducer {
                 is RoundFinished->state=state.copy(scores=p.scoresAfter,currentSeat=null,turnDeadline=null)
                 is MatchFinished->state=state.copy(status=if(p.result.finishReason==MatchFinishReason.CANCELLED)MatchStatus.CANCELLED else MatchStatus.FINISHED,scores=p.result.scores,currentSeat=null,turnDeadline=null)
                 is PlayerPassed->Unit
+                is StarterProgress->state=state.copy(status=MatchStatus.STARTING)
                 else->error("UNSUPPORTED_REPLAY_SEMANTICS")
             }
             state=state.copy(lastSequence=e.sequence,currentRound=e.roundNumber,currentTurn=e.turnNumber)
