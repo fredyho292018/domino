@@ -3,7 +3,9 @@ package com.teamfho.domino.match
 import java.time.Clock
 import java.time.Instant
 
-data class PublicParticipant(val seat: Int, val displayNameSnapshot: String, val teamId: Int?, val controlType: ControlType)
+data class PublicParticipant(val seat: Int, val displayNameSnapshot: String, val teamId: Int?, val controlType: ControlType,
+    val connectionState: ConnectionState = ConnectionState.CONNECTED, val disconnectedAt: Instant? = null,
+    val reconnectDeadlineAt: Instant? = null, val abandonedAt: Instant? = null)
 data class PublicMatchSnapshot(val matchId: String, val modeKey: String, val status: MatchStatus,
     val participants: List<PublicParticipant>, val scores: List<Int>, val currentRound: Int, val currentTurn: Int,
     val currentSeat: Int?, val board: List<BoardPlacement>, val tilesRemainingPerSeat: List<Int>, val starterSeat: Int?,
@@ -45,6 +47,10 @@ object MatchReplayReducer {
                 is MatchFinished->state=state.copy(status=if(p.result.finishReason==MatchFinishReason.CANCELLED)MatchStatus.CANCELLED else MatchStatus.FINISHED,scores=p.result.scores,currentSeat=null,turnDeadline=null)
                 is PlayerPassed->Unit
                 is StarterProgress->state=state.copy(status=MatchStatus.STARTING)
+                is TurnTimeout, is AutoPlayed->Unit // TILE_PLAYED/PLAYER_PASSED carry the actual action exactly once.
+                is PlayerDisconnected->state=state.copy(participants=state.participants.map {if(it.seat==p.seat)it.copy(connectionState=ConnectionState.DISCONNECTED,disconnectedAt=p.disconnectedAt,reconnectDeadlineAt=p.reconnectDeadlineAt) else it})
+                is PlayerReconnected->state=state.copy(participants=state.participants.map {if(it.seat==p.seat)it.copy(connectionState=ConnectionState.CONNECTED,disconnectedAt=null,reconnectDeadlineAt=null) else it})
+                is PlayerAbandoned->state=state.copy(participants=state.participants.map {if(it.seat==p.seat)it.copy(connectionState=ConnectionState.ABANDONED,abandonedAt=p.abandonedAt) else it})
                 else->error("UNSUPPORTED_REPLAY_SEMANTICS")
             }
             state=state.copy(lastSequence=e.sequence,currentRound=e.roundNumber,currentTurn=e.turnNumber)

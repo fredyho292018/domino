@@ -26,19 +26,20 @@ data class MatchStarted(val initialScores: List<Int>): MatchPayload
 data class RoundStarted(val starterSeat: Int, val tilesRemainingPerSeat: List<Int>): MatchPayload
 data class HandDealt(val seat: Int, val tiles: List<DominoPips>): MatchPayload
 data class PrivateStarterSelection(val result: StarterSelectionResult): MatchPayload
-data class TurnStarted(val seat: Int, val turnDeadline: Instant? = null): MatchPayload
+data class TurnStarted(val seat: Int, val turnDeadline: Instant? = null,
+    val turnNumber: Int? = null, val turnStartedAt: Instant? = null, val turnDeadlineAt: Instant? = turnDeadline): MatchPayload
 data class TilePlayed(val seat: Int, val tile: DominoPips, val chainEnd: ChainEnd): MatchPayload
 data class TurnChanged(val seat: Int): MatchPayload
 data class PlayerPassed(val seat: Int): MatchPayload
 data class RoundFinished(val finishType: FinishType, val winnerSeat: Int?, val scoreRecipient: ScoreRecipient?,
     val scoreAwarded: Int, val roundStarter: Int, val remainingPips: List<Int>, val scoresAfter: List<Int>): MatchPayload
 data class MatchFinished(val result: MatchResult): MatchPayload
-// Schema only. The M4 persistence service explicitly rejects runtime generation of these payloads.
-data class TurnTimeout(val seat: Int): MatchPayload
-data class AutoPlayed(val seat: Int, val tile: DominoPips?, val chainEnd: ChainEnd?, val reason: AutoPlayReason): MatchPayload
-data class PlayerDisconnected(val seat: Int): MatchPayload
-data class PlayerReconnected(val seat: Int): MatchPayload
-data class PlayerAbandoned(val seat: Int): MatchPayload
+// I2 online runtime emits these; the M4 local persistence service still rejects client generation.
+data class TurnTimeout(val seat: Int, val turnNumber: Int? = null, val turnDeadlineAt: Instant? = null): MatchPayload
+data class AutoPlayed(val seat: Int, val tile: DominoPips?, val chainEnd: ChainEnd?, val reason: AutoPlayReason, val resultingSequence: Long? = null): MatchPayload
+data class PlayerDisconnected(val seat: Int, val disconnectedAt: Instant? = null, val reconnectDeadlineAt: Instant? = null): MatchPayload
+data class PlayerReconnected(val seat: Int, val reconnectedAt: Instant? = null): MatchPayload
+data class PlayerAbandoned(val seat: Int, val abandonedAt: Instant? = null): MatchPayload
 
 fun MatchPayload.type(): MatchEventType = when(this) {
     is StarterProgress->MatchEventType.STARTER_PROGRESS

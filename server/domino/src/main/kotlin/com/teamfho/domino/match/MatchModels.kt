@@ -22,7 +22,8 @@ enum class AutoPlayReason { TURN_TIMEOUT, DISCONNECTED }
 
 data class ScoreRecipient(val type: ScoreOwnerType, val index: Int)
 data class MatchParticipant(val seatIndex: Int, val playerUid: String?, val displayNameSnapshot: String,
-    val teamId: Int?, val controlType: ControlType, val connectionState: ConnectionState, val joinedAt: Instant)
+    val teamId: Int?, val controlType: ControlType, val connectionState: ConnectionState, val joinedAt: Instant,
+    val disconnectedAt: Instant? = null, val reconnectDeadlineAt: Instant? = null, val abandonedAt: Instant? = null)
 data class SpectatorPolicy(val enabled: Boolean = true, val visibility: MatchVisibility = MatchVisibility.PUBLIC,
     val delaySeconds: Long = 90, val handView: HandView = HandView.SELECTED_PLAYER_DELAYED)
 

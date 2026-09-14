@@ -8,6 +8,7 @@ $project=@'
 <ItemGroup>
 <Compile Include="../../OnlineMatchClientTests.cs" />
 <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Online/OnlineMatchClient.cs" />
+<Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Online/OnlineTurnClock.cs" />
 <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Realtime/*.cs" Exclude="../../../DominoGame/Assets/_Domino/Scripts/Realtime/RealtimeLifecycle.cs" />
 <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Identity/*.cs" />
 <Compile Include="../../../DominoGame/Assets/_Domino/Scripts/Player/*.cs" />

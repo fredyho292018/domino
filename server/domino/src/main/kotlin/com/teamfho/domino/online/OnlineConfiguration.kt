@@ -12,6 +12,13 @@ import org.springframework.web.bind.annotation.*
 
 @Configuration(proxyBeanMethods=false)
 class OnlineConfiguration {
+    // Keep existing lifecycle jobs separate from potentially slow Firestore discovery.
+    @Bean fun taskScheduler()=org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler().apply {
+        poolSize=1;setThreadNamePrefix("realtime-lifecycle-")
+    }
+    @Bean fun onlineTurnScheduler()=org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler().apply {
+        poolSize=1;setThreadNamePrefix("online-turn-")
+    }
     @Bean fun onlineRepository(db: ObjectProvider<Firestore>): OnlineRepository {
         val delegate=db.ifAvailable?.let(::FirestoreOnlineRepository)
         return object: OnlineRepository {
@@ -19,6 +26,9 @@ class OnlineConfiguration {
             override fun create(state: OnlineState)=ready().create(state)
             override fun read(matchId: String)=ready().read(matchId)
             override fun events(matchId: String,after: Long)=ready().events(matchId,after)
+            override fun due(now: java.time.Instant)=ready().due(now)
+            override fun activeFor(uid: String)=ready().activeFor(uid)
+            override fun refreshDiscovery(matchId: String,now: java.time.Instant)=ready().refreshDiscovery(matchId,now)
             override fun transact(matchId: String,expectedSequence: Long,commandId: String,fingerprint: String,transition:(OnlineState)->OnlineWrite)=ready().transact(matchId,expectedSequence,commandId,fingerprint,transition)
         }
     }

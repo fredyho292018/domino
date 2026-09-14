@@ -19,10 +19,19 @@ namespace Domino.Online
         DominoTileView tilePrefab,selected;PlayerView playerPrefab;
         OnlineMatchSnapshot shown;bool rendering,disposed;
         RectTransform controls;Button left,right,pass,next,first,second,resync;
-        Text status;
+        Text status,countdown;bool wasConnected;int shownSeconds=-1;
         public void Initialize(OnlineMatchClient client,DominoTileView tile,PlayerView player) {
             Client=client;tilePrefab=tile;playerPrefab=player;Client.Changed+=Changed;Client.Rejected+=Rejected;
-            ApplicationServices.Realtime.Changed+=RefreshInput;Changed();
+            wasConnected=Connected;ApplicationServices.Realtime.Changed+=ConnectionChanged;Client.EventApplied+=Feedback;Changed();
+        }
+        void ConnectionChanged() {
+            bool current=Connected;
+            if(current!=wasConnected) {wasConnected=current;if(current)_=Client.ConnectionRestoredAsync();else Client.ConnectionLost();}
+            RefreshInput();
+        }
+        void Feedback(string type) {
+            string key=type=="TURN_TIMEOUT"?"game.time_expired":type=="AUTO_PLAYED"?"game.autoplay":type=="PLAYER_DISCONNECTED"?"game.player_disconnected":type=="PLAYER_RECONNECTED"?"online.player_reconnected":type=="PLAYER_ABANDONED"?"online.player_abandoned":null;
+            if(key!=null&&Board)Board.ShowMessage(key);
         }
         void Changed() {
             if(disposed)return;
@@ -58,6 +67,7 @@ namespace Domino.Online
             var safe=UiKit.Rect("Safe area",overlay.transform,Vector2.zero,Vector2.zero);safe.gameObject.AddComponent<SafeArea>();
             controls=UiKit.Rect("Actions",safe,new Vector2(900,320),Vector2.zero);
             status=UiKit.Label("Online status",controls,"",new Vector2(860,80),new Vector2(0,110),24,UiKit.Cream);
+            countdown=UiKit.Label("Turn countdown",controls,"",new Vector2(800,44),new Vector2(0,-125),22,UiKit.Cream);
             left=UiKit.Button("Left",controls,"←",new Vector2(125,64),new Vector2(-350,-50),UiKit.Hex("397566"),()=>Play("LEFT"));
             right=UiKit.Button("Right",controls,"→",new Vector2(125,64),new Vector2(-200,-50),UiKit.Hex("397566"),()=>Play("RIGHT"));
             pass=UiKit.LButton("Pass",controls,"game.pass",new Vector2(220,64),new Vector2(290,-50),UiKit.Hex("397566"),()=>Send("PASS"));
@@ -70,22 +80,28 @@ namespace Domino.Online
             if(!controls)return;var safe=(RectTransform)controls.parent;
             controls.localScale=Vector3.one*Mathf.Min(safe.rect.width/940,safe.rect.height/950);
             controls.anchoredPosition=shown?.Phase=="PLAYING"&&Connected&&!Client.NeedsResync?new Vector2(0,-safe.rect.height*.27f):Vector2.zero;
+            bool visible=shown?.Phase=="PLAYING"&&Client.TurnClock.HasDeadline;
+            countdown.gameObject.SetActive(visible);
+            int seconds=(int)Math.Ceiling(Client.TurnClock.RemainingSeconds);
+            if(visible&&seconds!=shownSeconds){shownSeconds=seconds;DominoLocalization.Set(countdown,"online.turn_seconds",seconds);RefreshInput();}
         }
         bool Connected => ApplicationServices.Realtime?.State==RealtimeConnectionState.CONNECTED;
         bool OwnTurn => shown?.Phase=="PLAYING" && (int?)shown.Public["currentSeat"]==shown.Seat;
         bool CanPlace(DominoTile tile,string end) {
-            if(!OwnTurn||Client.Pending||Client.NeedsResync||rendering||!Connected)return false;
+            if(!OwnTurn||Client.Pending||Client.NeedsResync||rendering||!Connected||Client.TurnClock.Expired)return false;
             var board=(JArray)shown.Public["board"];if(board.Count==0)return true;
             int pip=end=="LEFT"?(int)board[0]["tile"]["sideA"]:(int)board[board.Count-1]["tile"]["sideB"];
             return tile.SideA==pip||tile.SideB==pip; // Hint only; server still decides ownership and legality.
         }
         void RefreshInput() {
             if(!Board||!controls)return;
-            bool enabled=Connected&&!Client.Pending&&!Client.NeedsResync&&!rendering;
+            bool enabled=Connected&&!Client.Pending&&!Client.NeedsResync&&!rendering&&!Client.TurnClock.Expired;
+            var localParticipant=((JArray)shown.Public["participants"]).FirstOrDefault(p=>(int)p["seat"]==shown.Seat);
+            enabled=enabled&&(string)localParticipant?["connectionState"]!="ABANDONED";
             Board.SetInteraction(enabled&&OwnTurn,false);
             bool playing=shown.Phase=="PLAYING"&&Connected&&!Client.NeedsResync;
             left.gameObject.SetActive(playing);right.gameObject.SetActive(playing);pass.gameObject.SetActive(playing);
-            left.interactable=selected&&CanPlace(selected.Tile,"LEFT");right.interactable=selected&&CanPlace(selected.Tile,"RIGHT");
+            left.interactable=enabled&&selected&&CanPlace(selected.Tile,"LEFT");right.interactable=enabled&&selected&&CanPlace(selected.Tile,"RIGHT");
             pass.interactable=enabled&&OwnTurn&&!shown.Hand.Any(t=>CanPlace(BoardView.OnlineTile(t),"LEFT")||CanPlace(BoardView.OnlineTile(t),"RIGHT"));
             next.gameObject.SetActive(shown.Phase=="ROUND_FINISHED");next.interactable=enabled;
             var starter=shown.Starter;bool choosing=shown.Phase=="STARTER_SELECTION"&&starter!=null;
@@ -113,6 +129,6 @@ namespace Domino.Online
         void Play(string end) {if(selected&&CanPlace(selected.Tile,end))Send("PLAY_TILE",new JObject {["tile"]=new JObject {["sideA"]=selected.Tile.SideA,["sideB"]=selected.Tile.SideB},["chainEnd"]=end});}
         async void Send(string type,JObject payload=null) {try {await Client.SendAsync(type,payload);}catch {Rejected("TRANSPORT");}}
         void Rejected(string code) {if(Board)Board.ShowMessage("game.invalid_end");}
-        void OnDestroy() {disposed=true;Client?.Dispose();if(ApplicationServices.Realtime!=null)ApplicationServices.Realtime.Changed-=RefreshInput;}
+        void OnDestroy() {disposed=true;Client.EventApplied-=Feedback;Client?.Dispose();if(ApplicationServices.Realtime!=null)ApplicationServices.Realtime.Changed-=ConnectionChanged;}
     }
 }

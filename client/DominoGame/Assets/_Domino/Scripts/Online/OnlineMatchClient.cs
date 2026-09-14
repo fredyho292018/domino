@@ -60,6 +60,8 @@ namespace Domino.Online
         public OnlineMatchSnapshot Snapshot {get;private set;}
         public bool NeedsResync {get;private set;}
         public bool Pending {get;private set;}
+        public OnlineTurnClock TurnClock {get;}=new OnlineTurnClock();
+        public event Action<string> EventApplied;
         string pendingId; Task resync;
         public event Action Changed;
         public event Action<string> Rejected;
@@ -71,7 +73,7 @@ namespace Domino.Online
             var next=new OnlineMatchSnapshot(data);
             if(Snapshot!=null && (Snapshot.MatchId!=next.MatchId || Snapshot.Seat!=next.Seat))throw new FormatException("Match identity changed");
             if(Snapshot!=null && next.Sequence<Snapshot.Sequence)return;
-            Snapshot=next;NeedsResync=false;Changed?.Invoke();
+            Snapshot=next;TurnClock.Apply(data);NeedsResync=false;Changed?.Invoke();
         }
         public bool ApplyUpdate(JObject update) {
             if(Snapshot==null||(string)update["matchId"]!=Snapshot.MatchId)return false;
@@ -81,7 +83,9 @@ namespace Domino.Online
             if((long)update["firstSequence"]!=expected) {NeedsResync=true;Changed?.Invoke();return false;}
             foreach(var e in (JArray)update["events"])if((long)e["sequence"]!=expected++) {NeedsResync=true;Changed?.Invoke();return false;}
             if(expected-1!=next.Sequence) {NeedsResync=true;Changed?.Invoke();return false;}
-            ApplySnapshot((JObject)update["snapshot"]);return true;
+            ApplySnapshot((JObject)update["snapshot"]);
+            foreach(var e in (JArray)update["events"])EventApplied?.Invoke((string)e["type"]);
+            return true;
         }
         void Receive(string type,JObject payload) {
             try {
@@ -95,6 +99,12 @@ namespace Domino.Online
             } catch {NeedsResync=true;Changed?.Invoke();_=ResyncAsync();}
         }
         public Task ResyncAsync() => resync??(resync=Resync());
+        public void ConnectionLost() {Pending=false;pendingId=null;NeedsResync=true;Changed?.Invoke();}
+        public async Task ConnectionRestoredAsync() {
+            NeedsResync=true;Changed?.Invoke();await ResyncAsync();
+            // A pre-disconnect in-flight REST request may have failed while the new socket authenticated.
+            if(NeedsResync&&!lifetime.IsCancellationRequested)await ResyncAsync();
+        }
         async Task Resync() {
             await Task.Yield();
             try {if(Snapshot!=null)ApplySnapshot(await api.SendAsync("GET","matches/"+Snapshot.MatchId+"/snapshot",null,lifetime.Token));}
@@ -116,6 +126,6 @@ namespace Domino.Online
                 Pending=false;pendingId=null;NeedsResync=true;Rejected?.Invoke("ACK_TIMEOUT");Changed?.Invoke();await ResyncAsync();
             }catch(OperationCanceledException) { }
         }
-        public void Dispose() {channel.MatchMessage-=Receive;lifetime.Cancel();Changed=null;Rejected=null;}
+        public void Dispose() {channel.MatchMessage-=Receive;lifetime.Cancel();Changed=null;Rejected=null;EventApplied=null;}
     }
 }

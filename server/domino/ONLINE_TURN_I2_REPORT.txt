@@ -1,0 +1,190 @@
+DOMINO ONLINE — PHASE I2 REPORT
+===============================
+
+BRANCH=main
+SOURCE_SHA_BEFORE=d3af125a3b6cccb23af2a290d91102d6e812997b
+SOURCE_SHA_AFTER=d3af125a3b6cccb23af2a290d91102d6e812997b (uncommitted I2 changes)
+I1_COMMIT=d3af125a3b6cccb23af2a290d91102d6e812997b
+
+TURN_TIMER_RUNTIME_IMPLEMENTED=YES
+TURN_TIME_LIMIT_SECONDS=60
+SERVER_TIME_AUTHORITY=YES
+TURN_STARTED_AT_PERSISTED=YES
+TURN_DEADLINE_AT_PERSISTED=YES
+CLIENT_CAN_CHANGE_DEADLINE=NO
+
+TURN_TIMEOUT_RUNTIME=PASS
+CONNECTED_IDLE_TIMEOUT=PASS
+TIMEOUT_ATOMIC=PASS
+PLAYER_COMMAND_VS_TIMEOUT_RACE=PASS
+MULTI_WORKER_TIMEOUT_DEDUPE=PASS
+
+AUTOPLAY_RUNTIME_IMPLEMENTED=YES
+AUTO_PLAY_POLICY=FIRST_VALID_MOVE
+AUTOPLAY_DETERMINISTIC=PASS
+AUTOPLAY_LEGAL_MOVE=PASS
+AUTOPLAY_PASS=PASS
+AUTOPLAY_ROUND_FINISH=PASS
+
+DISCONNECT_RUNTIME_IMPLEMENTED=YES
+PLAYER_DISCONNECTED_EVENT=PASS
+MULTIPLE_CONNECTION_COUNTING=PASS
+TURN_CLOCK_CONTINUES_DISCONNECTED=PASS
+
+RECONNECT_RUNTIME_IMPLEMENTED=YES
+RECONNECT_WINDOW_SECONDS=180
+PLAYER_RECONNECTED_EVENT=PASS
+RECONNECT_SAME_UID=PASS
+RECONNECT_RESYNC=PASS
+DEADLINE_RESET_ON_RECONNECT=NO
+
+ABANDON_RUNTIME_IMPLEMENTED=YES
+ABANDON_AFTER_SECONDS=180
+ABANDON_BOUNDARY=PASS (injected server clock, 179/180 boundaries)
+AUTO_MATCH_LOSS=NO
+COIN_PENALTY=NO
+RANKING_PENALTY=NO
+
+BACKEND_RESTART_DEADLINE_RECOVERY=PASS
+OVERDUE_TURN_RECOVERY=PASS
+REDIS_INTERRUPTION_MATCH_CORRUPTION=NO
+
+TURN_TIMEOUT_EVENT=PASS
+AUTO_PLAYED_EVENT=PASS
+PLAYER_ABANDONED_EVENT=PASS
+STRICT_SEQUENCE=PASS
+
+REAL_UNITY_PARTICIPANT=YES
+SECOND_INDEPENDENT_CLIENT=YES (JVM, different Firebase UID)
+REAL_TIMEOUT=PASS
+REAL_DISCONNECT=PASS
+REAL_RECONNECT=PASS
+REAL_FIRESTORE_I2=PASS
+REAL_MATCH_ID=cfe402c5-784b-4ee9-91a7-2868f33486a9
+REAL_EVENTS=35
+REAL_TIMEOUTS=4
+REAL_AUTOPLAYS=4
+REAL_DISCONNECT_EVENTS=2
+REAL_RECONNECT_EVENTS=2
+REAL_UNITY_CHECKS=106
+REAL_RULE_OVERRIDE=NONE
+REAL_BACKEND_OUTAGE_SECONDS=65
+REAL_WALLET_WRITES=0
+
+I1=PASS
+LOCAL_DUEL=PASS (14,720 checks / 200 rounds)
+PARTNERS_2V2=PASS (32,679 scoring checks; 2,981,089 domain checks / 1,000 games)
+REALTIME_G3=PASS
+M4=PASS
+MONETIZATION=PASS
+PORTRAIT=PASS (321 checks; 9 sizes, both seats; timer and hand safe area)
+COUNTDOWN_EN_ES=PASS (visible Text content asserted in both languages)
+UNITY_COMPILATION=PASS
+CONSOLE_ERRORS=0 (Unity Play Mode)
+
+BACKEND_TESTS=434 PASS
+BACKEND_TESTS_TOTAL=436
+BACKEND_TESTS_SKIPPED=2
+SKIPPED_TESTS=opt-in real Redis lease suite; opt-in real monetization policy suite
+I2_BACKEND_TESTS=20 PASS
+ONLINE_CLIENT_TESTS=33 PASS
+PLAYER_FOUNDATION_AND_G3_CLIENT_TESTS=469 PASS
+CONFIGURATION_TESTS=82 PASS
+H2_CLIENT_TESTS=46 PASS
+H3_CLIENT_TESTS=30 PASS
+H4_CLIENT_TESTS=35 PASS
+H5_CLIENT_TESTS=27 PASS
+H6_CLIENT_TESTS=26 PASS
+
+WEBSOCKET_MULTI_INSTANCE_DISTRIBUTION=NOT_VALIDATED
+STARTER_TIMER_RUNTIME=NO
+MATCHMAKING=NO
+SPECTATOR_RUNTIME=NO
+REPLAY_UI=NO
+H7_STARTED=NO
+
+ADS_SETTINGS_USER_CHANGE_PRESERVED=YES
+API_SETTINGS_USER_CHANGE_PRESERVED=YES
+ADS_SETTINGS_SHA256=C377416E334727264806761518A4B5EDF381A837A927A1C3F3D523A1ACBDB5D6
+API_SETTINGS_SHA256=AC6B0ED6D30240BC531B235E43E8B9B55D3B48DCBCCCF365ADEC62D3EE6BCB37
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NONE
+
+EVIDENCE / REPRODUCTION
+-----------------------
+Technical design: server/domino/ONLINE_TURN_I2.md
+Backend unit results: server/domino/build/test-results/test/ (ignored)
+Real Unity: client/Validation/Generated/I2/unity-result.txt (PASS)
+Real Firestore readback: client/Validation/Generated/I2/firestore.json
+Real screenshots: client/Validation/Generated/I2/countdown.png, status-es.png
+Portrait results: client/Validation/Generated/i1-unity-result.txt
+(Historical I1 filename retained by the extended portrait harness.)
+Portrait logs: client/Validation/Generated/i2-portrait*.log
+EN/ES portrait screenshots: client/Validation/Generated/i1-seat-0.png,
+client/Validation/Generated/i1-seat-1.png. The earlier real status-en.png
+capture retained a preceding Spanish frame; the final portrait harness
+explicitly asserts the rendered countdown text (Turn: / Turno:).
+
+Measured real deadline: 2026-09-14T01:43:38.255634600Z
+                    -> 2026-09-14T01:44:38.255634600Z (60 seconds).
+Race/deduplication, 179/180 abandonment, pass, capicua/finish, and replay
+checks use injected clocks and transactional repository test doubles.
+Real integration uses production Firestore transactions and production
+timers; no fake verifier, shortened catalogue, or client autoplay engine.
+
+VALIDATION NOTES / LIMITATIONS
+------------------------------
+Two earlier integration attempts stopped in the JVM validation companion
+when reconnecting after Redis interruption. Its original single-attempt
+authentication treated retryable UNAVAILABLE as fatal and accepted stale
+socket callbacks. The companion now isolates old callbacks and allows
+bounded UNAVAILABLE retries. The full subsequent integration passed.
+Earlier test match IDs retained in Firestore for audit:
+bf12a44f-ffdc-490e-8bb1-59cfa14c0d1e
+9c5a1f9d-a389-49b5-a8c6-9ee9e44bd163
+The normal create endpoint's validationData flag is not changed by tests.
+
+During forced Redis interruption the backend logged a WebSocket send/close
+race (session already closed). The transport recovered and the final real
+validation passed; zero Unity Console errors does not mean zero backend
+error-level lines during this fault injection. No transport redesign is
+claimed as part of I2.
+Exact observed exception: java.lang.IllegalStateException:
+Message will not be sent because the WebSocket session has been closed
+Logger: org.springframework.web.socket.handler.ExceptionWebSocketHandlerDecorator
+REDIS_FORCED_INTERRUPTION_SOCKET_CLOSE_ERROR=KNOWN_VALIDATION_OBSERVATION
+STATE_CORRUPTION=NO
+UNRECOVERED_RUNTIME_FAILURE=NO
+
+GAME_MODE_SELECTOR_FIX_INCLUDED_IN_I2=NO
+NORMAL_MENU_PARTNERS_2V2_VISIBLE=PASS (last user-reported observation)
+NORMAL_MENU_DUEL_1V1_VISIBLE=FAIL (last user-reported issue, unresolved)
+NORMAL_MENU_CHECKPOINT_VISUAL_RETEST=NOT_RUN
+The online portrait harness directly opens the match view, not the normal
+mode selector. Its PASS does not establish that the normal menu lists DUEL.
+Resolve and verify both normal-menu modes before I3 UI work; no selector
+fix or catalogue mutation is included in this checkpoint.
+
+Pre-I2 matches without persisted deadlines/discovery documents are not
+retroactively migrated. Their next I2 transition installs discovery and
+their next TURN_STARTED installs a deadline. Restart recovery evidence is
+for I2 records, not a migration of historical I1 sessions.
+
+Discovery uses a bounded due query (100 matches, five-second worker delay),
+with 30-second presence reconciliation. Actual execution may lag a deadline
+by scheduling/storage/backlog latency. Production sharding and queue-lag
+strategy is documented but not implemented or load-tested.
+
+Redis lease presence is eventually consistent with Firestore, not an atomic
+cross-database transaction. An unclean disconnect is observed after lease
+expiration/reconciliation. Unknown Redis state is not interpreted as offline.
+Waiting/starter and round-finished records remain presence-discoverable;
+no new cleanup, starter timeout, competitive loss, or next-round timer exists.
+
+RECOMMENDED NEXT TASK
+----------------------
+Review I2 changes before authorizing a checkpoint.
+Then I3 — Redis Matchmaking + Queue + Match Found.
+Later I4 — Live Spectator Runtime with 90-second server delay;
+I5 — History + Replay UI. None of these phases is started here.

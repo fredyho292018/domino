@@ -48,6 +48,7 @@ namespace Domino.Online.Editor
                 typeof(ApplicationServices).GetProperty("Realtime").SetValue(null,new ConnectedRealtime());
                 var sizes=new[]{new Vector2Int(1080,1920),new Vector2Int(1170,2532),new Vector2Int(1179,2556),new Vector2Int(1290,2796),new Vector2Int(1206,2622),new Vector2Int(1320,2868),new Vector2Int(1080,2400),new Vector2Int(1440,3120),new Vector2Int(1536,2048)};
                 for(int seat=0;seat<2;seat++) {
+                    DominoLocalization.Select(seat==0?"en":"es");await Frames();
                     var json=File.ReadAllText(Path.GetFullPath(Path.Combine(Application.dataPath,"../../i1-snapshot-"+seat+".json")));
                     var client=new OnlineMatchClient(new Api(),new Channel());client.ApplySnapshot(JObject.Parse(json));
                     var controller=new GameObject("I1 validation").AddComponent<OnlineMatchController>();
@@ -57,6 +58,11 @@ namespace Domino.Online.Editor
                         var until=EditorApplication.timeSinceStartup+30;
                         while((!controller.Board||controller.Board.IsPreparingRound||controller.Board.PlayedCount==0)&&EditorApplication.timeSinceStartup<until)await Task.Delay(100);
                         var view=controller.Board;Check(view!=null&&!view.IsPreparingRound,"VIEW_READY");
+                        var timer=controller.GetComponentsInChildren<UnityEngine.UI.Text>().Single(t=>t.name=="Turn countdown");
+                        Check(timer.gameObject.activeInHierarchy&&client.TurnClock.HasDeadline,"I2_COUNTDOWN_VISIBLE");
+                        Check(timer.text.StartsWith(seat==0?"Turn:":"Turno:"),"I2_COUNTDOWN_EN_ES");
+                        var timerCorners=new Vector3[4];timer.rectTransform.GetWorldCorners(timerCorners);
+                        Check(timerCorners.All(v=>Screen.safeArea.Contains(v)),"I2_COUNTDOWN_SAFE_AREA");
                         Check(view.LocalPlayerSeat==seat,"LOCAL_PERSPECTIVE");
                         Check(view.HandViews(seat).All(t=>t.IsFaceUp),"OWN_VISIBLE");Check(view.HandViews(1-seat).All(t=>!t.IsFaceUp),"OPPONENT_HIDDEN");
                         Check(view.PlayedCount==((JArray)client.Snapshot.Public["board"]).Count,"BOARD_CONFIRMED");

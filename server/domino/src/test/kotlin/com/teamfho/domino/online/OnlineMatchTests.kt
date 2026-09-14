@@ -130,7 +130,7 @@ class OnlineMatchTests {
         val f=OnlineFixture();f.start();val s=f.state()
         assertEquals(listOf(10,10),s.hands.values.map {it.size});assertEquals(35,s.reserve.size)
         assertEquals(55,(s.hands.values.flatten()+s.reserve).toSet().size)
-        assertEquals(OnlinePhase.PLAYING,s.phase);assertNull(f.service.snapshot("p0",f.id).publicState.turnDeadline)
+        assertEquals(OnlinePhase.PLAYING,s.phase);assertEquals(s.turnStartedAt!!.plusSeconds(60),f.service.snapshot("p0",f.id).publicState.turnDeadline)
     }
     @Test fun `snapshots and resync isolate caller hand with contiguous redacted sequences`() {
         val f=OnlineFixture();f.start()

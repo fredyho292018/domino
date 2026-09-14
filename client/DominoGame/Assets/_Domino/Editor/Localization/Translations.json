@@ -659,6 +659,21 @@
       "key": "game.autoplay",
       "en": "Autoplay",
       "es": "Autoplay"
+    },
+    {
+      "key": "online.turn_seconds",
+      "en": "Turn: {0}s",
+      "es": "Turno: {0}s"
+    },
+    {
+      "key": "online.player_reconnected",
+      "en": "Player reconnected",
+      "es": "Jugador reconectado"
+    },
+    {
+      "key": "online.player_abandoned",
+      "en": "Player left the match",
+      "es": "Jugador abandonó la partida"
     }
   ]
 }

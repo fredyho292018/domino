@@ -28,6 +28,14 @@ class OnlineMatchClientTests
         return new JObject {["matchId"]="fixture",["firstSequence"]=first,["events"]=events,["snapshot"]=Snapshot(last,seat)};
     }
     static async Task Main() {
+        double monotonic=0;var clock=new OnlineTurnClock(()=>monotonic);
+        clock.Apply(JObject.Parse("{\"serverNow\":\"2026-09-13T00:00:00Z\",\"turnDeadlineAt\":\"2026-09-13T00:01:00Z\"}"));
+        Check(clock.HasDeadline&&clock.RemainingSeconds==60,"server timestamp anchored deadline");
+        monotonic=45;Check(clock.RemainingSeconds==15,"monotonic countdown drift resistant");
+        monotonic=60;Check(clock.Expired&&clock.RemainingSeconds==0,"countdown zero no local autoplay");
+        clock.Apply(JObject.Parse("{\"serverNow\":\"2026-09-13T00:00:45Z\",\"turnDeadlineAt\":\"2026-09-13T00:01:00Z\"}"));
+        Check(clock.RemainingSeconds==15,"reconnect preserves remaining time");
+        clock.Apply(new JObject());Check(!clock.HasDeadline&&!clock.Expired,"starter has no timer");
         var wirePath=System.Environment.GetEnvironmentVariable("DOMINO_I1_FIXTURES");
         if(!string.IsNullOrEmpty(wirePath)) {
             string wire=System.IO.File.ReadAllText(System.IO.Path.Combine(wirePath,"i1-wire-message.json"));long previous=0;
@@ -54,6 +62,12 @@ class OnlineMatchClientTests
         Check(player2.Snapshot.Seat==1&&client.Snapshot.Seat==0,"independent clients");
         Check((int)player2.Snapshot.Hand[0]["sideA"]==1&&(int)client.Snapshot.Hand[0]["sideA"]==0,"private hands isolated");
         foreach(var phase in new[]{"STARTER_SELECTION","PLAYING","ROUND_FINISHED","MATCH_FINISHED"}) {client.ApplySnapshot(Snapshot(12,0,phase));Check(client.Snapshot.Phase==phase,"phase applied");}
+        int feedback=0;client.EventApplied+=_=>feedback++;
+        var timed=Update(13,14);timed["events"][0]["type"]="TURN_TIMEOUT";timed["events"][1]["type"]="AUTO_PLAYED";
+        Check(client.ApplyUpdate(timed)&&feedback==2,"typed timeout autoplay feedback");
+        Check(!client.ApplyUpdate(timed)&&feedback==2,"duplicate events do not repeat feedback");
+        client.ConnectionLost();Check(client.NeedsResync&&!client.Pending,"disconnect input blocked");
+        api.Value=Snapshot(16);await client.ConnectionRestoredAsync();Check(client.Snapshot.Sequence==16&&!client.NeedsResync,"reconnect resync current not rewind");
         Console.WriteLine("ONLINE_CLIENT_TESTS=PASS CHECKS="+checks);
     }
 }

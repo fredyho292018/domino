@@ -19,7 +19,13 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
     }
     fun command(before: OnlineState, uid: String, command: OnlineCommand, now: Instant): OnlineWrite {
         val seat=seat(before,uid)
+        checkOnline(before.match.participants[seat].connectionState!=ConnectionState.ABANDONED,OnlineError.PLAYER_ABANDONED)
+        checkOnline(before.match.participants[seat].reconnectDeadlineAt?.let {now<it}!=false,OnlineError.PLAYER_ABANDONED)
         checkOnline(before.match.status !in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED),OnlineError.MATCH_NOT_ACTIVE)
+        if(command.type in setOf(OnlineCommandType.PLAY_TILE,OnlineCommandType.PASS)) {
+            checkOnline(before.match.currentSeat==seat,OnlineError.NOT_YOUR_TURN)
+            checkOnline(before.turnDeadlineAt==null || now<before.turnDeadlineAt,OnlineError.TURN_EXPIRED)
+        }
         val b=Builder(before,command.commandId,now)
         when(command.type) {
             OnlineCommandType.SELECT_STARTER_TILE,OnlineCommandType.SUBMIT_EVEN_ODD_GUESS -> b.select(seat,command)
@@ -30,6 +36,40 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
                 b.deal(requireNotNull(before.round?.winnerSeat))
             }
         }
+        return b.build()
+    }
+    fun timeout(before: OnlineState, commandId: String, now: Instant): OnlineWrite {
+        checkOnline(before.phase==OnlinePhase.PLAYING&&before.turnDeadlineAt!=null&&now>=before.turnDeadlineAt,OnlineError.TIMEOUT_NOT_DUE)
+        val mode=before.match.ruleSnapshot.mode();val policy=requireNotNull(mode.ruleSet.turnPolicy)
+        require(policy.autoPlayOnTimeout&&policy.autoPlayPolicy==AutoPlayPolicy.FIRST_VALID_MOVE)
+        require(mode.onlinePolicy!!.autoPlayWhileDisconnected&&mode.onlinePolicy.turnClockContinuesWhileDisconnected)
+        val seat=before.match.currentSeat!!;val b=Builder(before,commandId,now)
+        b.emit(TurnTimeout(seat,before.match.currentTurnNumber,before.turnDeadlineAt),seat)
+        val legal=before.hands.getValue(seat.toString()).firstNotNullOfOrNull {tile->
+            listOf(ChainEnd.LEFT,ChainEnd.RIGHT).firstOrNull {fits(before,tile,it)}?.let {tile to it}}
+        // Audit before the normal action. Its final sequence is patched after the complete transition.
+        b.emit(AutoPlayed(seat,legal?.first,legal?.second,AutoPlayReason.TURN_TIMEOUT),seat)
+        if(legal==null)b.pass(seat) else b.play(seat,OnlineCommand(1,commandId,before.match.matchId,OnlineCommandType.PLAY_TILE,legal.first,legal.second))
+        val write=b.build()
+        return write.copy(events=write.events.map {e->if(e.payload is AutoPlayed)e.copy(payload=e.payload.copy(resultingSequence=write.state.match.lastSequence)) else e})
+    }
+    fun connection(before: OnlineState, seat: Int, connected: Boolean, id: String, now: Instant): OnlineWrite? {
+        if(before.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED))return null
+        val p=before.match.participants[seat];if(p.connectionState==ConnectionState.ABANDONED)return null
+        val expired=p.reconnectDeadlineAt?.let {now>=it}==true
+        val next=when {
+            expired->p.copy(connectionState=ConnectionState.ABANDONED,abandonedAt=now)
+            connected&&p.connectionState==ConnectionState.DISCONNECTED->p.copy(connectionState=ConnectionState.CONNECTED,disconnectedAt=null,reconnectDeadlineAt=null)
+            !connected&&p.connectionState==ConnectionState.CONNECTED->p.copy(connectionState=ConnectionState.DISCONNECTED,disconnectedAt=now,
+                reconnectDeadlineAt=now.plusSeconds(requireNotNull(before.match.ruleSnapshot.mode().onlinePolicy).reconnectWindowSeconds.toLong()))
+            else->return null
+        }
+        val b=Builder(before.copy(match=before.match.copy(participants=before.match.participants.map {if(it.seatIndex==seat)next else it})),id,now)
+        b.emit(when(next.connectionState){
+            ConnectionState.ABANDONED->PlayerAbandoned(seat,now)
+            ConnectionState.DISCONNECTED->PlayerDisconnected(seat,now,next.reconnectDeadlineAt)
+            else->PlayerReconnected(seat,now)
+        },seat)
         return b.build()
     }
     private fun starter(attempt: Int, method: StarterMethod?=null): OnlineStarter {
@@ -81,7 +121,7 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
                 match=s.match.copy(status=MatchStatus.IN_PROGRESS,currentRoundNumber=round.roundNumber,currentTurnNumber=1,currentSeat=winner))
             emit(RoundStarted(winner,listOf(rules.tilesPerPlayer,rules.tilesPerPlayer)))
             for(seat in 0..1)emit(HandDealt(seat,hands.getValue(seat.toString())),target=seat)
-            emit(TurnStarted(winner));rounds+=round
+            startDeadline(winner);rounds+=round
         }
         fun playing(seat: Int) {
             checkOnline(s.phase==OnlinePhase.PLAYING && s.match.status==MatchStatus.IN_PROGRESS,OnlineError.MATCH_NOT_ACTIVE)
@@ -109,7 +149,12 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
                 finish(if(a==b)s.round!!.starterSeat else if(a<b)0 else 1,FinishType.BLOCKED)
             } else turn(1-seat)
         }
-        fun turn(seat: Int) {s=s.copy(match=s.match.copy(currentSeat=seat,currentTurnNumber=s.match.currentTurnNumber+1));emit(TurnChanged(seat));emit(TurnStarted(seat))}
+        fun startDeadline(seat: Int) {
+            val seconds=requireNotNull(s.match.ruleSnapshot.mode().ruleSet.turnPolicy).timeLimitSeconds.toLong()
+            s=s.copy(turnStartedAt=now,turnDeadlineAt=now.plusSeconds(seconds))
+            emit(TurnStarted(seat,s.turnDeadlineAt,s.match.currentTurnNumber,now,s.turnDeadlineAt))
+        }
+        fun turn(seat: Int) {s=s.copy(match=s.match.copy(currentSeat=seat,currentTurnNumber=s.match.currentTurnNumber+1));emit(TurnChanged(seat));startDeadline(seat)}
         fun finish(winner: Int,type: FinishType) {
             val rules=s.match.ruleSnapshot.mode().ruleSet;val opponent=handPips(s,1-winner)
             val award=when(type) {FinishType.BLOCKED->opponent+rules.blockedScoring.bonus
@@ -119,7 +164,7 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
             val owner=ScoreRecipient(ScoreOwnerType.PLAYER,winner);val remaining=listOf(handPips(s,0),handPips(s,1))
             val round=s.round!!.copy(status=RoundStatus.FINISHED,finishedAt=now,endSequence=s.match.lastSequence+1,winnerSeat=winner,
                 finishType=type,scoreAwarded=award,scoreRecipient=owner,remainingPips=remaining)
-            s=s.copy(phase=OnlinePhase.ROUND_FINISHED,round=round,match=s.match.copy(score=score,currentSeat=null));rounds+=round
+            s=s.copy(phase=OnlinePhase.ROUND_FINISHED,round=round,turnStartedAt=null,turnDeadlineAt=null,match=s.match.copy(score=score,currentSeat=null));rounds+=round
             emit(RoundFinished(type,winner,owner,award,round.starterSeat,remaining,score))
             if(score[winner]>=rules.targetScore) {
                 val result=MatchResult(owner,MatchFinishReason.TARGET_REACHED,score)

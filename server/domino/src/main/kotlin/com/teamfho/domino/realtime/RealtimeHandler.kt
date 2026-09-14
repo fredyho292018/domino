@@ -23,6 +23,7 @@ class RealtimeHandler(
     private val presence: PresenceStore,
     private val properties: RealtimeProperties,
     private val online: OnlineMatchService? = null,
+    private val turnWorker: OnlineTurnWorker? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -100,6 +101,7 @@ class RealtimeHandler(
                         send(c, "AUTHENTICATED", mapOf("heartbeatIntervalSeconds" to properties.heartbeatIntervalSeconds,
                             "heartbeatTimeoutSeconds" to properties.heartbeatTimeoutSeconds))
                         send(c, "PRESENCE_READY", mapOf("state" to "ONLINE"))
+                        turnWorker?.connectionChanged(identity.uid)
                     }
                     "PING", "GLOBAL_ACTIVITY_SUBSCRIBE", "GLOBAL_ACTIVITY_UNSUBSCRIBE" -> {
                         if (c.uid == null || payload.size() != 0) { fail(c, "PROTOCOL"); return }
@@ -164,7 +166,7 @@ class RealtimeHandler(
     }
     private fun cleanup(c: Connection) {
         if (!connections.remove(c.socket.id, c)) return
-        c.uid?.let { try { presence.remove(it, c.id) } catch (_: Exception) { /* lease expires */ } }
+        c.uid?.let { try { presence.remove(it, c.id) } catch (_: Exception) { /* lease expires */ };turnWorker?.connectionChanged(it) }
     }
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         connections[session.id]?.let { synchronized(it) { cleanup(it) } }

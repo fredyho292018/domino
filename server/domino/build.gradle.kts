@@ -106,3 +106,11 @@ tasks.register<JavaExec>("validateOnlineUnityI11") {
     mainClass.set("com.teamfho.domino.online.OnlineUnityValidation")
     args("--validate-i11")
 }
+
+tasks.register<JavaExec>("validateOnlineTurnI2") {
+    group = "verification"
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.OnlineTurnRealValidation")
+    args("--validate-i2")
+}

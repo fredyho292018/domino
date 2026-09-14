@@ -5,6 +5,8 @@ import com.google.cloud.firestore.TransactionOptions
 import com.teamfho.domino.catalog.GameCatalogCodec
 import com.teamfho.domino.match.*
 import java.util.concurrent.TimeUnit
+import java.time.Instant
+import com.google.cloud.Timestamp
 
 interface OnlineRepository {
     fun create(state: OnlineState)
@@ -12,6 +14,9 @@ interface OnlineRepository {
     fun events(matchId: String, after: Long): List<MatchEvent>
     fun transact(matchId: String, expectedSequence: Long, commandId: String, fingerprint: String,
         transition: (OnlineState)->OnlineWrite): OnlineCommit
+    fun due(now: Instant): List<String> = emptyList()
+    fun activeFor(uid: String): List<String> = emptyList()
+    fun refreshDiscovery(matchId: String, now: Instant) { }
 }
 object OnlineWrites {
     fun validate(before: OnlineState, write: OnlineWrite, commandId: String) {
@@ -19,8 +24,9 @@ object OnlineWrites {
         require(a.matchId==b.matchId && a.ruleSnapshot==b.ruleSnapshot && a.createdAt==b.createdAt && a.validationData==b.validationData)
         require(a.executionMode==MatchExecutionMode.ONLINE && b.executionMode==a.executionMode)
         require(a.modeKey==b.modeKey && a.catalogVersion==b.catalogVersion && a.ruleSetId==b.ruleSetId && a.ruleSetVersion==b.ruleSetVersion)
-        require(b.participants.size==2 && b.participants.map {it.playerUid}.distinct().size==2)
-        require(b.participants.take(a.participants.size)==a.participants)
+        require(b.participants.size in 1..2 && b.participants.map {it.playerUid}.distinct().size==b.participants.size)
+        require(b.participants.take(a.participants.size).mapIndexed {i,p->p.copy(connectionState=a.participants[i].connectionState,
+            disconnectedAt=a.participants[i].disconnectedAt,reconnectDeadlineAt=a.participants[i].reconnectDeadlineAt,abandonedAt=a.participants[i].abandonedAt)}==a.participants)
         require(write.events.isNotEmpty() && b.lastSequence==a.lastSequence+write.events.size)
         write.events.forEachIndexed {i,e->
             require(e.sequence==a.lastSequence+i+1 && e.eventId==MatchIds.event(e.sequence) && e.matchId==a.matchId && e.causedByCommandId==commandId)
@@ -40,6 +46,12 @@ object OnlineWrites {
 /** Same M4 Match/round/event/history paths. Private engine state is a transactional child,
  * encoded as JSON because Firestore cannot persist nested hand arrays. No Redis authority. */
 class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
+    private fun work(id: String)=db.document("onlineTurnWork/${MatchIds.document(id)}")
+    private fun timestamp(t: Instant)=Timestamp.ofTimeSecondsAndNanos(t.epochSecond,t.nano)
+    private fun workMap(s: OnlineState, now: Instant, checkAt: Instant=now.plusSeconds(30)): Map<String,Any> {
+        val dates=listOfNotNull(s.turnDeadlineAt,checkAt)+s.match.participants.filter {it.connectionState==ConnectionState.DISCONNECTED}.mapNotNull {it.reconnectDeadlineAt}
+        return mapOf("dueAt" to timestamp(dates.min()),"presenceCheckAt" to timestamp(checkAt),"uids" to s.match.participants.mapNotNull {it.playerUid})
+    }
     private fun root(id: String)=db.document("matches/${MatchIds.document(id)}")
     private fun stateMap(s: OnlineState)=mapOf("stateJson" to GameCatalogCodec.mapper.writeValueAsString(s))
     private fun decode(data: Map<String,Any>)=GameCatalogCodec.mapper.readValue(data.getValue("stateJson") as String,OnlineState::class.java)
@@ -47,6 +59,7 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         state.match.ruleSnapshot.verify();val ref=root(state.match.matchId);val batch=db.batch()
         batch.create(ref,MatchCodec.map(state.match));batch.create(ref.collection("runtime").document("authoritative"),stateMap(state))
         state.match.participants.forEach {batch.create(ref.collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
+        batch.create(work(state.match.matchId),workMap(state,state.match.createdAt))
         batch.commit().get(30,TimeUnit.SECONDS)
     }
     override fun read(matchId: String)=root(matchId).collection("runtime").document("authoritative").get().get(15,TimeUnit.SECONDS).data?.let(::decode)
@@ -59,15 +72,30 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
             if(prior!=null)return@runTransaction OnlineWrites.prior(MatchCodec.read(prior,OnlineReceipt::class.java),fingerprint)
             val stateRef=root.collection("runtime").document("authoritative")
             val before=FirestoreMatchRepository.transactionRead(tx.get(stateRef)).data?.let(::decode)?:throw OnlineFailure(OnlineError.MATCH_NOT_FOUND)
+            val workRef=work(matchId)
+            val priorCheck=FirestoreMatchRepository.transactionRead(tx.get(workRef)).getTimestamp("presenceCheckAt")?.let {Instant.ofEpochSecond(it.seconds,it.nanos.toLong())}
             checkOnline(before.match.lastSequence==expectedSequence,OnlineError.STALE_COMMAND)
             val write=transition(before);OnlineWrites.validate(before,write,commandId)
             val r=OnlineReceipt(fingerprint,expectedSequence+1,write.state.match.lastSequence)
             tx.set(root,MatchCodec.map(write.state.match));tx.set(stateRef,stateMap(write.state))
-            write.state.match.participants.drop(before.match.participants.size).forEach {tx.create(root.collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
+            write.state.match.participants.forEach {tx.set(root.collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
             write.rounds.forEach {tx.set(root.collection("rounds").document(it.roundNumber.toString()),MatchCodec.map(it))}
             write.events.forEach {tx.create(root.collection("events").document(it.eventId),MatchCodec.map(it))}
             write.histories.forEach {(uid,h)->tx.create(db.document("players/${MatchIds.document(uid)}/matchHistory/$matchId"),MatchCodec.map(h))}
+            if(write.state.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED))tx.delete(workRef)
+            else tx.set(workRef,workMap(write.state,write.state.match.updatedAt,priorCheck?:write.state.match.updatedAt.plusSeconds(30)))
             tx.create(receipt,MatchCodec.map(r));OnlineCommit(write,r)
         },TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(8).build()))
+    }
+    override fun due(now: Instant)=db.collection("onlineTurnWork").whereLessThanOrEqualTo("dueAt",timestamp(now)).orderBy("dueAt").limit(100).get().get(15,TimeUnit.SECONDS).documents.map {it.id}
+    override fun activeFor(uid: String)=db.collection("onlineTurnWork").whereArrayContains("uids",uid).get().get(15,TimeUnit.SECONDS).documents.map {it.id}
+    override fun refreshDiscovery(matchId: String,now: Instant) {
+        db.runTransaction {tx->
+            val data=tx.get(root(matchId).collection("runtime").document("authoritative")).get().data
+            val s=data?.let(::decode)
+            if(s==null||s.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED))tx.delete(work(matchId))
+            else tx.set(work(matchId),workMap(s,now))
+            null
+        }.get(30,TimeUnit.SECONDS)
     }
 }

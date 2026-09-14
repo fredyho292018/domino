@@ -19,6 +19,21 @@ MonoBehaviour:
     m_Items:
     - rid: 7246862583952572445
   m_TableData:
+  - m_Id: 3800000000000002
+    m_Localized: "Player left the match"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3800000000000001
+    m_Localized: "Player reconnected"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3800000000000000
+    m_Localized: "Turn: {0}s"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   - m_Id: 3600000000000000
     m_Localized: "Ads are currently unavailable"
     m_Metadata:
@@ -817,6 +832,9 @@ MonoBehaviour:
       data:
         m_Entries: 
         m_SharedEntries:
+        - id: 3800000000000002
+        - id: 3800000000000001
+        - id: 3800000000000000
         - id: 3500000000000000
         - id: 3500000000000001
         - id: 3500000000000002

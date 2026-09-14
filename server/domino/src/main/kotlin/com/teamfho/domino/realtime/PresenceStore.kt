@@ -9,6 +9,7 @@ interface PresenceStore {
     fun touch(uid: String, connectionId: String, serverId: String)
     fun remove(uid: String, connectionId: String)
     fun onlinePlayers(): Long
+    fun connectionCount(uid: String): Long? = null // Unknown, never interpreted as zero.
 }
 
 // Atomic leases, not increment/decrement counters. Same UID on two devices counts once.
@@ -55,4 +56,11 @@ class RedisPresenceStore(private val redis: StringRedisTemplate, private val pro
             player, id, (properties.presenceTtlSeconds * 1000).toString(), operation, serverId)
     }
     override fun onlinePlayers(): Long = redis.execute(count, listOf(prefix + "players")) ?: 0
+    private val playerCount=DefaultRedisScript<Long>("""
+        local t=redis.call('TIME')
+        local now=tonumber(t[1])*1000+math.floor(tonumber(t[2])/1000)
+        redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now)
+        return redis.call('ZCARD',KEYS[1])
+    """.trimIndent(),Long::class.java)
+    override fun connectionCount(uid: String): Long? = redis.execute(playerCount,listOf(prefix+"player:"+player(uid)))
 }
