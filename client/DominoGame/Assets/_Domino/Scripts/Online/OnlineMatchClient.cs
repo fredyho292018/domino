@@ -11,6 +11,12 @@ using Newtonsoft.Json.Linq;
 
 namespace Domino.Online
 {
+    public sealed class OnlineEntryException : Exception
+    {
+        public string LocalizationKey {get;}
+        public OnlineEntryException(string code){LocalizationKey=code=="MATCH_NOT_FOUND"?"online.not_found":code=="MATCH_FULL"?"online.full":code=="SAME_PLAYER"?"online.same_player":code=="MATCH_NOT_ACTIVE"?"online.started":"online.join_failed";}
+    }
+
     // Presentation snapshot only. There is deliberately no ClientGame instance in the online client.
     public sealed class OnlineMatchSnapshot
     {
@@ -22,6 +28,7 @@ namespace Domino.Online
         public JObject Public => (JObject)data["publicState"].DeepClone();
         public JArray Hand => (JArray)data["privateState"]["hand"].DeepClone();
         public JObject Starter => data["starter"] as JObject == null ? null : (JObject)data["starter"].DeepClone();
+        public JObject StarterResult => data["privateState"]["setup"] is JObject setup?(JObject)setup.DeepClone():null;
         public JObject Rules => (JObject)data["ruleSnapshot"].DeepClone();
         public JObject RoundResult => data["roundResult"] as JObject == null ? null : (JObject)data["roundResult"].DeepClone();
         public OnlineMatchSnapshot(JObject value)
@@ -40,14 +47,20 @@ namespace Domino.Online
         public async Task<JObject> SendAsync(string method,string path,JObject body,CancellationToken cancellation)
         {
             if(!config.IsAvailable)throw new DominoApiException(ApiFailure.Configuration);
-            if(!path.StartsWith("matches",StringComparison.Ordinal)||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid match path");
+            if(!(path=="matches"||path.StartsWith("matches/",StringComparison.Ordinal)||path=="matchmaking/queue")||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid match path");
             for(int attempt=0;attempt<2;attempt++) {
                 using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellation);timeout.CancelAfter(TimeSpan.FromSeconds(config.TimeoutSeconds));
                 var token=await CancellableTask.Wait(tokens.GetIdTokenAsync(attempt==1,timeout.Token),timeout.Token);
                 if(string.IsNullOrWhiteSpace(token)||token.IndexOfAny(new[]{'\r','\n'})>=0)throw new DominoApiException(ApiFailure.Authentication);
                 var result=await CancellableTask.Wait(transport.SendAsync(method,new Uri(config.Endpoint,"../"+path),body?.ToString(Formatting.None),token,config.TimeoutSeconds,timeout.Token),timeout.Token);
                 if(result.Status==401&&attempt==0)continue;
-                if(result.Status!=200)throw new DominoApiException(ApiFailure.Server,result.Status);
+                if(result.Status!=200) {
+                    if(result.Status==404||result.Status==409) {
+                        string code=null;try{code=(string)JObject.Parse(result.Body)["code"];}catch(JsonException){}
+                        if(code=="MATCH_NOT_FOUND"||code=="MATCH_FULL"||code=="SAME_PLAYER"||code=="MATCH_NOT_ACTIVE")throw new OnlineEntryException(code);
+                    }
+                    throw new DominoApiException(ApiFailure.Server,result.Status);
+                }
                 return JObject.Parse(result.Body);
             }
             throw new DominoApiException(ApiFailure.Authentication);
@@ -62,12 +75,14 @@ namespace Domino.Online
         public bool Pending {get;private set;}
         public OnlineTurnClock TurnClock {get;}=new OnlineTurnClock();
         public event Action<string> EventApplied;
+        public event Action<long,int> PassPresented;
         string pendingId; Task resync;
         public event Action Changed;
         public event Action<string> Rejected;
         public OnlineMatchClient(IOnlineMatchApi api,IRealtimeMatchChannel channel) {this.api=api;this.channel=channel;channel.MatchMessage+=Receive;}
         public async Task CreateAsync() {ApplySnapshot(await api.SendAsync("POST","matches",new JObject {["modeKey"]="DUEL_1V1"},lifetime.Token));await ResyncAsync();}
         public async Task JoinAsync(string id) {Id(id);ApplySnapshot(await api.SendAsync("POST","matches/"+id+"/join",new JObject {["commandId"]=Guid.NewGuid().ToString()},lifetime.Token));}
+        public async Task LoadAssignedAsync(string id) {Id(id);ApplySnapshot(await api.SendAsync("GET","matches/"+id+"/snapshot",null,lifetime.Token));await ResyncAsync();}
         static void Id(string id) {if(string.IsNullOrEmpty(id)||id.Length>128||id.Any(c=>!char.IsLetterOrDigit(c)&&c!='-'&&c!='_'))throw new ArgumentException("Invalid match ID");}
         public void ApplySnapshot(JObject data) {
             var next=new OnlineMatchSnapshot(data);
@@ -84,7 +99,13 @@ namespace Domino.Online
             foreach(var e in (JArray)update["events"])if((long)e["sequence"]!=expected++) {NeedsResync=true;Changed?.Invoke();return false;}
             if(expected-1!=next.Sequence) {NeedsResync=true;Changed?.Invoke();return false;}
             ApplySnapshot((JObject)update["snapshot"]);
-            foreach(var e in (JArray)update["events"])EventApplied?.Invoke((string)e["type"]);
+            foreach(var e in (JArray)update["events"]) {
+                EventApplied?.Invoke((string)e["type"]);
+                if((string)e["type"]=="PLAYER_PASSED" && e["event"]?["payload"]?["seat"]?.Type==JTokenType.Integer) {
+                    int seat=(int)e["event"]["payload"]["seat"];
+                    if(seat>=0&&seat<2)PassPresented?.Invoke(next.Sequence,seat);
+                }
+            }
             return true;
         }
         void Receive(string type,JObject payload) {
@@ -126,6 +147,6 @@ namespace Domino.Online
                 Pending=false;pendingId=null;NeedsResync=true;Rejected?.Invoke("ACK_TIMEOUT");Changed?.Invoke();await ResyncAsync();
             }catch(OperationCanceledException) { }
         }
-        public void Dispose() {channel.MatchMessage-=Receive;lifetime.Cancel();Changed=null;Rejected=null;EventApplied=null;}
+        public void Dispose() {channel.MatchMessage-=Receive;lifetime.Cancel();Changed=null;Rejected=null;EventApplied=null;PassPresented=null;}
     }
 }

@@ -1,5 +1,18 @@
 {
   "entries": [
+    {"key":"matchmaking.title","en":"Find an opponent","es":"Encontrar rival"},
+    {"key":"matchmaking.search","en":"Search opponent","es":"Buscar oponente"},
+    {"key":"matchmaking.entering_match","en":"Entering match…","es":"Entrando a la partida…"},
+    {"key":"matchmaking.recovering","en":"Checking for an active match…","es":"Comprobando si hay una partida activa…"},
+    {"key":"matchmaking.resuming","en":"Resuming match…","es":"Reanudando partida…"},
+    {"key":"matchmaking.idle","en":"Ready to find your next opponent","es":"Todo listo para buscar tu próximo rival"},
+    {"key":"matchmaking.joining","en":"Preparing your match…","es":"Preparando tu partida…"},
+    {"key":"matchmaking.searching","en":"Searching for an opponent…","es":"Buscando rival…"},
+    {"key":"matchmaking.match_found","en":"Opponent found!","es":"¡Oponente encontrado!"},
+    {"key":"matchmaking.cancelling","en":"Cancelling search…","es":"Cancelando búsqueda…"},
+    {"key":"matchmaking.failed","en":"Unable to start matchmaking. Please try again.","es":"No se pudo iniciar la búsqueda. Inténtalo de nuevo."},
+    {"key":"matchmaking.elapsed","en":"Searching · {0} s","es":"Buscando · {0} s"},
+    {"key":"result.online_award","en":"{0} gains {1} points.","es":"{0} suma {1} puntos."},
     {
       "key": "realtime.connected",
       "en": "Connected",
@@ -674,6 +687,76 @@
       "key": "online.player_abandoned",
       "en": "Player left the match",
       "es": "Jugador abandonó la partida"
+    },
+    {
+      "key": "online.duel_subtitle",
+      "en": "1 vs 1",
+      "es": "1 contra 1"
+    },
+    {
+      "key": "online.entry_title",
+      "en": "ONE VS ONE — ONLINE",
+      "es": "UNO CONTRA UNO — ONLINE"
+    },
+    {
+      "key": "online.development_entry",
+      "en": "Development access · Share a Match ID with the second player.",
+      "es": "Acceso de desarrollo · Comparte el ID con el segundo jugador."
+    },
+    {
+      "key": "online.create",
+      "en": "Create match",
+      "es": "Crear partida"
+    },
+    {
+      "key": "online.join",
+      "en": "Join match",
+      "es": "Unirse a partida"
+    },
+    {
+      "key": "online.match_id",
+      "en": "Match ID",
+      "es": "ID de partida"
+    },
+    {
+      "key": "online.waiting",
+      "en": "Waiting for second player…",
+      "es": "Esperando al segundo jugador…"
+    },
+    {
+      "key": "online.network_unavailable",
+      "en": "Online connection unavailable. Retry when connected.",
+      "es": "Conexión online no disponible. Reintenta al conectar."
+    },
+    {
+      "key": "online.invalid_id",
+      "en": "Enter a valid Match ID.",
+      "es": "Introduce un ID de partida válido."
+    },
+    {
+      "key": "online.not_found",
+      "en": "Match not found. Check the ID.",
+      "es": "Partida no encontrada. Revisa el ID."
+    },
+    {
+      "key": "online.full",
+      "en": "This match is full.",
+      "es": "Esta partida está llena."
+    },
+    {
+      "key": "online.same_player",
+      "en": "Use a different player account on the second client.",
+      "es": "Usa otra cuenta de jugador en el segundo cliente."
+    },
+    {
+      "key": "online.started",
+      "en": "This match has already started.",
+      "es": "Esta partida ya comenzó."
+    },
+    {
+      "key": "online.join_failed",
+      "en": "Unable to enter the match. Check your connection and retry.",
+      "es": "No se pudo entrar. Revisa la conexión e inténtalo de nuevo."
     }
   ]
 }

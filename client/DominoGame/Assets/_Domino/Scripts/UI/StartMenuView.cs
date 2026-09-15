@@ -102,7 +102,7 @@ namespace Domino.UI
         {
             var mode=new GameModeDefinition(snapshot);var c=snapshot.RuleSet.Configuration;
             DominoLocalization.Set(card.Find("Mode name").GetComponent<Text>(),mode.DisplayNameKey);
-            DominoLocalization.Set(card.Find("Subtitle").GetComponent<Text>(),mode.SubtitleKey);
+            DominoLocalization.Set(card.Find("Subtitle").GetComponent<Text>(),snapshot.Key==GameCatalogConfigurationAdapter.DuelModeKey?"online.duel_subtitle":mode.SubtitleKey);
             DominoLocalization.Set(card.Find("Teams").GetComponent<Text>(),"mode.teams",c.PlayerCount==2?1:2,c.PlayerCount==2?1:2);
             DominoLocalization.Bind(card.Find("Rules").GetComponent<Text>(),()=>DominoLocalization.Get("rules.summary",DominoLocalization.Get("rules.double_nine",c.MaxPip),DominoLocalization.Get("rules.tiles",c.TilesPerPlayer),DominoLocalization.Get("rules.no_draw"),DominoLocalization.Get("rules.target_score",c.TargetScore)));
             button.onClick.RemoveAllListeners();button.onClick.AddListener(()=>StartRequested?.Invoke(mode));

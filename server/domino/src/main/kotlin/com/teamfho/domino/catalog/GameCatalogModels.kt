@@ -3,7 +3,7 @@ package com.teamfho.domino.catalog
 enum class RuleCapability { DUEL_TOPOLOGY, RANDOM_START_METHOD, HIGH_TILE_SELECTION, EVEN_ODD_GUESS, PREVIOUS_ROUND_WINNER_START, BLOCKED_TIE_STARTER_WINS, CAPICUA_SCORING_V1 }
 
 enum class TeamMode { FIXED_TEAMS, NONE }
-enum class ExecutionMode { LOCAL }
+enum class ExecutionMode { LOCAL, ONLINE }
 enum class Availability { ALL }
 enum class TileSet { DOUBLE_N }
 enum class DealMethod { ROUND_ROBIN }

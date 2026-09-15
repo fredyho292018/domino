@@ -32,7 +32,8 @@ namespace Domino.Catalog
                 string teamMode=Text(m,"teamMode"); bool duel=teamMode=="NONE";
                 Require(topology>0 && (duel ? players==2&&m["teamSize"]?.Type==JTokenType.Null : players==4&&Int(m,"teamSize")==2&&teamMode=="FIXED_TEAMS"),"TOPOLOGY");
                 Require(Text(m,"availability")=="ALL","AVAILABILITY");
-                var executions=Array(m,"executionModesSupported");Require(executions.Count==1&&executions[0].Type==JTokenType.String&&(string)executions[0]=="LOCAL","EXECUTION");
+                var executions=Array(m,"executionModesSupported");Require(executions.All(x=>x.Type==JTokenType.String)&&
+                    (executions.Values<string>().SequenceEqual(new[]{"LOCAL"})||key=="DUEL_1V1"&&executions.Values<string>().SequenceEqual(new[]{"LOCAL","ONLINE"})),"EXECUTION");
                 int min=Int(m,"minHumans"),max=Int(m,"maxHumans");bool bots=Bool(m,"botsAllowed");
                 Require(min>=1&&min<=max&&max<=players&&(bots||min==players),"HUMANS");
                 var teams=Array(m,"seatTeams");

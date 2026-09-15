@@ -9,6 +9,8 @@ import java.time.Instant
 import com.google.cloud.Timestamp
 
 interface OnlineRepository {
+    fun createPaired(write: OnlineWrite): OnlineState = throw UnsupportedOperationException("Atomic paired creation unavailable")
+    fun settleFailedCreation(id: String): OnlineState? = throw UnsupportedOperationException("Creation receipt unavailable")
     fun create(state: OnlineState)
     fun read(matchId: String): OnlineState?
     fun events(matchId: String, after: Long): List<MatchEvent>
@@ -46,6 +48,47 @@ object OnlineWrites {
 /** Same M4 Match/round/event/history paths. Private engine state is a transactional child,
  * encoded as JSON because Firestore cannot persist nested hand arrays. No Redis authority. */
 class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
+    private fun creation(id:String)=db.document("onlineMatchCreationReceipts/${MatchIds.document(id)}")
+    private fun assignment(uid:String)=db.document("onlinePlayerAssignments/${MatchIds.document(uid)}")
+    override fun createPaired(write:OnlineWrite):OnlineState {
+        val state=write.state;val id=state.match.matchId
+        require(state.match.participants.size==2 && state.match.participants.map{it.playerUid}.distinct().size==2)
+        state.match.ruleSnapshot.verify()
+        return db.runTransaction {tx ->
+            val receipt=tx.get(creation(id)).get()
+            if(receipt.exists()) {
+                checkOnline(receipt.getString("status")=="COMMITTED",OnlineError.MATCH_NOT_ACTIVE)
+                val existing=decode(tx.get(root(id).collection("runtime").document("authoritative")).get().data!!)
+                require(existing.match.participants.map{it.playerUid}.toSet()==state.match.participants.map{it.playerUid}.toSet())
+                return@runTransaction existing
+            }
+            val refs=state.match.participants.map{assignment(requireNotNull(it.playerUid))}
+            val assignments=refs.map{tx.get(it).get().getString("matchId")}
+            assignments.filterNotNull().distinct().forEach {previous ->
+                val data=tx.get(root(previous).collection("runtime").document("authoritative")).get().data
+                val prior=data?.let(::decode)
+                checkOnline(prior==null || prior.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED) ||
+                    prior.match.participants.filter{it.playerUid in state.match.participants.map{p->p.playerUid}}.all{it.connectionState==ConnectionState.ABANDONED},OnlineError.MATCH_FULL)
+            }
+            tx.create(root(id),MatchCodec.map(state.match))
+            tx.create(root(id).collection("runtime").document("authoritative"),stateMap(state))
+            state.match.participants.forEach{tx.create(root(id).collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
+            write.events.forEach{tx.create(root(id).collection("events").document(it.eventId),MatchCodec.map(it))}
+            write.rounds.forEach{tx.create(root(id).collection("rounds").document(it.roundNumber.toString()),MatchCodec.map(it))}
+            tx.create(work(id),workMap(state,state.match.updatedAt))
+            refs.forEach{tx.set(it,mapOf("matchId" to id))}
+            tx.create(creation(id),mapOf("status" to "COMMITTED","matchId" to id))
+            state
+        }.get(30,TimeUnit.SECONDS)
+    }
+    override fun settleFailedCreation(id:String):OnlineState? = db.runTransaction {tx ->
+        val receipt=tx.get(creation(id)).get()
+        if(receipt.getString("status")=="COMMITTED")
+            return@runTransaction decode(tx.get(root(id).collection("runtime").document("authoritative")).get().data!!)
+        // Fences a late/ambiguous creation transaction before Redis members can be released.
+        if(!receipt.exists())tx.create(creation(id),mapOf("status" to "ABORTED"))
+        null
+    }.get(30,TimeUnit.SECONDS)
     private fun work(id: String)=db.document("onlineTurnWork/${MatchIds.document(id)}")
     private fun timestamp(t: Instant)=Timestamp.ofTimeSecondsAndNanos(t.epochSecond,t.nano)
     private fun workMap(s: OnlineState, now: Instant, checkAt: Instant=now.plusSeconds(30)): Map<String,Any> {

@@ -32,7 +32,8 @@ object GameCatalogValidator {
             }
             require(m.minHumans in 1..m.playerCount && m.maxHumans in m.minHumans..m.playerCount)
             require(m.botsAllowed || m.minHumans == m.playerCount)
-            require(m.executionModesSupported == listOf(ExecutionMode.LOCAL))
+            require(m.executionModesSupported == listOf(ExecutionMode.LOCAL) ||
+                m.key == "DUEL_1V1" && m.executionModesSupported == listOf(ExecutionMode.LOCAL, ExecutionMode.ONLINE))
             require(p.ruleSets.any { it.id == m.defaultRuleSetId })
         }
         p.versions.forEach { r ->

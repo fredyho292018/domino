@@ -110,7 +110,7 @@ class GameCatalogTests {
         failure=false;instant=instant.plusSeconds(301);assertEquals(first,service.resolve())
     }
     @Test fun `scalar coercion and unsupported enums rejected`() {
-        assertFails { GameCatalogCodec.mapper.readValue(GameCatalogCodec.json(p).replace("\"LOCAL\"","\"ONLINE\""),GameCatalogPublication::class.java) }
+        assertFails { GameCatalogCodec.mapper.readValue(GameCatalogCodec.json(p).replace("\"LOCAL\"","\"UNKNOWN_EXECUTION\""),GameCatalogPublication::class.java) }
         assertFails { GameCatalogCodec.mapper.readValue(GameCatalogCodec.json(p).replace("\"playerCount\":4","\"playerCount\":\"4\""),GameCatalogPublication::class.java) }
     }
 }

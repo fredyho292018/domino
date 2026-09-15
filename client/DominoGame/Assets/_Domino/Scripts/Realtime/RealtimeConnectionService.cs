@@ -155,7 +155,7 @@ namespace Domino.Realtime
                     if (identity.Current?.Uid != uid) throw new RealtimeFailure("IDENTITY");
                     Reject(response);
                     switch ((string)response["type"]) {
-                        case "MATCH_UPDATE": case "COMMAND_ACCEPTED": case "COMMAND_REJECTED":
+                        case "MATCH_UPDATE": case "COMMAND_ACCEPTED": case "COMMAND_REJECTED": case "MATCH_FOUND": case "MATCHMAKING_STATUS":
                             foreach(Action<string,JObject> listener in MatchMessage?.GetInvocationList() ?? Array.Empty<Delegate>())
                                 try {listener((string)response["type"],(JObject)response["payload"]);} catch { }
                             break;

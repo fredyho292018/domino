@@ -13,9 +13,9 @@ namespace Domino.Infrastructure.Api
         public async Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (method != "POST" && method != "PUT" && method != "GET") throw new ArgumentException(nameof(method));
+            if (method != "POST" && method != "PUT" && method != "GET" && method != "DELETE") throw new ArgumentException(nameof(method));
             using var request = new UnityWebRequest(url, method);
-            if (method != "GET") request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+            if (method != "GET" && json != null) request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
             request.SetRequestHeader("Authorization", "Bearer " + token);

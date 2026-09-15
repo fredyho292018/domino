@@ -12,6 +12,23 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
     private val log=LoggerFactory.getLogger(javaClass)
     // Injected transport callback runs only after Firestore acknowledges the transaction.
     var committed: (OnlineWrite)->Unit = {}
+    fun createPaired(id:String,uidA:String,uidB:String,rules:MatchRuleSnapshot):OnlineState {
+        checkOnline(uidA!=uidB,OnlineError.SAME_PLAYER);validId(id);rules.verify()
+        val mode=rules.mode();checkOnline(mode.key=="DUEL_1V1"&&ExecutionMode.ONLINE in mode.executionModesSupported,OnlineError.MODE_UNAVAILABLE)
+        val uids=if(java.security.SecureRandom().nextBoolean())listOf(uidA,uidB) else listOf(uidB,uidA)
+        val now=clock.instant()
+        val match=Match(id,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,rules.catalogVersion,
+            mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,listOf(participant(uids[0],0)),
+            0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,false)
+        val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER)
+        val write=engine.join(before,participant(uids[1],1),"sys_pair_$id",now)
+        OnlineWrites.validate(before,write,"sys_pair_$id")
+        return repository.createPaired(write)
+    }
+    fun settleFailedCreation(id:String)=repository.settleFailedCreation(id)
+    fun active(uid:String):OnlineSnapshot? = repository.activeFor(uid).asSequence().mapNotNull{repository.read(it)}
+        .firstOrNull{s->s.match.status !in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED) &&
+            s.match.participants.any{it.playerUid==uid&&it.connectionState!=ConnectionState.ABANDONED}}?.let{snapshot(it,uid)}
     fun create(uid: String, modeKey: String, validationData: Boolean=false): OnlineSnapshot {
         checkOnline(modeKey=="DUEL_1V1",OnlineError.MODE_UNAVAILABLE)
         val catalog=catalog.resolve()?:throw OnlineFailure(OnlineError.MODE_UNAVAILABLE)

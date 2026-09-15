@@ -26,6 +26,7 @@ namespace Domino.Online.Editor
         }
         public static void Run() {
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_BATCH_REQUIRED");
+            Domino.Editor.LocalizationAssets.Import();
             SessionState.SetBool(Key,true);Register();EditorSceneManager.OpenScene(Domino.Editor.ClientEditorTools.ScenePath);EditorApplication.isPlaying=true;
         }
         [InitializeOnLoadMethod] static void Register() {
@@ -69,6 +70,9 @@ namespace Domino.Online.Editor
                         Check(view.ReserveViews.Count==35,"RESERVE_35");
                         if((int?)client.Snapshot.Public["currentSeat"]==seat) {
                             var tile=view.LocalTiles.First();Check(tile.Selectable,"OWN_TURN_INPUT");tile.Clicked(tile);Check(tile.Selected,"SELECTION_HIGHLIGHT");
+                            tile.Clicked(tile);Check(!tile.Selected,"TAP_AGAIN_DESELECTS");
+                            tile.Clicked(tile);var other=view.LocalTiles[1];other.Clicked(other);Check(!tile.Selected&&other.Selected,"SELECTION_TRANSFER");
+                            Check(!controller.GetComponentsInChildren<UnityEngine.UI.Button>(true).Any(b=>b.name=="Left"||b.name=="Right"),"NO_DUPLICATE_END_BUTTONS");
                         } else Check(view.LocalTiles.All(t=>!t.Selectable),"OPPONENT_TURN_INPUT_BLOCKED");
                         foreach(var tile in view.LocalTiles) {var corners=new Vector3[4];tile.Rect.GetWorldCorners(corners);Check(corners.All(v=>Screen.safeArea.Contains(v)),"HAND_SAFE_AREA");}
                         if(size==sizes[0]){
@@ -77,6 +81,37 @@ namespace Domino.Online.Editor
                             ScreenCapture.CaptureScreenshot(Path.GetFullPath(Path.Combine(Application.dataPath,"../../i1-seat-"+seat+".png")));
                             await Frames();
                         }
+                    }
+                    if(seat==0) {
+                        int landed=0;controller.Board.TileLanded+=()=>landed++;
+                        var confirmed=JObject.Parse(json);var hand=(JArray)confirmed["privateState"]["hand"];
+                        var played=hand[0].DeepClone();hand.RemoveAt(0);
+                        ((JArray)confirmed["publicState"]["board"]).Add(new JObject{["tile"]=played,["chainEnd"]="RIGHT",["actorSeat"]=0});
+                        confirmed["publicState"]["tilesRemainingPerSeat"][0]=hand.Count;
+                        long seq=(long)confirmed["lastSequence"]+1;
+                        confirmed["lastSequence"]=seq;confirmed["publicState"]["lastSequence"]=seq;confirmed["privateState"]["lastSequence"]=seq;
+                        Check(landed==0,"NO_PREDICTIVE_LANDING");client.ApplySnapshot(confirmed);
+                        await Task.Delay(900);Check(landed==1,"CONFIRMED_SHARED_PLAY_ANIMATION");
+                        var result=(JObject)confirmed.DeepClone();seq++;
+                        result["lastSequence"]=seq;result["publicState"]["lastSequence"]=seq;result["privateState"]["lastSequence"]=seq;
+                        result["phase"]="ROUND_FINISHED";result["publicState"]["currentSeat"]=null;result["publicState"]["scores"]=new JArray(0,27);
+                        result["roundResult"]=new JObject{["winnerSeat"]=1,["scoreAwarded"]=27,["remainingPips"]=new JArray(27,18)};
+                        client.ApplySnapshot(result);await Task.Delay(700);
+                        Check(!controller.Board.RoundRewardPanel,"FIVE_SECOND_PAUSE_NO_EARLY_OVERLAY");
+                        Check(controller.Board.GetComponentsInChildren<UnityEngine.UI.Text>().Any(t=>t.text.Contains("27")),"SCORE_UPDATED_BEFORE_CONTINUE");
+                        Check(controller.Board.LocalTiles.All(t=>!t.Selectable),"ROUND_END_INPUT_LOCKED");
+                        await Task.Delay(4800);Check(controller.Board.RoundRewardPanel,"SHARED_RESULT_AFTER_PAUSE");
+                        Check(controller.Board.HandViews(1).All(t=>!t.IsFaceUp),"NO_UNAUTHORIZED_OPPONENT_REVEAL");
+                        ScreenCapture.CaptureScreenshot(Path.GetFullPath(Path.Combine(Application.dataPath,"../../online-ux-result.png")));await Frames();
+                        var advanced=(JObject)confirmed.DeepClone();seq++;
+                        advanced["lastSequence"]=seq;advanced["publicState"]["lastSequence"]=seq;advanced["privateState"]["lastSequence"]=seq;
+                        advanced["publicState"]["currentRound"]=2;
+                        client.ApplySnapshot(advanced);await Task.Delay(200);
+                        Check(controller.Board.RoundRewardPanel,"REMOTE_NEXT_ROUND_PRESERVES_LOCAL_SUMMARY");
+                        controller.Board.RoundRewardPanel.ContinueButton.onClick.Invoke();await Task.Delay(700);
+                        Check(!controller.Board.RoundRewardPanel,"CONTINUE_DISMISSES_SUMMARY");
+                        Check(!controller.Board.RoundPresentationFinished,"MIDROUND_RESYNC_CLEARS_RESULT_STATE");
+                        Check(!client.Pending,"NO_DUPLICATE_NEXT_ROUND_COMMAND");
                     }
                     UnityEngine.Object.Destroy(controller.gameObject);await Task.Delay(150);
                 }

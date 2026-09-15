@@ -24,6 +24,7 @@ class RealtimeHandler(
     private val properties: RealtimeProperties,
     private val online: OnlineMatchService? = null,
     private val turnWorker: OnlineTurnWorker? = null,
+    private val matchmaking: com.teamfho.domino.matchmaking.MatchmakingService? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -43,9 +44,15 @@ class RealtimeHandler(
         .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
         .streamReadConstraints(StreamReadConstraints.builder().maxNestingDepth(8).maxStringLength(MAX_BYTES).build()).build()).build()
     private var lastCount = -1L
+    private var lastWaiting = -1L
     companion object { const val MAX_BYTES = 32768 }
 
     init {
+        matchmaking?.notify={uid,type,state ->
+            connections.values.filter{it.uid==uid}.forEach{c -> synchronized(c) {
+                if(c.socket.isOpen)try{send(c,type,MatchCodec.map(state))}catch(_:Exception){close(c,1011)}
+            }}
+        }
         online?.committed = { write ->
             connections.values.forEach { c ->
                 val uid=c.uid
@@ -150,7 +157,7 @@ class RealtimeHandler(
         }
     }
     private fun activity(count: Long) = mapOf("onlinePlayers" to count, "activeMatches" to 0,
-        "waitingPlayers" to 0, "openRooms" to 0, "generatedAt" to Instant.now().toString())
+        "waitingPlayers" to (matchmaking?.waiting()?:0), "openRooms" to 0, "generatedAt" to Instant.now().toString())
     private fun expired(since: Long, seconds: Long) = System.nanoTime() - since >= seconds * 1_000_000_000
     private fun send(c: Connection, type: String, payload: Map<String, Any>) {
         c.socket.sendMessage(TextMessage(json.writeValueAsString(mapOf("type" to type, "version" to 1,
@@ -166,7 +173,7 @@ class RealtimeHandler(
     }
     private fun cleanup(c: Connection) {
         if (!connections.remove(c.socket.id, c)) return
-        c.uid?.let { try { presence.remove(it, c.id) } catch (_: Exception) { /* lease expires */ };turnWorker?.connectionChanged(it) }
+        c.uid?.let { try { presence.remove(it, c.id) } catch (_: Exception) { /* lease expires */ };turnWorker?.connectionChanged(it);matchmaking?.connectionLost(it) }
     }
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         connections[session.id]?.let { synchronized(it) { cleanup(it) } }
@@ -192,8 +199,10 @@ class RealtimeHandler(
     fun publishActivity() {
         try {
             val count = presence.onlinePlayers()
-            if (count == lastCount) return
+            val waiting = matchmaking?.waiting()?:0L
+            if (count == lastCount && waiting == lastWaiting) return
             lastCount = count
+            lastWaiting = waiting
             connections.values.forEach { c -> synchronized(c) {
                 if (c.uid != null && c.subscribed) try { send(c, "GLOBAL_ACTIVITY_UPDATED", activity(count)) } catch (_: Exception) { close(c, 1011) }
             } }

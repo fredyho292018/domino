@@ -22,6 +22,15 @@ static class DuelGameplayTests
         var root=Environment.GetEnvironmentVariable("DOMINO_M1_ROOT");
         string v2=File.ReadAllText(Path.Combine(root,"client/DominoGame/Assets/_Domino/Resources/GameCatalogFallback.json"));
         string v1=File.ReadAllText(Path.Combine(root,"client/Validation/GameCatalogV1Fixture.json"));
+        var publication=Newtonsoft.Json.Linq.JObject.Parse(v2);publication["catalogVersion"]=3;
+        var duelNode=publication["modes"].Single(m=>(string)m["key"]=="DUEL_1V1");
+        duelNode["executionModesSupported"]=new Newtonsoft.Json.Linq.JArray("LOCAL","ONLINE");
+        var onlinePublication=new GameCatalogCodec().Read(publication.ToString());
+        Check(onlinePublication.CatalogVersion==3&&onlinePublication.Modes.Count==2,"V3_ONLINE_CATALOG_ACCEPTED");
+        Check(new SessionSetup(GameCatalogConfigurationAdapter.Freeze(onlinePublication,GameCatalogSource.Remote,"DUEL_1V1")).SharedDevice,"V3_LOCAL_DEV_PRESERVED");
+        duelNode["executionModesSupported"]=new Newtonsoft.Json.Linq.JArray("LOCAL","UNKNOWN");
+        bool unknownRejected=false;try{new GameCatalogCodec().Read(publication.ToString());}catch(FormatException){unknownRejected=true;}
+        Check(unknownRejected,"UNKNOWN_EXECUTION_REJECTED");
         var api=new Api{Json=v2};var cache=new Cache();var catalog=new GameCatalogService(api,cache,v2);
         var frozen=catalog.ResolveMatch("DUEL_1V1");var c=frozen.Configuration;var rules=new GameRules(c);
         var session=new SessionSetup(frozen);

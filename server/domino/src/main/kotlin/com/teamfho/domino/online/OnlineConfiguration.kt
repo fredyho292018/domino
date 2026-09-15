@@ -24,6 +24,8 @@ class OnlineConfiguration {
         return object: OnlineRepository {
             fun ready()=delegate?:throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)
             override fun create(state: OnlineState)=ready().create(state)
+            override fun createPaired(write: OnlineWrite)=ready().createPaired(write)
+            override fun settleFailedCreation(id:String)=ready().settleFailedCreation(id)
             override fun read(matchId: String)=ready().read(matchId)
             override fun events(matchId: String,after: Long)=ready().events(matchId,after)
             override fun due(now: java.time.Instant)=ready().due(now)

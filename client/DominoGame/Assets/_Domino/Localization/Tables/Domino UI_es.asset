@@ -20,147 +20,147 @@ MonoBehaviour:
     - rid: 7246862583952572444
   m_TableData:
   - m_Id: 3800000000000002
-    m_Localized: "Jugador abandonó la partida"
+    m_Localized: "Jugador abandon\xF3 la partida"
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3800000000000001
-    m_Localized: "Jugador reconectado"
+    m_Localized: Jugador reconectado
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3800000000000000
-    m_Localized: "Turno: {0}s"
+    m_Localized: 'Turno: {0}s'
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3600000000000000
-    m_Localized: "Anuncios no disponibles"
+    m_Localized: Anuncios no disponibles
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000001
-    m_Localized: "Recompensas no disponibles"
+    m_Localized: Recompensas no disponibles
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000002
-    m_Localized: "Recompensa de esta ronda recibida"
+    m_Localized: Recompensa de esta ronda recibida
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000003
-    m_Localized: "Disponible en {0}"
+    m_Localized: Disponible en {0}
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000004
-    m_Localized: "Límite de recompensas por hora"
+    m_Localized: "L\xEDmite de recompensas por hora"
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000005
-    m_Localized: "Límite diario de recompensas"
+    m_Localized: "L\xEDmite diario de recompensas"
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000006
-    m_Localized: "Límite diario de monedas"
+    m_Localized: "L\xEDmite diario de monedas"
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000007
-    m_Localized: "Recompensas no disponibles para esta cuenta"
+    m_Localized: Recompensas no disponibles para esta cuenta
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3600000000000008
-    m_Localized: "No se pudo comprobar. Inténtalo más tarde."
+    m_Localized: "No se pudo comprobar. Int\xE9ntalo m\xE1s tarde."
     m_Metadata:
       m_Items:
-      - rid: 7246862583952572445
+      - rid: -2
   - m_Id: 3500000000000000
-    m_Localized: "Ronda terminada"
+    m_Localized: Ronda terminada
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000001
-    m_Localized: "Ver anuncio"
+    m_Localized: Ver anuncio
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000002
-    m_Localized: "+{0} monedas"
+    m_Localized: +{0} monedas
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000003
-    m_Localized: "Preparando recompensa..."
+    m_Localized: Preparando recompensa...
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000004
-    m_Localized: "Verificando recompensa..."
+    m_Localized: Verificando recompensa...
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000005
-    m_Localized: "Confirmando saldo..."
+    m_Localized: Confirmando saldo...
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000006
-    m_Localized: "Recompensa recibida"
+    m_Localized: Recompensa recibida
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000007
-    m_Localized: "Recompensa no disponible"
+    m_Localized: Recompensa no disponible
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000008
-    m_Localized: "Anuncio no completado"
+    m_Localized: Anuncio no completado
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000009
-    m_Localized: "No se pudo preparar la recompensa."
+    m_Localized: No se pudo preparar la recompensa.
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000010
-    m_Localized: "Recompensa pendiente. Puedes continuar o reintentar."
+    m_Localized: Recompensa pendiente. Puedes continuar o reintentar.
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000011
-    m_Localized: "Reintentar recompensa"
+    m_Localized: Reintentar recompensa
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000012
-    m_Localized: "Recompensa opcional"
+    m_Localized: Recompensa opcional
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000013
-    m_Localized: "Anuncio en curso"
+    m_Localized: Anuncio en curso
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000014
-    m_Localized: "Saldo: {0} monedas"
+    m_Localized: 'Saldo: {0} monedas'
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000015
-    m_Localized: "Saldo: --"
+    m_Localized: 'Saldo: --'
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 3500000000000016
-    m_Localized: "Recompensa recibida: +{0} monedas"
+    m_Localized: 'Recompensa recibida: +{0} monedas'
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
@@ -825,6 +825,141 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 2929402923741184
+    m_Localized: 1 contra 1
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684224
+    m_Localized: "UNO CONTRA UNO \u2014 ONLINE"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684225
+    m_Localized: "Acceso de desarrollo \xB7 Comparte el ID con el segundo jugador."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684226
+    m_Localized: Crear partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684227
+    m_Localized: Unirse a partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684228
+    m_Localized: ID de partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684229
+    m_Localized: "Esperando al segundo jugador\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684230
+    m_Localized: "Conexi\xF3n online no disponible. Reintenta al conectar."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684231
+    m_Localized: "Introduce un ID de partida v\xE1lido."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684232
+    m_Localized: Partida no encontrada. Revisa el ID.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684233
+    m_Localized: "Esta partida est\xE1 llena."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684234
+    m_Localized: Usa otra cuenta de jugador en el segundo cliente.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684235
+    m_Localized: "Esta partida ya comenz\xF3."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2929402965684236
+    m_Localized: "No se pudo entrar. Revisa la conexi\xF3n e int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 2956237275426816
+    m_Localized: '{0} suma {1} puntos.'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437434015744
+    m_Localized: Encontrar rival
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764480
+    m_Localized: Buscar oponente
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764481
+    m_Localized: "Todo listo para buscar tu pr\xF3ximo rival"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764482
+    m_Localized: "Preparando tu partida\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764483
+    m_Localized: "Buscando rival\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764484
+    m_Localized: "\xA1Oponente encontrado!"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764485
+    m_Localized: "Cancelando b\xFAsqueda\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764486
+    m_Localized: "No se pudo iniciar la b\xFAsqueda. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3297437471764487
+    m_Localized: "Buscando \xB7 {0} s"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3304955283533824
+    m_Localized: "Entrando a la partida\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3304955338059776
+    m_Localized: "Comprobando si hay una partida activa\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 3304955338059777
+    m_Localized: "Reanudando partida\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -987,3 +1122,30 @@ MonoBehaviour:
         - id: 2784011733463056
         - id: 2784011733463057
         - id: 2784011733463058
+        - id: 2929402923741184
+        - id: 2929402965684224
+        - id: 2929402965684225
+        - id: 2929402965684226
+        - id: 2929402965684227
+        - id: 2929402965684228
+        - id: 2929402965684229
+        - id: 2929402965684230
+        - id: 2929402965684231
+        - id: 2929402965684232
+        - id: 2929402965684233
+        - id: 2929402965684234
+        - id: 2929402965684235
+        - id: 2929402965684236
+        - id: 2956237275426816
+        - id: 3297437434015744
+        - id: 3297437471764480
+        - id: 3297437471764481
+        - id: 3297437471764482
+        - id: 3297437471764483
+        - id: 3297437471764484
+        - id: 3297437471764485
+        - id: 3297437471764486
+        - id: 3297437471764487
+        - id: 3304955283533824
+        - id: 3304955338059776
+        - id: 3304955338059777

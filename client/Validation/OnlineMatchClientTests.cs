@@ -18,6 +18,13 @@ class OnlineMatchClientTests
         public JObject Value;public int Calls;
         public Task<JObject> SendAsync(string method,string path,JObject body,CancellationToken token) {Calls++;return Task.FromResult(Value);}
     }
+    sealed class Tokens:Domino.Identity.IAuthTokenProvider {
+        public Task<string> GetIdTokenAsync(bool refresh,CancellationToken token)=>Task.FromResult("fixture-token");
+    }
+    sealed class Transport:Domino.Infrastructure.Api.IApiTransport {
+        public int Status;public string Body;
+        public Task<Domino.Infrastructure.Api.ApiHttpResponse> SendAsync(string method,Uri uri,string json,string token,int timeout,CancellationToken cancel)=>Task.FromResult(new Domino.Infrastructure.Api.ApiHttpResponse(Status,Body));
+    }
     static JObject Snapshot(long seq,int seat=0,string phase="PLAYING")=>new JObject {
         ["lastSequence"]=seq,["phase"]=phase,["starter"]=null,["ruleSnapshot"]=new JObject(),
         ["publicState"]=new JObject {["matchId"]="fixture",["lastSequence"]=seq,["board"]=new JArray(),["currentSeat"]=0,["scores"]=new JArray(0,0)},
@@ -27,7 +34,21 @@ class OnlineMatchClientTests
         var events=new JArray();for(long i=first;i<=last;i++)events.Add(new JObject {["sequence"]=i,["type"]="SEQUENCE_ADVANCED",["event"]=null});
         return new JObject {["matchId"]="fixture",["firstSequence"]=first,["events"]=events,["snapshot"]=Snapshot(last,seat)};
     }
-    static async Task Main() {
+      static async Task Main() {
+        using(var passClient=new OnlineMatchClient(new Api(),new Channel())) {
+            passClient.ApplySnapshot(Snapshot(5));int passed=-1,count=0;
+            passClient.PassPresented+=(sequence,seat)=>{passed=seat;count++;};
+            var update=Update(6,6);update["events"][0]["type"]="PLAYER_PASSED";
+            update["events"][0]["event"]=new JObject{["payload"]=new JObject{["seat"]=1}};
+            Check(passClient.ApplyUpdate(update)&&passed==1&&count==1,"server pass payload routes shared feedback");
+            Check(!passClient.ApplyUpdate(update)&&count==1,"duplicate pass feedback suppressed");
+        }
+        foreach(var code in new[]{"MATCH_NOT_FOUND","MATCH_FULL","SAME_PLAYER","MATCH_NOT_ACTIVE"}) {
+            var transport=new Transport{Status=code=="MATCH_NOT_FOUND"?404:409,Body=new JObject{["code"]=code,["detail"]="must-not-reach-ui"}.ToString()};
+            var entryApi=new OnlineMatchApi(new Domino.Infrastructure.Api.DominoApiConfiguration(true,"https://example.com",15,"TEST",false),new Tokens(),transport);
+            string key=null;try{await entryApi.SendAsync("POST","matches/fixture/join",new JObject(),CancellationToken.None);}catch(OnlineEntryException e){key=e.LocalizationKey;Check(!e.Message.Contains("must-not-reach-ui"),"response detail not exposed");}
+            Check(key==(code=="MATCH_NOT_FOUND"?"online.not_found":code=="MATCH_FULL"?"online.full":code=="SAME_PLAYER"?"online.same_player":"online.started"),"safe localized entry error");
+        }
         double monotonic=0;var clock=new OnlineTurnClock(()=>monotonic);
         clock.Apply(JObject.Parse("{\"serverNow\":\"2026-09-13T00:00:00Z\",\"turnDeadlineAt\":\"2026-09-13T00:01:00Z\"}"));
         Check(clock.HasDeadline&&clock.RemainingSeconds==60,"server timestamp anchored deadline");

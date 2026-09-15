@@ -498,6 +498,12 @@ namespace Domino.UI
             UpdateTurnNotice(player);
             DominoLocalization.Set(prompt, player == LocalPlayerSeat ? "game.drag_select" : "game.thinking", new[] { "Fredy", "Alex", "Maria", "John" }[player]);
         }
+        public DominoTileView ToggleSelection(DominoTileView tile)
+        {
+            var selection = tile && tile.Selected ? null : tile;
+            SetSelected(selection);
+            return selection;
+        }
         public void SetSelected(DominoTileView selection)
         {
             if (IsPreparingRound) return;
@@ -746,7 +752,7 @@ namespace Domino.UI
             }
             for (int p = 0; p < players.Length; p++) players[p].ShowPoints(hands[p].Count, points[p]);
         }
-        public void Finish(Func<string> message, bool matchFinished = false)
+        public void Finish(Func<string> message, bool matchFinished = false, bool allowRewards = true)
         {
             foreach (var player in players) player.SetTurn(false);
             bannerTarget = 0;
@@ -761,7 +767,7 @@ namespace Domino.UI
             if (RoundRewardPanel) Destroy(RoundRewardPanel.gameObject);
             var resultPanel = UiKit.Rect("Round result and optional reward", content, new Vector2(800,590), Vector2.zero);
             RoundRewardPanel = resultPanel.gameObject.AddComponent<RoundRewardView>();
-            RoundRewardPanel.Initialize(SharedDevice?null:Domino.Infrastructure.ApplicationServices.RoundRewards,
+            RoundRewardPanel.Initialize(SharedDevice||!allowRewards?null:Domino.Infrastructure.ApplicationServices.RoundRewards,
                 Domino.Infrastructure.ApplicationServices.Player, message, () => scoreA.text + "     ·     " + scoreB.text,
                 () => { if (matchEnded) RestartRequested?.Invoke(); else NextRoundRequested?.Invoke(); });
         }

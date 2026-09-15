@@ -42,8 +42,24 @@ namespace Domino.Client
             if (!FindFirstObjectByType<EventSystem>()) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             startMenu = new GameObject("Domino Start Menu", typeof(RectTransform)).AddComponent<StartMenuView>();
             startMenu.Initialize(new GameModeDefinition(preview.Mode), preview.Configuration);
-            startMenu.StartRequested += StartMatch;
+            startMenu.StartRequested += StartFromMenu;
         }
+        void StartFromMenu(GameModeDefinition mode)
+        {
+            if(mode.Key!=GameCatalogConfigurationAdapter.DuelModeKey){StartMatch(mode);return;}
+            startMenu.Show(StartScreen.Match);
+            var entry=new GameObject("Find opponent",typeof(RectTransform)).AddComponent<Domino.Online.MatchmakingView>();
+            entry.Initialize(tilePrefab,playerPrefab,()=>startMenu.Show(StartScreen.ModeSelector));
+        }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void OpenDevelopmentOnlineEntry()
+        {
+            if(!Domino.Online.OnlineDevelopmentAccess.Allowed||!startMenu||startMenu.Screen==StartScreen.Match||Session!=null)return;
+            startMenu.Show(StartScreen.Match);
+            var entry=new GameObject("Development online entry",typeof(RectTransform)).AddComponent<Domino.Online.OnlineEntryView>();
+            entry.Initialize(tilePrefab,playerPrefab,()=>{if(startMenu)startMenu.Show(StartScreen.ModeSelector);});
+        }
+#endif
         public void StartMatch(GameModeDefinition mode) => StartMatch(mode, mode.LocalPlayerSeat);
         public void StartMatch(GameModeDefinition mode, int localPlayerSeat)
         {
@@ -109,8 +125,7 @@ namespace Domino.Client
         public void Select(DominoTileView tile)
         {
             if (!acceptingInput || board.IsDragging || !board.LocalTiles.ContainsReference(tile)) return;
-            selected = selected == tile ? null : tile;
-            board.SetSelected(selected);
+            selected = board.ToggleSelection(tile);
         }
         public void PlaySelected()
         { PlaySelection(ChainEnd.Auto); }

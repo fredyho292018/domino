@@ -99,7 +99,7 @@ namespace Domino.Catalog.Editor
                     await Task.Delay(300);DominoLocalization.Select(checks%2==0?"es":"en");
                     c.Menu.Show(StartScreen.ModeSelector);await Task.Delay(150);
                     Check(c.Menu.DuelPlay&&c.Menu.DuelPlay.gameObject.activeInHierarchy,"DUEL_CARD");
-                    c.Menu.DuelPlay.onClick.Invoke();await Ready(c);
+                    c.StartMatch(new GameModeDefinition(ApplicationServices.GameCatalog.ResolveMatch("DUEL_1V1").Mode));await Ready(c);
                     Check(c.Session.SharedDevice&&c.Session.Mode.BotCount==0,"NO_BOTS");
                     Check(c.State.Reserve.Count==35&&c.View.ReserveViews.Count==35&&c.View.VisuallyDealt==20,"20_DEALT_35_RESERVE");
                     Check(c.View.Perspective.BottomPlayer==0&&c.View.Perspective.TopPlayer==1,"FIXED_DUEL_TOPOLOGY");
