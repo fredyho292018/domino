@@ -17,6 +17,7 @@ namespace Domino.Infrastructure
     public static class ApplicationServices
     {
         static CancellationTokenSource lifetime;
+        static GameObject lifecycleObject;
         public static IPlayerIdentityService Identity { get; private set; }
         public static FirebaseBootstrap Firebase { get; private set; }
         public static PlayerService Player { get; private set; }
@@ -107,6 +108,7 @@ namespace Domino.Infrastructure
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
             OnlineApi = new Domino.Online.OnlineMatchApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
             var lifecycle = new GameObject("Realtime lifecycle");
+            lifecycleObject = lifecycle;
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);
             lifecycle.AddComponent<RealtimeLifecycle>();
             lifecycle.AddComponent<RewardConfirmationToast>().Initialize(RoundRewards);
@@ -123,13 +125,47 @@ namespace Domino.Infrastructure
         }
         static async Task InitializePlayerAndRecoverAsync()
         {
-            await Player.InitializeAsync();
-            if (lifetime != null && !lifetime.IsCancellationRequested && Player.HasConfirmedSnapshots) {
-                await Monetization.RefreshAsync();
-                await Rewarded.InitializeAsync();
-                await RoundRewards.RecoverAsync();
+            var player = Player; var policy = Monetization; var rewarded = Rewarded; var rounds = RoundRewards;
+            var token = lifetime.Token;
+            await player.InitializeAsync();
+            if (!token.IsCancellationRequested && player.HasConfirmedSnapshots) {
+                await policy.RefreshAsync();
+                if (token.IsCancellationRequested) return;
+                await rewarded.InitializeAsync();
+                if (token.IsCancellationRequested) return;
+                await rounds.RecoverAsync();
             }
         }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Explicit development tool only. Never reachable in a release player.
+        public static async Task ResetDevelopmentAnonymousIdentityAsync()
+        {
+            if (!Domino.Development.DevelopmentAuthentication.CanReset)
+                throw new InvalidOperationException("Development authentication unavailable");
+            var current = await Identity.InitializeAsync();
+            if (!current.IsAnonymous) throw new InvalidOperationException("Anonymous identity required");
+            var auth = global::Firebase.Auth.FirebaseAuth.DefaultInstance;
+            var previous = current.Uid;
+            Reset();
+            try
+            {
+                auth.SignOut();
+                var result = await auth.SignInAnonymouslyAsync();
+                if (result?.User == null || result.User.UserId == previous)
+                    throw new InvalidOperationException("New anonymous identity unavailable");
+                Debug.Log("[DEV AUTH] identity changed old=" + Domino.Development.DevelopmentAuthentication.Fingerprint(previous)
+                    + " new=" + Domino.Development.DevelopmentAuthentication.Fingerprint(result.User.UserId));
+            }
+            finally
+            {
+                Start();
+                await UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+            }
+            await Player.InitializeAsync();
+            if (!Player.HasConfirmedSnapshots) throw new InvalidOperationException("Player bootstrap unavailable");
+        }
+#endif
         // Menu-triggered refresh changes future resolutions only; active sessions keep their snapshot.
         public static async Task RefreshGameCatalogAsync(bool force = false)
         {
@@ -153,6 +189,7 @@ namespace Domino.Infrastructure
         }
         static void Shutdown()
         {
+            if (lifecycleObject) { UnityEngine.Object.Destroy(lifecycleObject); lifecycleObject = null; }
             RoundRewards?.Dispose();
             Player?.Dispose();
             Rewarded?.Dispose();
