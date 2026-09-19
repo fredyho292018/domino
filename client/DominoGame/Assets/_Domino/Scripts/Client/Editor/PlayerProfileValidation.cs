@@ -73,6 +73,8 @@ namespace Domino.Editor
         public static void RunRestart() => Run(3);
         static void Run(int mode)
         {
+            if(mode==1)Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
+            else Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if (!Application.isBatchMode) throw new Exception("Isolated batch editor required");
             Directory.CreateDirectory(Output);
             LocalizationAssets.Import();

@@ -58,6 +58,7 @@ object GameCatalogV2Publisher {
         }.get(30,TimeUnit.SECONDS)
     }
     @JvmStatic fun main(args:Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contains("--publish-v2")) { "EXPLICIT_PUBLICATION_REQUIRED" }
         SpringApplicationBuilder(CatalogSeedConfiguration::class.java).web(WebApplicationType.NONE).logStartupInfo(false)
             .run(*args.filter { it!="--publish-v2" && it!="--verify-rollback" }.toTypedArray()).use { context ->

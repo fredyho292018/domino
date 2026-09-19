@@ -10,6 +10,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 /** Read-only inspection of a real two-Unity validation match. No participant simulator. */
 object TwoUnityMatchInspection {
  @JvmStatic fun main(args:Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
   require(args.size==1);val id=java.util.UUID.fromString(args[0]).toString()
   SpringApplicationBuilder(CatalogSeedConfiguration::class.java).web(WebApplicationType.NONE).logStartupInfo(false).run().use { context ->
    FirestoreOptions.newBuilder().setProjectId(context.getBean(FirebaseProperties::class.java).projectId).setCredentials(GoogleCredentials.getApplicationDefault()).build().service.use { db ->

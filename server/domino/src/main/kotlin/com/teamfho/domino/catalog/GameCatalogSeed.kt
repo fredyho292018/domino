@@ -30,6 +30,7 @@ object GameCatalogSeed {
         store.createAndPublish(docs,p.catalogVersion)
     }
     @JvmStatic fun main(args: Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contains("--seed-if-absent")) { "EXPLICIT_SEED_FLAG_REQUIRED" }
         SpringApplicationBuilder(CatalogSeedConfiguration::class.java).web(WebApplicationType.NONE).logStartupInfo(false)
             .run(*args.filter { it != "--seed-if-absent" }.toTypedArray()).use { context ->

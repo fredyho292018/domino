@@ -73,6 +73,8 @@ namespace Domino.Infrastructure
             Identity = new FirebaseAuthService(Firebase, client, Debug.Log, lifetime.Token);
             var asset = Resources.Load<DominoApiSettings>("ApiSettings");
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
+            if (ValidationNetworkPolicy.Isolated) settings = new DominoApiConfiguration(false, "");
+
             try {
                 var bundled = Resources.Load<TextAsset>("GameCatalogFallback");
                 GameCatalog = new Domino.Catalog.GameCatalogService(
@@ -165,6 +167,7 @@ namespace Domino.Infrastructure
         static void OnEditorPlayMode(UnityEditor.PlayModeStateChange state)
         {
             if (state == UnityEditor.PlayModeStateChange.ExitingPlayMode) Shutdown();
+            if (state == UnityEditor.PlayModeStateChange.EnteredEditMode) ValidationNetworkPolicy.EndValidation();
         }
 #endif
     }

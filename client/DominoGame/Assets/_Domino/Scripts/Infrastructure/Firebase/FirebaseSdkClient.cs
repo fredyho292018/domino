@@ -16,9 +16,17 @@ namespace Domino.Infrastructure.Firebase
                 expectedIdentity, forceRefresh, cancellationToken);
         FirebaseApp app;
         FirebaseAuth auth;
-        public async Task<string> CheckDependenciesAsync() => (await FirebaseApp.CheckAndFixDependenciesAsync()).ToString();
+        public async Task<string> CheckDependenciesAsync()
+        {
+            if (Domino.Infrastructure.ValidationNetworkPolicy.Isolated) return "Unavailable";
+            Domino.Infrastructure.ValidationNetworkPolicy.RequireNetwork();
+
+            return (await FirebaseApp.CheckAndFixDependenciesAsync()).ToString();
+        }
         public void InitializeApp()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.RequireNetwork();
+
             app = FirebaseApp.DefaultInstance;
             if (app == null) throw new InvalidOperationException("Firebase initialization failed: DefaultInstance is null.");
         }
@@ -26,6 +34,8 @@ namespace Domino.Infrastructure.Firebase
         {
             get
             {
+                Domino.Infrastructure.ValidationNetworkPolicy.RequireNetwork();
+
                 if (app == null) throw new InvalidOperationException("Firebase must initialize before authentication.");
                 return auth ??= FirebaseAuth.DefaultInstance ?? throw new InvalidOperationException("FirebaseAuth unavailable.");
             }

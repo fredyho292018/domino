@@ -14,6 +14,7 @@ import java.util.concurrent.Executors
 // Synthetic namespace + validationData=true on root/history; no Firebase user, wallet or ledger writes.
 object MatchFirestoreValidation {
     @JvmStatic fun main(args: Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contains("--validate-m4"))
         SpringApplicationBuilder(CatalogSeedConfiguration::class.java).web(WebApplicationType.NONE).logStartupInfo(false)
             .run(*args.filter {it!="--validate-m4"}.toTypedArray()).use {context->

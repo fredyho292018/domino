@@ -11,15 +11,17 @@ class OnlineTurnTests {
     @Test fun `new worker discovers persisted expired turn and refreshes bounded index`() {
         val f=Fixture();f.at(65);var refreshed=0
         val repo=object:OnlineRepository by f.f.repo {
-            override fun due(now:Instant)=if(f.s().turnDeadlineAt!!<=now)listOf(f.id)else emptyList()
+            override fun due(now:Instant):List<String> = error("Firestore polling forbidden")
             override fun refreshDiscovery(matchId:String,now:Instant){refreshed++}
         }
         val presence=object:PresenceStore {
             override fun touch(uid:String,connectionId:String,serverId:String){};override fun remove(uid:String,connectionId:String){}
             override fun onlinePlayers()=2L;override fun connectionCount(uid:String)=1L
         }
-        OnlineTurnWorker(repo,f.service,presence).processDue(f.clock.instant())
-        OnlineTurnWorker(repo,f.service,presence).processDue(f.clock.instant())
+        val index=MemoryTurnDueIndex();index.entries[f.id]=f.clock.instant()
+        val bridge=TurnIndexBridge(index,TurnWorkFeed {_,_->AutoCloseable{}})
+        OnlineTurnWorker(repo,f.service,presence,index,bridge).processDue(f.clock.instant())
+        OnlineTurnWorker(repo,f.service,presence,index,bridge).processDue(f.clock.instant())
         assertEquals(1,refreshed);assertEquals(1,f.events().count {it.payload is TurnTimeout})
     }
     @Test fun `lifecycle notification counts two one zero sockets without duplicate participant events`() {
@@ -29,7 +31,7 @@ class OnlineTurnTests {
             override fun touch(uid:String,connectionId:String,serverId:String){};override fun remove(uid:String,connectionId:String){}
             override fun onlinePlayers()=2L;override fun connectionCount(uid:String)=if(uid=="p0")sockets else 1L
         }
-        val worker=OnlineTurnWorker(repo,f.service,presence)
+        val index=MemoryTurnDueIndex();val worker=OnlineTurnWorker(repo,f.service,presence,index,TurnIndexBridge(index,TurnWorkFeed {_,_->AutoCloseable{}}))
         for(n in listOf(2L,1L,0L,0L,1L,2L)){sockets=n;worker.connectionChanged("p0");worker.processDue(f.clock.instant())}
         assertEquals(1,f.events().count {it.payload is PlayerDisconnected});assertEquals(1,f.events().count {it.payload is PlayerReconnected})
     }

@@ -41,6 +41,8 @@ namespace Domino.Catalog.Editor
         sealed class EmptyCache:IGameCatalogCache {public CatalogCacheEntry Read()=>null;public void Write(CatalogCacheEntry e){} }
         public static void Run()
         {
+            if(Phase=="")Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
+            else Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_BATCH_REQUIRED");
             SessionState.SetBool(Key,true);Register();
             Domino.Editor.LocalizationAssets.Import();

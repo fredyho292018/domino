@@ -13,9 +13,11 @@ import kotlin.test.*
 
 // Opt-in configuration-only integration test. Cannot touch the active policy path,
 // wallet collections, Firebase users, AdMob, or the reward consume endpoint.
-@EnabledIfEnvironmentVariable(named="DOMINO_H61_REAL_POLICY_TEST",matches="true")
+@org.junit.jupiter.api.Tag("REAL_FIRESTORE")
+@EnabledIfEnvironmentVariable(named="DOMINO_REAL_FIRESTORE_TESTS",matches="true")
 class RealFirestorePolicyTests {
     @Test fun `isolated real policy seed change refresh and restore`() {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         val project=System.getenv("FIREBASE_PROJECT_ID") ?: error("EXPLICIT_PROJECT_REQUIRED")
         val path="systemConfig/monetization-h61-validation-${UUID.randomUUID()}"
         FirestoreOptions.newBuilder().setProjectId(project).setCredentials(GoogleCredentials.getApplicationDefault()).build().service.use { db ->

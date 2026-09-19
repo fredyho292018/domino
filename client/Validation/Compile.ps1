@@ -29,8 +29,12 @@ $ugui = Get-ChildItem "$EditorData/Resources/PackageManager/BuiltInPackages/com.
 Compile 'UnityEngine.UI' $ugui @()
 $runtime = Get-ChildItem "$PSScriptRoot/../DominoGame/Assets/_Domino/Scripts" -Filter '*.cs' -Recurse | Where-Object FullName -NotMatch '[\\/]Editor[\\/]' | ForEach-Object FullName
 Compile 'Domino.Runtime' $runtime @('-r:"' + (Join-Path $output 'UnityEngine.UI.dll') + '"')
-$editor = Get-ChildItem "$PSScriptRoot/../DominoGame/Assets/_Domino/Scripts/Client/Editor" -Filter '*.cs' | ForEach-Object FullName
-Compile 'Domino.Editor' $editor @('-r:"' + (Join-Path $output 'UnityEngine.UI.dll') + '"', '-r:"' + (Join-Path $output 'Domino.Runtime.dll') + '"')
+$editor = Get-ChildItem "$PSScriptRoot/../DominoGame/Assets/_Domino/Scripts" -Recurse -Filter '*.cs' | Where-Object FullName -Match '[\\/]Editor[\\/]' | ForEach-Object FullName
+$editor += Get-ChildItem "$PSScriptRoot/../DominoGame/Assets/_Domino/Editor" -Recurse -Filter '*.cs' | ForEach-Object FullName
+$editorReferences = Get-ChildItem "$EditorData/Managed/UnityEngine" -Filter 'UnityEditor*.dll' | ForEach-Object { '-r:"' + $_.FullName + '"' }
+$editorReferences += '-r:"' + (Join-Path $output 'UnityEngine.UI.dll') + '"'
+# Compile the same runtime sources with editor symbols, matching Unity's editor assembly.
+Compile 'Domino.EditorCheck' ($runtime + $editor) ($editorReferences + @('-define:UNITY_EDITOR'))
 Write-Output 'STATIC_COMPILATION=SUCCESS (Unity imports and Play Mode still require a licensed editor)'
 
 

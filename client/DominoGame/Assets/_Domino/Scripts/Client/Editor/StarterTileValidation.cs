@@ -28,6 +28,7 @@ namespace Domino.Editor
         sealed class Offline:IGameCatalogApi {public Task<string> FetchAsync(CancellationToken t)=>throw new IOException();}
         sealed class Empty:IGameCatalogCache {public CatalogCacheEntry Read()=>null;public void Write(CatalogCacheEntry e){} }
         public static void Run() {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_ONLY");
             Directory.CreateDirectory(Dir);SessionState.SetBool(Key,true);Register();
             EditorSceneManager.OpenScene(ClientEditorTools.ScenePath);EditorApplication.isPlaying=true;

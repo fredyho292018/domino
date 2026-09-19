@@ -45,6 +45,7 @@ namespace Domino.Catalog.Editor
         public static void RunBundled()=>Run("BUNDLED_FALLBACK");
         static void Run(string phase)
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_BATCH_REQUIRED");
             Directory.CreateDirectory(Output);
             // Delete only this harness's cache before the bundled restart.

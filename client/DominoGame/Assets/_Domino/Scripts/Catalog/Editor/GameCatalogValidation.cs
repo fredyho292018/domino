@@ -43,6 +43,7 @@ namespace Domino.Catalog.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if(!Application.isBatchMode)throw new Exception("ISOLATED_BATCH_REQUIRED");
             Directory.CreateDirectory(Output);
             SessionState.SetBool(Key,true);Register();

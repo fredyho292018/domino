@@ -46,6 +46,7 @@ namespace Domino.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if (!Application.isBatchMode) throw new InvalidOperationException("Run validation in its own batch editor.");
             var transport = new FakeTransport { Body = Success };
             var codec = new UnityApiJsonCodec();

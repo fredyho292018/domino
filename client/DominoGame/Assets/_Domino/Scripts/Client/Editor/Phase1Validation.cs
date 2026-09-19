@@ -15,16 +15,19 @@ namespace Domino.Editor
         static double deadline;
         public static void RunPortraitV2()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if (!EditorApplication.ExecuteMenuItem("Domino/Localization/Import translations")) throw new Exception("Translation import unavailable");
             RunPortrait();
         }
         public static void RunPortraitMatch()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             SessionState.SetBool("Domino.PortraitMatch",true);
             Run();
         }
         public static void RunPortrait()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             ClientEditorTools.ConfigurePortraitOrientation();
             SessionState.SetBool("Domino.ValidatePortrait", true);
             Run();
@@ -33,16 +36,19 @@ namespace Domino.Editor
         public static void OpenPortraitPreview() => ResizeGameView(1080, 1920);
         public static void RunLocalization()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             SessionState.SetBool("Domino.ValidateLocalization", true);
             Run();
         }
         public static void RunModes()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             SessionState.SetBool("Domino.ValidateModes", true);
             Run();
         }
         public static void RunDealing()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             SessionState.SetBool("Domino.ValidateDealing", true);
             Run();
         }
@@ -56,6 +62,7 @@ namespace Domino.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             try
             {
                 var asset = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_Domino/Config/double-nine-partners-v1.json");

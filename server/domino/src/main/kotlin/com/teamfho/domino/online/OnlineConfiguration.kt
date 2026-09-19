@@ -12,6 +12,17 @@ import org.springframework.web.bind.annotation.*
 
 @Configuration(proxyBeanMethods=false)
 class OnlineConfiguration {
+    @Bean fun turnDueIndex(redis:org.springframework.data.redis.core.StringRedisTemplate,db:ObjectProvider<Firestore>):TurnDueIndex =
+        if(db.ifAvailable!=null)RedisTurnDueIndex(redis) else object:TurnDueIndex {
+            override fun lead(owner:String)=0
+            override fun release(owner:String){}
+            override fun offer(owner:String,id:String,due:java.time.Instant?)=false
+            override fun claim(now:java.time.Instant)=emptyList<String>()
+            override fun forget(id:String){}
+        }
+    @Bean fun turnWorkFeed(db:ObjectProvider<Firestore>):TurnWorkFeed = db.ifAvailable?.let(::FirestoreTurnWorkFeed)
+        ?:TurnWorkFeed {_,_->AutoCloseable {}}
+    @Bean(destroyMethod="close") fun turnIndexBridge(index:TurnDueIndex,feed:TurnWorkFeed)=TurnIndexBridge(index,feed)
     // Keep existing lifecycle jobs separate from potentially slow Firestore discovery.
     @Bean fun taskScheduler()=org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler().apply {
         poolSize=1;setThreadNamePrefix("realtime-lifecycle-")

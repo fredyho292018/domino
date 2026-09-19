@@ -12,6 +12,8 @@ namespace Domino.Infrastructure.Api
     {
         public async Task<ApiHttpResponse> SendAsync(string method, Uri url, string json, string token, int timeoutSeconds, CancellationToken cancellationToken)
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.RequireNetwork();
+
             cancellationToken.ThrowIfCancellationRequested();
             if (method != "POST" && method != "PUT" && method != "GET" && method != "DELETE") throw new ArgumentException(nameof(method));
             using var request = new UnityWebRequest(url, method);

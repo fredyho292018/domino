@@ -14,6 +14,7 @@ object GameCatalogV3Publisher {
             it.copy(executionModesSupported=listOf(ExecutionMode.LOCAL,ExecutionMode.ONLINE)) else it })
     }
     @JvmStatic fun main(args:Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contentEquals(arrayOf("--publish-v3")))
         SpringApplicationBuilder(CatalogSeedConfiguration::class.java).web(WebApplicationType.NONE).logStartupInfo(false).run().use { context ->
             val project=context.getBean(FirebaseProperties::class.java).projectId

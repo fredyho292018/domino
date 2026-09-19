@@ -59,6 +59,7 @@ namespace Domino.Editor
         }
         public static void RunReal()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if (!Application.isBatchMode) throw new InvalidOperationException("Use an isolated batch editor for real validation.");
             Directory.CreateDirectory(Output);
             if (File.Exists(Path.Combine(Output, "retry.signal")) || File.Exists(Path.Combine(Output, "finish.signal")))

@@ -35,6 +35,7 @@ namespace Domino.Editor
         }
         public static void RunReal()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if(!Application.isBatchMode)throw new Exception("Isolated batch editor required");
             Directory.CreateDirectory(Output);LocalizationAssets.Import();
             SessionState.SetBool(Key,true);Register();

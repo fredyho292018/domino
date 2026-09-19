@@ -77,6 +77,7 @@ object OnlineTurnRealValidation {
         }
     }
     @JvmStatic fun main(args:Array<String>){
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contains("--validate-i2"));Files.createDirectories(dir)
         val config=json.readTree(Files.readString(Path.of("../../client/DominoGame/Assets/google-services.json")))
         val key=config.path("client").get(0).path("api_key").get(0).path("current_key").asString()

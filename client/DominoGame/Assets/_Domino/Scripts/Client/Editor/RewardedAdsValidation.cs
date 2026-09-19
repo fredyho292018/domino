@@ -44,6 +44,7 @@ namespace Domino.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if (!Application.isBatchMode || !Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))
                 throw new InvalidOperationException("ISOLATED_COPY_REQUIRED");
             var asset = new SerializedObject(Resources.Load<DominoAdsSettings>("AdsSettings"));

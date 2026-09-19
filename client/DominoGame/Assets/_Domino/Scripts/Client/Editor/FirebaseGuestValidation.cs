@@ -25,6 +25,7 @@ namespace Domino.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             Directory.CreateDirectory(Path.GetDirectoryName(Output));
             File.WriteAllText(Output, "RUNNING\n");
             SessionState.SetBool(Prefix + "Running", true);
@@ -65,7 +66,7 @@ namespace Domino.Editor
             SessionState.SetInt(Prefix + "Run", 2);
             SessionState.SetBool(Prefix + "Captured", false);
             deadline = EditorApplication.timeSinceStartup + 120;
-            EditorApplication.delayCall += () => EditorApplication.isPlaying = true;
+            EditorApplication.delayCall += () => { Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal(); EditorApplication.isPlaying = true; };
         }
         static void Finish(bool success, string detail)
         {

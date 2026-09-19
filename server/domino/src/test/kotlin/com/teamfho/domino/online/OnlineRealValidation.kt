@@ -44,6 +44,7 @@ object OnlineRealValidation {
         fun snapshot(id: String)=json.readValue(request("http://127.0.0.1:18083/api/v1/matches/$id/snapshot",null,token),OnlineSnapshot::class.java)
     }
     @JvmStatic fun main(args: Array<String>) {
+        com.teamfho.domino.validation.RealFirestoreGuard.requireOptIn()
         require(args.contains("--validate-i1"))
         val config=json.readTree(Files.readString(Path.of("../../client/DominoGame/Assets/google-services.json")))
         val key=config.path("client").get(0).path("api_key").get(0).path("current_key").asString()

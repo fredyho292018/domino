@@ -33,6 +33,7 @@ namespace Domino.Online.Editor
             public Task<string> GetIdTokenAsync(bool refresh,CancellationToken cancel) => global::Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.TokenAsync(refresh);
         }
         public static void Run() {
+            Domino.Infrastructure.ValidationNetworkPolicy.AuthorizeReal();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_BATCH_REQUIRED");
             SessionState.SetBool(Key,true);Register();EditorSceneManager.OpenScene(Domino.Editor.ClientEditorTools.ScenePath);EditorApplication.isPlaying=true;
         }

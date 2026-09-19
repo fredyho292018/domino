@@ -33,6 +33,7 @@ namespace Domino.Online.Development
 #else
             var args=Environment.GetCommandLineArgs();if(!Debug.isDebugBuild||(!args.Contains("--i21-client-b")&&!args.Contains("--i21-visual")))return;role=args.Contains("--i21-visual")?"V":"B";
 #endif
+            if(role!="V")ValidationNetworkPolicy.RequireRealOptIn();
             dir=Path.GetFullPath(Path.Combine(Application.dataPath,
 #if UNITY_EDITOR
             "../../I21"

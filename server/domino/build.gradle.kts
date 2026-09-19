@@ -39,6 +39,8 @@ dependencies {
 }
 
 kotlin {
+
+    sourceSets.main { kotlin.srcDir("validation-common") }
 	compilerOptions {
 		freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
 	}
@@ -46,6 +48,33 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+tasks.test {
+    useJUnitPlatform { excludeTags("REAL_FIRESTORE", "EMULATOR") }
+    // Defense in depth: an accidentally constructed SDK client cannot reach a real project.
+    environment("FIRESTORE_EMULATOR_HOST", "127.0.0.1:1")
+    environment("GOOGLE_CLOUD_PROJECT", "demo-domino-unit")
+}
+
+tasks.register<Test>("realFirestoreTest") {
+    description = "Explicit opt-in real Firestore tests; never part of test/check."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("REAL_FIRESTORE") }
+    doFirst {
+        check(System.getenv("DOMINO_REAL_FIRESTORE_TESTS") == "true") { "REAL_FIRESTORE_DISABLED" }
+        check(!System.getenv("FIREBASE_PROJECT_ID").isNullOrBlank()) { "EXPLICIT_PROJECT_REQUIRED" }
+    }
+}
+
+tasks.register<Test>("emulatorTest") {
+    description = "Local Firestore emulator only; no ADC, no real project."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("EMULATOR") }
+    environment("FIRESTORE_EMULATOR_HOST", "127.0.0.1:18085")
+    environment("GOOGLE_CLOUD_PROJECT", "demo-domino-f0")
 }
 
 tasks.register<JavaExec>("seedMonetizationPolicy") {

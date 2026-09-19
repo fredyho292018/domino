@@ -19,7 +19,13 @@ namespace Domino.Realtime
         readonly ClientWebSocket socket = new ClientWebSocket();
         readonly SemaphoreSlim sending = new SemaphoreSlim(1, 1);
         public ClientRealtimeSocket() { socket.Options.KeepAliveInterval = TimeSpan.Zero; }
-        public Task ConnectAsync(Uri endpoint, CancellationToken cancellation) => socket.ConnectAsync(endpoint, cancellation);
+        public Task ConnectAsync(Uri endpoint, CancellationToken cancellation)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Domino.Infrastructure.ValidationNetworkPolicy.RequireNetwork();
+#endif
+            return socket.ConnectAsync(endpoint, cancellation);
+        }
         public async Task SendAsync(string message, CancellationToken cancellation)
         {
             var bytes = Encoding.UTF8.GetBytes(message);

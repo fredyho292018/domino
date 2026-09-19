@@ -86,6 +86,7 @@ namespace Domino.Editor
         }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_EDITOR_ONLY");
             SessionState.SetBool(Flag,true);Register();
             EditorSceneManager.OpenScene("Assets/_Domino/Scenes/DominoClient.unity");

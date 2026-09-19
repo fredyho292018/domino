@@ -25,6 +25,7 @@ namespace Domino.Online.Editor
             public void Start(){}public void SetBackground(bool b){}public void Dispose(){}
         }
         public static void Run() {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if(!Application.isBatchMode||!Application.dataPath.Replace('\\','/').Contains("/Validation/Generated/"))throw new Exception("ISOLATED_BATCH_REQUIRED");
             Domino.Editor.LocalizationAssets.Import();
             SessionState.SetBool(Key,true);Register();EditorSceneManager.OpenScene(Domino.Editor.ClientEditorTools.ScenePath);EditorApplication.isPlaying=true;

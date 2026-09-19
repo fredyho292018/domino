@@ -34,6 +34,7 @@ namespace Domino.Editor
         sealed class EditorOnlyGate : IAdsConsentGate { public bool CanInitializeAds => Application.isEditor; }
         public static void Run()
         {
+            Domino.Infrastructure.ValidationNetworkPolicy.BeginIsolated();
             if (!Application.isBatchMode) throw new InvalidOperationException("BATCH_ONLY");
             UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene);
             SessionState.SetBool(Running, true);
