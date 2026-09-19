@@ -78,7 +78,9 @@ class InMemoryMatchRepository: MatchRepository,MatchEventRepository,PlayerMatchH
     }
     @Synchronized override fun history(uid: String, limit: Int, afterMatchId: String?): HistoryPage {
         require(limit in 1..100);MatchIds.document(uid);afterMatchId?.let(MatchIds::document)
-        val all=histories[uid].orEmpty().values.sortedBy {it.matchId}.filter {afterMatchId==null||it.matchId>afterMatchId}.take(limit+1)
+        val ordered=histories[uid].orEmpty().values.sortedWith(compareByDescending<PlayerMatchHistory>{it.finishedAt}.thenByDescending{it.matchId})
+        val offset=if(afterMatchId==null)0 else ordered.indexOfFirst{it.matchId==afterMatchId}.also{require(it>=0)}+1
+        val all=ordered.drop(offset).take(limit+1)
         return HistoryPage(all.take(limit).map {MatchCodec.copy(it,PlayerMatchHistory::class.java)},if(all.size>limit)all[limit-1].matchId else null)
     }
 }

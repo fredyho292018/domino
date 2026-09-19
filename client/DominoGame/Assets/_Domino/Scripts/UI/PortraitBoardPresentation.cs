@@ -71,7 +71,7 @@ namespace Domino.UI
                         _ => new Vector2(size.x / 2 - 65, 80)
                     };
                     players[p].SetPresentation(slot, portrait,
-                        SharedDevice ? "player.human" : slot == VisualSeat.Bottom ? "player.you" : slot == VisualSeat.Top && configuration.TeamMode == Domino.Configuration.TeamMode.FixedTeams ? "player.partner" : "player.opponent");
+                        SharedDevice || replayPresentation ? "player.human" : slot == VisualSeat.Bottom ? "player.you" : slot == VisualSeat.Top && configuration.TeamMode == Domino.Configuration.TeamMode.FixedTeams ? "player.partner" : "player.opponent");
                 }
                 Place("Brand", portrait ? new Vector2(-280, halfHeight - 45) : new Vector2(-size.x / 2 + 190, 415));
                 Place("Score surface", portrait ? new Vector2(175, halfHeight - 52) : new Vector2(size.x / 2 - 275, 414));

@@ -791,6 +791,206 @@ MonoBehaviour:
     m_Key: menu.more_modes
     m_Metadata:
       m_Items: []
+  - m_Id: 5025313787244544
+    m_Key: history.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187584
+    m_Key: history.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187585
+    m_Key: history.empty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187586
+    m_Key: history.error
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187587
+    m_Key: history.more
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187588
+    m_Key: history.view
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187589
+    m_Key: history.detail
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187590
+    m_Key: replay.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187591
+    m_Key: replay.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187592
+    m_Key: replay.incomplete
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187593
+    m_Key: replay.rounds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187594
+    m_Key: replay.start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187595
+    m_Key: replay.previous
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187596
+    m_Key: replay.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187597
+    m_Key: replay.end
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187598
+    m_Key: replay.play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187599
+    m_Key: replay.pause
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187600
+    m_Key: replay.table
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187601
+    m_Key: replay.speed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187602
+    m_Key: replay.previous_round
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187603
+    m_Key: replay.next_round
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187604
+    m_Key: replay.position
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187605
+    m_Key: replay.round_result
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187606
+    m_Key: replay.blocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187607
+    m_Key: replay.capicua
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187608
+    m_Key: replay.normal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187609
+    m_Key: replay.event.INITIAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187610
+    m_Key: replay.event.STARTER_PROGRESS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187611
+    m_Key: replay.event.MATCH_STARTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187612
+    m_Key: replay.event.ROUND_STARTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187613
+    m_Key: replay.event.HAND_DEALT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187614
+    m_Key: replay.event.STARTER_SELECTION_PRIVATE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187615
+    m_Key: replay.event.TURN_STARTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187616
+    m_Key: replay.event.TILE_PLAYED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187617
+    m_Key: replay.event.TURN_CHANGED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187618
+    m_Key: replay.event.PLAYER_PASSED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187619
+    m_Key: replay.event.ROUND_FINISHED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187620
+    m_Key: replay.event.MATCH_FINISHED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187621
+    m_Key: replay.event.TURN_TIMEOUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187622
+    m_Key: replay.event.AUTO_PLAYED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187623
+    m_Key: replay.event.PLAYER_DISCONNECTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187624
+    m_Key: replay.event.PLAYER_RECONNECTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5025313829187625
+    m_Key: replay.event.PLAYER_ABANDONED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480085876736
+    m_Key: replay.played
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014080
+    m_Key: replay.passed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014081
+    m_Key: replay.turn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014082
+    m_Key: replay.selection
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014083
+    m_Key: replay.score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014084
+    m_Key: replay.team_score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5029480132014085
+    m_Key: replay.pips
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

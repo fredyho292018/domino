@@ -990,6 +990,256 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 5025313787244544
+    m_Localized: Historial
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187584
+    m_Localized: Tus partidas terminadas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187585
+    m_Localized: "No tienes partidas todav\xEDa."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187586
+    m_Localized: "No se pudo cargar el historial. Comprueba tu conexi\xF3n y reintenta."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187587
+    m_Localized: "Cargar m\xE1s"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187588
+    m_Localized: Ver partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187589
+    m_Localized: Detalle de partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187590
+    m_Localized: "Repetici\xF3n"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187591
+    m_Localized: "Repetici\xF3n no disponible"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187592
+    m_Localized: "Repetici\xF3n incompleta o incompatible"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187593
+    m_Localized: '{0} rondas'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187594
+    m_Localized: Inicio
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187595
+    m_Localized: Anterior
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187596
+    m_Localized: Siguiente
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187597
+    m_Localized: Final
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187598
+    m_Localized: Reproducir
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187599
+    m_Localized: Pausa
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187600
+    m_Localized: Mesa
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187601
+    m_Localized: Velocidad {0}x
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187602
+    m_Localized: Ronda anterior
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187603
+    m_Localized: Ronda siguiente
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187604
+    m_Localized: "Jugada {0} de {1} \xB7 Ronda {2}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187605
+    m_Localized: "{0} \xB7 {1} puntos otorgados"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187606
+    m_Localized: Tranque
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187607
+    m_Localized: "Capic\xFAa"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187608
+    m_Localized: "\xA1Domin\xF3!"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187609
+    m_Localized: Inicio de partida
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187610
+    m_Localized: Seleccionando jugador inicial
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187611
+    m_Localized: Partida iniciada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187612
+    m_Localized: Ronda iniciada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187613
+    m_Localized: "Mano hist\xF3rica repartida"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187614
+    m_Localized: Jugador inicial elegido
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187615
+    m_Localized: Turno iniciado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187616
+    m_Localized: Ficha jugada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187617
+    m_Localized: Cambio de turno
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187618
+    m_Localized: "Jugador pas\xF3"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187619
+    m_Localized: Ronda finalizada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187620
+    m_Localized: Partida finalizada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187621
+    m_Localized: Tiempo agotado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187622
+    m_Localized: "Jugada autom\xE1tica"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187623
+    m_Localized: Jugador desconectado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187624
+    m_Localized: Jugador reconectado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5025313829187625
+    m_Localized: "Jugador abandon\xF3"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480085876736
+    m_Localized: "{0} jug\xF3 [{1}|{2}]"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014080
+    m_Localized: "{0} pas\xF3"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014081
+    m_Localized: Turno de {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014082
+    m_Localized: "Selecci\xF3n inicial: {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014083
+    m_Localized: '{0} {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014084
+    m_Localized: Equipo {0} {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5029480132014085
+    m_Localized: 'Puntos restantes: {0}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -1185,3 +1435,53 @@ MonoBehaviour:
         - id: 3327218665943042
         - id: 3336631518785536
         - id: 3336631564922880
+        - id: 5025313787244544
+        - id: 5025313829187584
+        - id: 5025313829187585
+        - id: 5025313829187586
+        - id: 5025313829187587
+        - id: 5025313829187588
+        - id: 5025313829187589
+        - id: 5025313829187590
+        - id: 5025313829187591
+        - id: 5025313829187592
+        - id: 5025313829187593
+        - id: 5025313829187594
+        - id: 5025313829187595
+        - id: 5025313829187596
+        - id: 5025313829187597
+        - id: 5025313829187598
+        - id: 5025313829187599
+        - id: 5025313829187600
+        - id: 5025313829187601
+        - id: 5025313829187602
+        - id: 5025313829187603
+        - id: 5025313829187604
+        - id: 5025313829187605
+        - id: 5025313829187606
+        - id: 5025313829187607
+        - id: 5025313829187608
+        - id: 5025313829187609
+        - id: 5025313829187610
+        - id: 5025313829187611
+        - id: 5025313829187612
+        - id: 5025313829187613
+        - id: 5025313829187614
+        - id: 5025313829187615
+        - id: 5025313829187616
+        - id: 5025313829187617
+        - id: 5025313829187618
+        - id: 5025313829187619
+        - id: 5025313829187620
+        - id: 5025313829187621
+        - id: 5025313829187622
+        - id: 5025313829187623
+        - id: 5025313829187624
+        - id: 5025313829187625
+        - id: 5029480085876736
+        - id: 5029480132014080
+        - id: 5029480132014081
+        - id: 5029480132014082
+        - id: 5029480132014083
+        - id: 5029480132014084
+        - id: 5029480132014085

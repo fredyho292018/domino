@@ -629,8 +629,9 @@ namespace Domino.UI
             ShowMessage("game.washing");
             yield return effects.Wash(all);
         }
-        public IEnumerator Play(GameEvent e)
+        public IEnumerator Play(GameEvent e, float presentationSpeed = 1)
         {
+            presentationSpeed = Mathf.Clamp(presentationSpeed, .5f, 2f);
             boardHint.gameObject.SetActive(false);
             var tile = hands[e.Player].Find(t => t.Tile.Equals(e.Tile));
             if (!tile) throw new InvalidOperationException("Played tile is missing from presentation.");
@@ -639,19 +640,19 @@ namespace Domino.UI
                 // Preview the confirmed destination without exposing the opponent's hand.
                 opponentPlacement = e.ChainIndex == 0 ? ChainEnd.Left : ChainEnd.Right;
                 UpdatePlacementTargets();
-                yield return new WaitForSeconds(.4f);
+                yield return new WaitForSeconds(.4f / presentationSpeed);
             }
             ResetEndpointZoom();
             hands[e.Player].Remove(tile); played.Insert(e.ChainIndex, tile); tile.Orient(e.Tile); tile.Select(false); tile.Selectable = false;
             tile.transform.SetParent(tiles,false);
             tile.transform.SetAsLastSibling();
             feedback.Cue(FeedbackCue.TilePlay, tile.Rect.anchoredPosition);
-            yield return MoveChain(e.Player == LocalPlayerSeat ? .42f : .75f, tile);
+            yield return MoveChain((e.Player == LocalPlayerSeat ? .42f : .75f) / presentationSpeed, tile);
             tile.Reveal();
             TileLanded?.Invoke();
             feedback.Cue(FeedbackCue.TileImpact, tile.Rect.anchoredPosition);
             var landingScale = tile.Rect.localScale;
-            for (float elapsed = 0; elapsed < .14f; elapsed += Time.deltaTime)
+            for (float elapsed = 0; elapsed < .14f; elapsed += Time.deltaTime * presentationSpeed)
             {
                 tile.Rect.localScale = landingScale * (1 + .03f * Mathf.Sin(Mathf.Clamp01(elapsed / .14f) * Mathf.PI));
                 yield return null;
@@ -663,7 +664,7 @@ namespace Domino.UI
             float time = 0;
             while (time < .15f)
             {
-                time += Time.deltaTime;
+                time += Time.deltaTime * presentationSpeed;
                 foreach (var remaining in hands[e.Player]) remaining.Rect.anchoredPosition = Vector2.Lerp(remaining.Rect.anchoredPosition, remaining.Home, time / .15f);
                 yield return null;
             }

@@ -43,6 +43,11 @@ namespace Domino.Client
             startMenu = new GameObject("Domino Start Menu", typeof(RectTransform)).AddComponent<StartMenuView>();
             startMenu.Initialize(new GameModeDefinition(preview.Mode), preview.Configuration);
             startMenu.StartRequested += StartFromMenu;
+            startMenu.HistoryRequested += () => {
+                startMenu.Show(StartScreen.Match);
+                var history=new GameObject("Match history",typeof(RectTransform)).AddComponent<Domino.Replay.HistoryReplayView>();
+                history.Initialize(new Domino.Replay.ReplayClient(ApplicationServices.OnlineApi),tilePrefab,playerPrefab,()=>{if(startMenu)startMenu.Show(StartScreen.MainMenu);});
+            };
         }
         void StartFromMenu(GameModeDefinition mode)
         {

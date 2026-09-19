@@ -88,6 +88,12 @@ tasks.register<JavaExec>("inspectSwarmEmulator") {
     mainClass.set("com.teamfho.domino.online.SwarmEmulatorInspection")
 }
 
+tasks.register<JavaExec>("replayValidationServer") {
+    description = "Explicit test-only loopback replay host using retained archives; no Firestore client."
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.match.ReplayValidationServer")
+}
+
 tasks.register<JavaExec>("seedMonetizationPolicy") {
     group = "application"
     description = "Explicitly create systemConfig/monetization only if absent; never overwrites. Uses fallback ENV/YAML and ADC."

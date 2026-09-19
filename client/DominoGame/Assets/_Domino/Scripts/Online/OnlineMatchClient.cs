@@ -49,7 +49,7 @@ namespace Domino.Online
         public async Task<JObject> SendAsync(string method,string path,JObject body,CancellationToken cancellation)
         {
             if(!config.IsAvailable)throw new DominoApiException(ApiFailure.Configuration);
-            if(!(path=="matches"||path.StartsWith("matches/",StringComparison.Ordinal)||path=="matchmaking/queue")||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid match path");
+            if(!(path=="matches"||path.StartsWith("matches/",StringComparison.Ordinal)||path=="matchmaking/queue"||method=="GET"&&path.StartsWith("players/me/history?",StringComparison.Ordinal))||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid match path");
             for(int attempt=0;attempt<2;attempt++) {
                 using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellation);timeout.CancelAfter(TimeSpan.FromSeconds(config.TimeoutSeconds));
                 var token=await CancellableTask.Wait(tokens.GetIdTokenAsync(attempt==1,timeout.Token),timeout.Token);

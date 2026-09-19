@@ -47,9 +47,35 @@ class FirestoreMatchRepository(private val db: Firestore): MatchRepository,Match
     }
     override fun history(uid: String,limit: Int,afterMatchId: String?): HistoryPage {
         require(limit in 1..100);MatchIds.document(uid)
-        var query: Query=db.collection("players/$uid/matchHistory").orderBy(FieldPath.documentId(),Query.Direction.ASCENDING)
-        if(afterMatchId!=null)query=query.startAfter(MatchIds.document(afterMatchId))
-        val page=query.limit(limit+1).get().get(15,TimeUnit.SECONDS).documents.map {MatchCodec.read(it.data,PlayerMatchHistory::class.java)}
+        val collection=db.collection("players/$uid/matchHistory")
+        val query: Query=collection.orderBy("finishedAt",Query.Direction.DESCENDING).orderBy(FieldPath.documentId(),Query.Direction.DESCENDING)
+        val order=compareByDescending<PlayerMatchHistory>{it.finishedAt}.thenByDescending{it.matchId}
+        fun prefix(time:java.time.Instant)=time.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString().removeSuffix("Z")
+        fun read(q:Query)=q.get().get(15,TimeUnit.SECONDS).documents.map{MatchCodec.read(it.data,PlayerMatchHistory::class.java)}
+        // Legacy timestamps are ISO strings with variable fractional precision. Firestore's
+        // lexical order differs from Instant order within a second ("00Z" vs "00.1Z").
+        // Complete only boundary seconds, never download or rewrite the complete history.
+        fun second(time:java.time.Instant):List<PlayerMatchHistory> {
+            val rows=read(query.whereGreaterThanOrEqualTo("finishedAt",prefix(time))
+                .whereLessThan("finishedAt",prefix(time.plusSeconds(1))).limit(1001))
+            check(rows.size<=1000){"HISTORY_TIMESTAMP_BUCKET_TOO_LARGE"}
+            return rows.sortedWith(order)
+        }
+        var before: String?=null
+        val candidates=mutableListOf<PlayerMatchHistory>()
+        if(afterMatchId!=null) {
+            val cursor=collection.document(MatchIds.document(afterMatchId)).get().get(15,TimeUnit.SECONDS)
+            require(cursor.exists()){ "HISTORY_CURSOR_INVALID" }
+            val item=MatchCodec.read(cursor.data!!,PlayerMatchHistory::class.java)
+            candidates+=second(item.finishedAt).filter{order.compare(it,item)>0}
+            before=prefix(item.finishedAt)
+        }
+        if(candidates.size<=limit) {
+            val front=read((if(before==null)query else query.whereLessThan("finishedAt",before)).limit(limit+1))
+            candidates+=front
+            front.lastOrNull()?.let{candidates+=second(it.finishedAt)}
+        }
+        val page=candidates.distinctBy{it.matchId}.sortedWith(order)
         return HistoryPage(page.take(limit),if(page.size>limit)page[limit-1].matchId else null)
     }
     companion object {

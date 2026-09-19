@@ -16,6 +16,19 @@ namespace Domino.Editor
         [Serializable] public class Entry { public string key, en, es; }
         [Serializable] public class Source { public Entry[] entries; }
         const string Root = "Assets/_Domino/Localization";
+        // Update existing tables without touching user-local locale startup settings.
+        public static void ImportTablesOnly()
+        {
+            var collection=LocalizationEditorSettings.GetStringTableCollection(DominoLocalization.TableName);
+            if(collection==null)throw new Exception("Existing localization tables required");
+            var source=JsonUtility.FromJson<Source>(File.ReadAllText("Assets/_Domino/Editor/Localization/Translations.json"));
+            foreach(string code in new[]{"en","es"}) {
+                var table=(StringTable)collection.GetTable(new LocaleIdentifier(code));
+                foreach(var row in source.entries){var entry=table.AddEntry(row.key,code=="en"?row.en:row.es);entry.IsSmart=true;}
+                EditorUtility.SetDirty(table);AssetDatabase.SaveAssetIfDirty(table);
+            }
+            EditorUtility.SetDirty(collection.SharedData);AssetDatabase.SaveAssetIfDirty(collection.SharedData);
+        }
         [MenuItem("Domino/Localization/Import translations")]
         public static void Import()
         {

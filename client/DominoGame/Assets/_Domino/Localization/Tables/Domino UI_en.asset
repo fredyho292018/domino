@@ -989,6 +989,256 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 5025313787244544
+    m_Localized: History
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187584
+    m_Localized: Your completed matches
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187585
+    m_Localized: You don't have any matches yet.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187586
+    m_Localized: Could not load history. Check your connection and retry.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187587
+    m_Localized: Load more
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187588
+    m_Localized: View match
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187589
+    m_Localized: Match details
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187590
+    m_Localized: Replay
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187591
+    m_Localized: Replay unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187592
+    m_Localized: Incomplete or incompatible replay
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187593
+    m_Localized: '{0} rounds'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187594
+    m_Localized: Start
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187595
+    m_Localized: Previous
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187596
+    m_Localized: Next
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187597
+    m_Localized: End
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187598
+    m_Localized: Play
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187599
+    m_Localized: Pause
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187600
+    m_Localized: Table
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187601
+    m_Localized: Speed {0}x
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187602
+    m_Localized: Previous round
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187603
+    m_Localized: Next round
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187604
+    m_Localized: "Event {0} of {1} \xB7 Round {2}"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187605
+    m_Localized: "{0} \xB7 {1} points awarded"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187606
+    m_Localized: Blocked round
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187607
+    m_Localized: "Capic\xFAa"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187608
+    m_Localized: Domino!
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187609
+    m_Localized: Match start
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187610
+    m_Localized: Choosing the starting player
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187611
+    m_Localized: Match started
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187612
+    m_Localized: Round started
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187613
+    m_Localized: Historical hand dealt
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187614
+    m_Localized: Starting player resolved
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187615
+    m_Localized: Turn started
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187616
+    m_Localized: Tile played
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187617
+    m_Localized: Turn changed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187618
+    m_Localized: Player passed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187619
+    m_Localized: Round finished
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187620
+    m_Localized: Match finished
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187621
+    m_Localized: Time expired
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187622
+    m_Localized: Automatic move
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187623
+    m_Localized: Player disconnected
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187624
+    m_Localized: Player reconnected
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5025313829187625
+    m_Localized: Player left
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480085876736
+    m_Localized: '{0} played [{1}|{2}]'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014080
+    m_Localized: '{0} passed'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014081
+    m_Localized: '{0}''s turn'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014082
+    m_Localized: 'Starter selection: {0}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014083
+    m_Localized: '{0} {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014084
+    m_Localized: Team {0} {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5029480132014085
+    m_Localized: 'Remaining pips: {0}'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1182,3 +1432,53 @@ MonoBehaviour:
         - id: 3327218665943042
         - id: 3336631518785536
         - id: 3336631564922880
+        - id: 5025313787244544
+        - id: 5025313829187584
+        - id: 5025313829187585
+        - id: 5025313829187586
+        - id: 5025313829187587
+        - id: 5025313829187588
+        - id: 5025313829187589
+        - id: 5025313829187590
+        - id: 5025313829187591
+        - id: 5025313829187592
+        - id: 5025313829187593
+        - id: 5025313829187594
+        - id: 5025313829187595
+        - id: 5025313829187596
+        - id: 5025313829187597
+        - id: 5025313829187598
+        - id: 5025313829187599
+        - id: 5025313829187600
+        - id: 5025313829187601
+        - id: 5025313829187602
+        - id: 5025313829187603
+        - id: 5025313829187604
+        - id: 5025313829187605
+        - id: 5025313829187606
+        - id: 5025313829187607
+        - id: 5025313829187608
+        - id: 5025313829187609
+        - id: 5025313829187610
+        - id: 5025313829187611
+        - id: 5025313829187612
+        - id: 5025313829187613
+        - id: 5025313829187614
+        - id: 5025313829187615
+        - id: 5025313829187616
+        - id: 5025313829187617
+        - id: 5025313829187618
+        - id: 5025313829187619
+        - id: 5025313829187620
+        - id: 5025313829187621
+        - id: 5025313829187622
+        - id: 5025313829187623
+        - id: 5025313829187624
+        - id: 5025313829187625
+        - id: 5029480085876736
+        - id: 5029480132014080
+        - id: 5029480132014081
+        - id: 5029480132014082
+        - id: 5029480132014083
+        - id: 5029480132014084
+        - id: 5029480132014085

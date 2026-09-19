@@ -25,7 +25,7 @@ namespace Domino.UI
             group.blocksRaycasts = false; group.interactable = false;
             return effect;
         }
-        public IEnumerator Knock(int player, Vector2? position = null)
+        public IEnumerator Knock(int player, Vector2? position = null, float presentationSpeed = 1)
         {
             Vector2[] positions = { new(0,-145), new(-420,0), new(0,145), new(420,0) };
             float[] angles = { -12, -90, 168, 90 };
@@ -54,7 +54,7 @@ namespace Domino.UI
                 float elapsed = 0;
                 while (elapsed < .42f)
                 {
-                    elapsed += Time.deltaTime;
+                    elapsed += Time.deltaTime * presentationSpeed;
                     float t = Mathf.Clamp01(elapsed/.42f);
                     // Contact at 38% of each cycle, followed by an expanding ripple and recoil.
                     float height = t < .38f ? Mathf.Lerp(25,0,t/.38f) : Mathf.Lerp(0,25,(t-.38f)/.62f);
@@ -67,7 +67,7 @@ namespace Domino.UI
                     yield return null;
                 }
             }
-            for (float t = 0; t < .2f; t += Time.deltaTime) { group.alpha = 1-t/.2f; yield return null; }
+            for (float t = 0; t < .2f; t += Time.deltaTime * presentationSpeed) { group.alpha = 1-t/.2f; yield return null; }
             Clear();
         }
         public IEnumerator Celebrate(string winner, bool match, bool localWon)
