@@ -121,7 +121,14 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
             val write=transition(before);OnlineWrites.validate(before,write,commandId)
             val r=OnlineReceipt(fingerprint,expectedSequence+1,write.state.match.lastSequence)
             tx.set(root,MatchCodec.map(write.state.match));tx.set(stateRef,stateMap(write.state))
-            write.state.match.participants.forEach {tx.set(root.collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
+            // Compare complete persisted documents from this transaction's authoritative read.
+            // Recomputed on every retry; includes nulls and all connection timestamps.
+            val previousParticipants=before.match.participants.associate {it.seatIndex to MatchCodec.map(it)}
+            write.state.match.participants.forEach {
+                val document=MatchCodec.map(it)
+                if(previousParticipants[it.seatIndex]!=document)
+                    tx.set(root.collection("players").document(it.seatIndex.toString()),document)
+            }
             write.rounds.forEach {tx.set(root.collection("rounds").document(it.roundNumber.toString()),MatchCodec.map(it))}
             write.events.forEach {tx.create(root.collection("events").document(it.eventId),MatchCodec.map(it))}
             write.histories.forEach {(uid,h)->tx.create(db.document("players/${MatchIds.document(uid)}/matchHistory/$matchId"),MatchCodec.map(h))}

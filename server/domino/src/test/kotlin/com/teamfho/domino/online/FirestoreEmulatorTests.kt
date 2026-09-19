@@ -15,9 +15,10 @@ import kotlin.test.*
 
 /** Counts SDK document operations attempted by the real repository. Not a billing estimate:
  * query minimums, watch reads and SDK retries are reported separately. No production instrumentation. */
-private class CountingFirestore(val real:Firestore) {
+private class CountingFirestore(val real:Firestore, val legacyParticipantWrites:Boolean=false) {
     var reads=0;var writes=0;var events=0;var participants=0;var histories=0;var unchangedParticipants=0
     private val participantValues=mutableMapOf<String,Any?>()
+    private val pending=ThreadLocal<MutableMap<String,Map<String,Any?>>>()
     fun wrap(value:Any?):Any? {
         val type=when(value) {
             is Firestore->Firestore::class.java
@@ -30,13 +31,27 @@ private class CountingFirestore(val real:Firestore) {
             if(call.method.name=="get" && (value is DocumentReference || value is Transaction && args.firstOrNull() is DocumentReference))reads++
             if(call.method.name in setOf("create","set","delete","update") && (value is Transaction || value is WriteBatch)) {
                 val path=(args[0] as DocumentReference).path;writes++
+                if(legacyParticipantWrites && value is Transaction && path.endsWith("/runtime/authoritative")) {
+                    val state=GameCatalogCodec.mapper.readValue((args[1] as Map<*,*>)["stateJson"] as String,OnlineState::class.java)
+                    state.match.participants.forEach {pending.get()["matches/${state.match.matchId}/players/${it.seatIndex}"]=MatchCodec.map(it)}
+                }
+                if("/players/" in path)pending.get()?.remove(path)
                 if("/events/" in path)events++
                 if(path.startsWith("matches/")&&"/players/" in path){participants++;if(participantValues[path]==args.getOrNull(1))unchangedParticipants++;participantValues[path]=args.getOrNull(1)}
                 if("/matchHistory/" in path)histories++
             }
             if(call.method.name=="runTransaction") {
                 @Suppress("UNCHECKED_CAST") val callback=args[0] as Transaction.Function<Any?>
-                args[0]=Transaction.Function<Any?> {tx->callback.updateCallback(wrap(tx) as Transaction)}
+                args[0]=Transaction.Function<Any?> {tx->
+                    pending.set(mutableMapOf())
+                    try {
+                        val wrapped=wrap(tx) as Transaction
+                        val result=callback.updateCallback(wrapped)
+                        // Test-only reconstruction of F0's unconditional participant writes.
+                        pending.get().toMap().forEach {(path,data)->wrapped.set(real.document(path),data)}
+                        result
+                    } finally {pending.remove()}
+                }
             }
             try {call.method.trySetAccessible();wrap(call.method.invoke(value,*args))}catch(e:InvocationTargetException){throw e.targetException}
         })
@@ -54,9 +69,9 @@ class FirestoreEmulatorTests {
                 .setEndpoint("127.0.0.1:18085").setChannelConfigurator{it.usePlaintext().proxyDetector{null}}.build())
             .setCredentials(FirestoreOptions.EmulatorCredentials()).build().service
     }
-    @Test fun `controlled full duel counts real adapter operations locally`() {
+    private fun controlledDuel(legacy:Boolean):List<String> {
         connect().use {real->
-            val meter=CountingFirestore(real);val adapter=FirestoreOnlineRepository(meter.db)
+            val meter=CountingFirestore(real,legacy);val adapter=FirestoreOnlineRepository(meter.db)
             val repo=object:OnlineRepository by adapter {
                 override fun read(matchId:String):OnlineState?{meter.reads++;return adapter.read(matchId)}
             }
@@ -84,7 +99,39 @@ class FirestoreEmulatorTests {
             assertEquals(MatchStatus.FINISHED,state.match.status)
             assertEquals(2,meter.histories)
             assertEquals(state.match.lastSequence.toInt(),meter.events)
-            println("F0_CONTROLLED_DUEL commands=$commands reads=${meter.reads} writes=${meter.writes} events=${meter.events} participantWrites=${meter.participants} unchangedParticipantWrites=${meter.unchangedParticipants} historyWrites=${meter.histories} rounds=${state.match.currentRoundNumber}")
+            assertEquals(500,meter.reads);assertEquals(378,meter.events);assertEquals(7,state.match.currentRoundNumber)
+            assertEquals(if(legacy)1148 else 899,meter.writes)
+            assertEquals(if(legacy)251 else 2,meter.participants)
+            assertEquals(if(legacy)249 else 0,meter.unchangedParticipants)
+            println("F01_CONTROLLED_DUEL legacy=$legacy commands=$commands reads=${meter.reads} writes=${meter.writes} events=${meter.events} participantWrites=${meter.participants} unchangedParticipantWrites=${meter.unchangedParticipants} historyWrites=${meter.histories} rounds=${state.match.currentRoundNumber}")
+            val histories=listOf("f0-a","f0-b").map{real.document("players/$it/matchHistory/$id").get().get().data}
+            val persisted=real.collection("matches/$id/players").get().get().documents.sortedBy{it.id}.map{MatchCodec.read(it.data,MatchParticipant::class.java)}
+            assertEquals(state.match.participants,persisted)
+            assertEquals(state,FirestoreOnlineRepository(real).read(id))
+            return listOf(state,adapter.events(id,0),histories).map{GameCatalogCodec.mapper.writeValueAsString(it).replace(id,"MATCH_ID")}
+        }
+    }
+    @Test fun `controlled duel preserves complete state events history and eliminates unchanged writes`() {
+        assertEquals(controlledDuel(true),controlledDuel(false))
+    }
+    @Test fun `connection changes persist only affected participant and survive repository recreation`() {
+        connect().use {db->
+            val f=OnlineTurnTests.Fixture();val meter=CountingFirestore(db);val repo=FirestoreOnlineRepository(meter.db)
+            repo.create(f.s());val initial=meter.participants
+            val service=OnlineMatchService(f.f.catalog,repo,f.f.engine,f.clock)
+            fun verify(expected:Int) {
+                assertEquals(initial+expected,meter.participants)
+                val state=FirestoreOnlineRepository(db).read(f.id)!!
+                state.match.participants.forEach {p->assertEquals(p,MatchCodec.read(db.document("matches/${f.id}/players/${p.seatIndex}").get().get().data!!,MatchParticipant::class.java))}
+            }
+            service.connection(f.id,"p0"){false};verify(1)
+            service.connection(f.id,"p0"){false};verify(1)
+            service.connection(f.id,"p0"){true};verify(2)
+            f.at(1);service.connection(f.id,"p0"){false};verify(3)
+            f.at(182);service.connection(f.id,"p0"){false};verify(4)
+            assertEquals(ConnectionState.ABANDONED,repo.read(f.id)!!.match.participants[0].connectionState)
+            assertEquals(0,meter.unchangedParticipants)
+            db.document("onlineTurnWork/${f.id}").delete().get()
         }
     }
     @Test fun `durable watch recovers persisted work then receives committed changes`() {
@@ -95,6 +142,37 @@ class FirestoreEmulatorTests {
             try {FirestoreTurnWorkFeed(db).watch({match,due->if(match==id){if(due==null)removed.countDown()else initial.countDown()}},{error("feed failed")}).use {
                 assertTrue(initial.await(10,TimeUnit.SECONDS));ref.delete().get();assertTrue(removed.await(10,TimeUnit.SECONDS))
             }}finally{ref.delete().get()}
+        }
+    }
+    @Test fun `participant optimization retains firestore race receipts and command conflicts`() {
+        connect().use {db->
+            for(crossPlayer in listOf(false,true)) {
+                val f=OnlineTurnTests.Fixture();val repo=FirestoreOnlineRepository(db);val before=f.s();repo.create(before)
+                val seat=before.match.currentSeat!!;val pool=java.util.concurrent.Executors.newFixedThreadPool(2)
+                val barrier=java.util.concurrent.CyclicBarrier(2)
+                val commands=(0..1).map {n->
+                    val actor=if(crossPlayer && n==1)1-seat else seat
+                    "p$actor" to OnlineCommand(1,"race$n",f.id,OnlineCommandType.PLAY_TILE,before.hands.getValue("$actor")[n],ChainEnd.RIGHT)
+                }
+                try {
+                    val results=pool.invokeAll(commands.map {(uid,c)->java.util.concurrent.Callable {
+                        barrier.await(10,TimeUnit.SECONDS)
+                        runCatching {repo.transact(f.id,before.match.lastSequence,c.commandId,c.toString()) {
+                            f.f.engine.command(it,uid,c,f.clock.instant())
+                        }}
+                    }}).map{it.get()}
+                    assertEquals(1,results.count{it.isSuccess});assertEquals(1,repo.read(f.id)!!.board.size)
+                    val winner=results.indexOfFirst{it.isSuccess};val c=commands[winner].second
+                    val after=repo.read(f.id)
+                    val repeated=repo.transact(f.id,before.match.lastSequence,c.commandId,c.toString()){error("Receipt must prevent transition")}
+                    assertNull(repeated.write);assertEquals(results[winner].getOrThrow().receipt,repeated.receipt)
+                    assertEquals(OnlineError.COMMAND_ID_CONFLICT,assertFailsWith<OnlineFailure> {
+                        repo.transact(f.id,before.match.lastSequence,c.commandId,"different"){error("Conflict must prevent transition")}
+                    }.code)
+                    assertEquals(after,FirestoreOnlineRepository(db).read(f.id))
+                    after!!.match.participants.forEach {p->assertEquals(p,MatchCodec.read(db.document("matches/${f.id}/players/${p.seatIndex}").get().get().data!!,MatchParticipant::class.java))}
+                } finally {pool.shutdownNow();db.document("onlineTurnWork/${f.id}").delete().get()}
+            }
         }
     }
     @Test fun `persisted expired turn recovers across service restart and concurrent workers`() {
