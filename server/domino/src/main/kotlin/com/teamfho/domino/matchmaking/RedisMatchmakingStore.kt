@@ -36,16 +36,20 @@ class RedisMatchmakingStore(private val redis: StringRedisTemplate,
           return state(e)
         end
         if op=='reserve' then
+          local required=tonumber(ARGV[7] or '2')
           local q=p..'q:'..ARGV[2];local list=redis.call('ZRANGE',q,0,999);local pair={}
           for _,h in ipairs(list) do
             local e=read(h)
             if not e or e.state~='QUEUED' then redis.call('ZREM',q,h)
             elseif not present(h) then remove(h,e)
-            else table.insert(pair,h);if #pair==2 then break end end
+            else table.insert(pair,h);if #pair==required then break end end
           end
-          if #pair<2 then return '' end
+          if #pair<required then return '' end
           local a=read(pair[1]);local b=read(pair[2]);local id=ARGV[3]
           local job={id=id,uidA=a.uid,uidB=b.uid,key=ARGV[2],rules=cjson.decode(ARGV[5]),owner=ARGV[4],a=pair[1],b=pair[2],waitMillis=math.max(0,now-(a.joinedAt+b.joinedAt)/2)}
+          job.members=pair;job.additionalUids={};local joined=0
+          for i,h in ipairs(pair) do local e=read(h);joined=joined+e.joinedAt;if i>2 then table.insert(job.additionalUids,e.uid) end end
+          job.waitMillis=math.max(0,now-joined/required)
           for _,h in ipairs(pair) do local e=read(h);e.state='RESERVED';e.reservation=id;save(h,e);redis.call('ZREM',q,h) end
           redis.call('SET',p..'job:'..id,cjson.encode(job));redis.call('SET',p..'lease:'..id,ARGV[4],'PX',ARGV[6])
           redis.call('ZADD',p..'jobs',now+tonumber(ARGV[6]),id);return cjson.encode(job)
@@ -63,7 +67,7 @@ class RedisMatchmakingStore(private val redis: StringRedisTemplate,
           local id=ARGV[2];if redis.call('GET',p..'lease:'..id)~=ARGV[3] then return '' end
           local raw=redis.call('GET',p..'job:'..id);if not raw then return '' end
           local job=cjson.decode(raw)
-          for _,h in ipairs({job.a,job.b}) do local e=read(h)
+          for _,h in ipairs(job.members or {job.a,job.b}) do local e=read(h)
             if e and e.reservation==id then e.state=op=='complete' and 'MATCHED' or 'FAILED';save(h,e,60000);redis.call('SREM',p..'members',h) end
           end
           redis.call('DEL',p..'job:'..id,p..'lease:'..id);redis.call('ZREM',p..'jobs',id);return 'ok'
@@ -94,12 +98,13 @@ class RedisMatchmakingStore(private val redis: StringRedisTemplate,
         if(raw.isEmpty())return null
         val n=GameCatalogCodec.mapper.readTree(raw)
         return PairReservation(n["id"].asText(),n["uidA"].asText(),n["uidB"].asText(),n["key"].asText(),
-            GameCatalogCodec.mapper.treeToValue(n["rules"],MatchRuleSnapshot::class.java),n["owner"].asText(),n["waitMillis"]?.asLong()?:0)
+            GameCatalogCodec.mapper.treeToValue(n["rules"],MatchRuleSnapshot::class.java),n["owner"].asText(),n["waitMillis"]?.asLong()?:0,
+            n["additionalUids"]?.takeIf{it.isArray}?.let{a->(0 until a.size()).map{a[it].asText()}}?:emptyList())
     }
     override fun join(uid:String,key:MatchmakingKey)=parseStatus(call("join",hash(uid),uid,key.value))
     override fun leave(uid:String)=parseStatus(call("leave",hash(uid)))
     override fun status(uid:String)=parseStatus(call("status",hash(uid)))
-    override fun reserve(key:MatchmakingKey,rules:MatchRuleSnapshot)=reservation(call("reserve",key.value,UUID.randomUUID().toString(),UUID.randomUUID().toString(),GameCatalogCodec.mapper.writeValueAsString(rules),leaseMillis.toString()))
+    override fun reserve(key:MatchmakingKey,rules:MatchRuleSnapshot)=reservation(call("reserve",key.value,UUID.randomUUID().toString(),UUID.randomUUID().toString(),GameCatalogCodec.mapper.writeValueAsString(rules),leaseMillis.toString(),rules.mode().playerCount.toString()))
     override fun recover()=reservation(call("recover",UUID.randomUUID().toString(),leaseMillis.toString()))
     override fun complete(reservation:PairReservation)=call("complete",reservation.id,reservation.owner)=="ok"
     override fun failed(reservation:PairReservation){call("failed",reservation.id,reservation.owner)}

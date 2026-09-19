@@ -46,10 +46,10 @@ namespace Domino.Client
         }
         void StartFromMenu(GameModeDefinition mode)
         {
-            if(mode.Key!=GameCatalogConfigurationAdapter.DuelModeKey){StartMatch(mode);return;}
+            if(!mode.Online){StartMatch(mode);return;}
             startMenu.Show(StartScreen.Match);
             var entry=new GameObject("Find opponent",typeof(RectTransform)).AddComponent<Domino.Online.MatchmakingView>();
-            entry.Initialize(tilePrefab,playerPrefab,()=>startMenu.Show(StartScreen.ModeSelector));
+            entry.Initialize(tilePrefab,playerPrefab,()=>{if(startMenu)startMenu.Show(StartScreen.ModeSelector);},mode.Key);
         }
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         public void OpenDevelopmentOnlineEntry()

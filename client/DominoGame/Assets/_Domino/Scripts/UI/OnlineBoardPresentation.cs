@@ -46,8 +46,8 @@ namespace Domino.UI
                 foreach(var hand in hands) {foreach(var tile in hand)ReleaseTile(tile);hand.Clear();}
                 foreach(var tile in played)ReleaseTile(tile);played.Clear();
                 foreach(var tile in washReserve)ReleaseTile(tile);washReserve.Clear();
-                var deal=new IReadOnlyList<DominoTile>[2];
-                for(int p=0;p<2;p++) {
+                var deal=new IReadOnlyList<DominoTile>[configuration.PlayerCount];
+                for(int p=0;p<configuration.PlayerCount;p++) {
                     var list=new List<DominoTile>();
                     if(p==LocalPlayerSeat)foreach(var t in snapshot.Hand)list.Add(OnlineTile(t));
                     else for(int n=0;n<(int)state["tilesRemainingPerSeat"][p];n++)list.Add(default);
@@ -63,7 +63,7 @@ namespace Domino.UI
             }
             onlineRound=number;
             foreach(var hand in hands) {foreach(var tile in hand)ReleaseTile(tile);hand.Clear();}
-            for(int p=0;p<2;p++) {
+            for(int p=0;p<configuration.PlayerCount;p++) {
                 int count=(int)state["tilesRemainingPerSeat"][p];
                 for(int i=0;i<count;i++) {
                     var tile=AcquireTile();tile.Initialize(p==LocalPlayerSeat?OnlineTile(snapshot.Hand[i]):default,p==LocalPlayerSeat,true);
@@ -78,29 +78,36 @@ namespace Domino.UI
             SetDealPhase(DealPresentationPhase.Playing);RefreshHandLayout();ApplyChainLayout();
             boardHint.gameObject.SetActive(played.Count==0);
             displayedRound=number;
-            DominoLocalization.Set(scoreA,"game.player_score",1,(int)state["scores"][0]);
-            DominoLocalization.Set(scoreB,"game.player_score",2,(int)state["scores"][1]);
-            DominoLocalization.Set(round,"game.score_round",number,configuration.TargetScore,1);
+            if(configuration.PlayerCount==2) {
+                DominoLocalization.Set(scoreA,"game.player_score",1,(int)state["scores"][0]);
+                DominoLocalization.Set(scoreB,"game.player_score",2,(int)state["scores"][1]);
+            } else {
+                int team=configuration.GetTeamForPlayer(LocalPlayerSeat);
+                DominoLocalization.Set(scoreA,"game.score_a",(int)state["scores"][team],0);
+                DominoLocalization.Set(scoreB,"game.score_b",(int)state["scores"][1-team],0);
+            }
+            DominoLocalization.Set(round,"game.score_round",number,configuration.TargetScore,snapshot.RoundMultiplier);
             int turn=state["currentSeat"].Type==JTokenType.Null?-1:(int)state["currentSeat"];
             if(turn>=0 && (onlineShown==null || (int?)onlineShown.Public["currentSeat"]!=turn || (int?)onlineShown.Public["currentTurn"]!=(int?)state["currentTurn"]))SetTurn(turn);
-            for(int p=0;p<2;p++)players[p].SetTurn(p==turn);
+            for(int p=0;p<configuration.PlayerCount;p++)players[p].SetTurn(p==turn);
             bannerTarget=turn==LocalPlayerSeat?1:0;UpdateTurnNotice(turn);
             if(turn>=0)ShowMessage(turn==LocalPlayerSeat?"game.your_turn":"realtime.connected");
             if(snapshot.RoundResult!=null && (onlineShown?.RoundResult==null || onlineShown.Public["currentRound"].Value<int>()!=number)) {
                 float resultStarted=Time.realtimeSinceStartup;
                 int winner=(int?)snapshot.RoundResult["winnerSeat"]??-1;
                 string name=winner<0?DominoLocalization.Get("result.draw"):(string)((JArray)state["participants"]).First(p=>(int)p["seat"]==winner)["displayNameSnapshot"];
-                if(winner>=0)yield return ShowWinner(name,snapshot.Phase=="MATCH_FINISHED",winner==LocalPlayerSeat);
+                if(winner>=0)yield return ShowWinner(name,snapshot.Phase=="MATCH_FINISHED",configuration.GetScoreOwner(winner)==configuration.GetScoreOwner(LocalPlayerSeat));
                 // Only the aggregate pips are public in the current server contract; never fabricate opponent faces.
-                for(int p=0;p<2;p++)players[p].ShowPoints(hands[p].Count,(int)snapshot.RoundResult["remainingPips"][p]);
+                for(int p=0;p<configuration.PlayerCount;p++)players[p].ShowPoints(hands[p].Count,(int)snapshot.RoundResult["remainingPips"][p]);
                 int award=(int)snapshot.RoundResult["scoreAwarded"];
-                bool lost=winner>=0&&winner!=LocalPlayerSeat;
+                bool won=winner>=0&&configuration.GetScoreOwner(winner)==configuration.GetScoreOwner(LocalPlayerSeat);
+                bool lost=winner>=0&&!won;
                 if(lost) {
                     Domino.Infrastructure.ApplicationServices.RoundRewards?.PresentRound(snapshot.MatchId+":"+number);
                     Domino.Ads.RewardedRoundPreload.Handle(new GameEvent(GameEventType.ROUND_FINISHED),Domino.Infrastructure.ApplicationServices.Rewarded);
                 }
                 while(Time.realtimeSinceStartup-resultStarted<5f)yield return null;
-                Finish(()=>DominoLocalization.Get(winner==LocalPlayerSeat?"result.round_won":"result.round_lost")+"\n"+DominoLocalization.Get("result.online_award",name,award),snapshot.Phase=="MATCH_FINISHED",lost);
+                Finish(()=>DominoLocalization.Get(winner<0?"result.draw":won?"result.round_won":"result.round_lost")+"\n"+DominoLocalization.Get("result.online_award",name,award),snapshot.Phase=="MATCH_FINISHED",lost);
             }
             onlineShown=snapshot;
         }

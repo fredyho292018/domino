@@ -767,6 +767,30 @@ MonoBehaviour:
     m_Key: matchmaking.resuming
     m_Metadata:
       m_Items: []
+  - m_Id: 3327218598834176
+    m_Key: mode.partners_online.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3327218665943040
+    m_Key: mode.partners_online.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3327218665943041
+    m_Key: online.play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3327218665943042
+    m_Key: matchmaking.searching_players
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3336631518785536
+    m_Key: menu.choose_modes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3336631564922880
+    m_Key: menu.more_modes
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

@@ -33,7 +33,10 @@ object GameCatalogValidator {
             require(m.minHumans in 1..m.playerCount && m.maxHumans in m.minHumans..m.playerCount)
             require(m.botsAllowed || m.minHumans == m.playerCount)
             require(m.executionModesSupported == listOf(ExecutionMode.LOCAL) ||
-                m.key == "DUEL_1V1" && m.executionModesSupported == listOf(ExecutionMode.LOCAL, ExecutionMode.ONLINE))
+                m.key == "DUEL_1V1" && m.executionModesSupported == listOf(ExecutionMode.LOCAL, ExecutionMode.ONLINE) ||
+                m.key == GameCatalogV4Publisher.KEY && m.executionModesSupported == listOf(ExecutionMode.ONLINE) &&
+                    m.playerCount==4 && m.minHumans==4 && m.maxHumans==4 && !m.botsAllowed &&
+                    m.defaultRuleSetId=="double-nine-partners" && m.onlinePolicy==DisconnectPolicy(180,false,false))
             require(p.ruleSets.any { it.id == m.defaultRuleSetId })
         }
         p.versions.forEach { r ->

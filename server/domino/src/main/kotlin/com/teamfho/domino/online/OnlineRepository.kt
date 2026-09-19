@@ -26,14 +26,15 @@ object OnlineWrites {
         require(a.matchId==b.matchId && a.ruleSnapshot==b.ruleSnapshot && a.createdAt==b.createdAt && a.validationData==b.validationData)
         require(a.executionMode==MatchExecutionMode.ONLINE && b.executionMode==a.executionMode)
         require(a.modeKey==b.modeKey && a.catalogVersion==b.catalogVersion && a.ruleSetId==b.ruleSetId && a.ruleSetVersion==b.ruleSetVersion)
-        require(b.participants.size in 1..2 && b.participants.map {it.playerUid}.distinct().size==b.participants.size)
+        val seats=0 until b.ruleSnapshot.mode().playerCount
+        require(b.participants.size in 1..seats.count() && b.participants.map {it.playerUid}.distinct().size==b.participants.size)
         require(b.participants.take(a.participants.size).mapIndexed {i,p->p.copy(connectionState=a.participants[i].connectionState,
             disconnectedAt=a.participants[i].disconnectedAt,reconnectDeadlineAt=a.participants[i].reconnectDeadlineAt,abandonedAt=a.participants[i].abandonedAt)}==a.participants)
         require(write.events.isNotEmpty() && b.lastSequence==a.lastSequence+write.events.size)
         write.events.forEachIndexed {i,e->
             require(e.sequence==a.lastSequence+i+1 && e.eventId==MatchIds.event(e.sequence) && e.matchId==a.matchId && e.causedByCommandId==commandId)
             require(e.type==e.payload.type() && e.createdAt>=a.updatedAt)
-            require(if(e.payload is HandDealt || e.payload is PrivateStarterSelection)e.visibility==EventVisibility.PLAYER_PRIVATE && e.targetSeat in 0..1
+            require(if(e.payload is HandDealt || e.payload is PrivateStarterSelection)e.visibility==EventVisibility.PLAYER_PRIVATE && e.targetSeat in seats
                 else e.visibility==EventVisibility.PUBLIC && e.targetSeat==null)
             if(e.payload is HandDealt)require(e.targetSeat==e.payload.seat)
         }
@@ -52,7 +53,8 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
     private fun assignment(uid:String)=db.document("onlinePlayerAssignments/${MatchIds.document(uid)}")
     override fun createPaired(write:OnlineWrite):OnlineState {
         val state=write.state;val id=state.match.matchId
-        require(state.match.participants.size==2 && state.match.participants.map{it.playerUid}.distinct().size==2)
+        val count=state.match.ruleSnapshot.mode().playerCount
+        require(state.match.participants.size==count && state.match.participants.map{it.playerUid}.distinct().size==count)
         state.match.ruleSnapshot.verify()
         return db.runTransaction {tx ->
             val receipt=tx.get(creation(id)).get()

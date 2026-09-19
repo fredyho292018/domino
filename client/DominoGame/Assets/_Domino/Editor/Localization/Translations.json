@@ -1,5 +1,11 @@
 {
   "entries": [
+    { "key": "menu.choose_modes", "en": "Choose your game · {0} modes", "es": "Elige tu partida · {0} modos" },
+    { "key": "menu.more_modes", "en": "More modes ↓", "es": "Ver más modos ↓" },
+    {"key":"mode.partners_online.title","en":"2 vs 2 Online","es":"2 contra 2 online"},
+    {"key":"mode.partners_online.subtitle","en":"4 players · Online","es":"4 jugadores · En línea"},
+    {"key":"online.play","en":"Play online","es":"Jugar online"},
+    {"key":"matchmaking.searching_players","en":"Searching for players…","es":"Buscando jugadores…"},
     {"key":"matchmaking.title","en":"Find an opponent","es":"Encontrar rival"},
     {"key":"matchmaking.search","en":"Search opponent","es":"Buscar oponente"},
     {"key":"matchmaking.entering_match","en":"Entering match…","es":"Entrando a la partida…"},

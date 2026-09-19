@@ -25,6 +25,8 @@ namespace Domino.Online
         public long Sequence => (long)data["lastSequence"];
         public int Seat => (int)data["privateState"]["seat"];
         public string Phase => (string)data["phase"];
+        public int RoundMultiplier => (int?)data["roundMultiplier"]??1;
+        public int PlayerCount => (string)data["publicState"]["modeKey"]=="PARTNERS_2V2_ONLINE"?4:2;
         public JObject Public => (JObject)data["publicState"].DeepClone();
         public JArray Hand => (JArray)data["privateState"]["hand"].DeepClone();
         public JObject Starter => data["starter"] as JObject == null ? null : (JObject)data["starter"].DeepClone();
@@ -34,7 +36,7 @@ namespace Domino.Online
         public OnlineMatchSnapshot(JObject value)
         {
             data=(JObject)value.DeepClone();
-            if (Sequence<0 || Seat<0 || Seat>1 || (long)data["publicState"]["lastSequence"]!=Sequence || (long)data["privateState"]["lastSequence"]!=Sequence || Hand.Count>10)
+            if (Sequence<0 || Seat<0 || Seat>=PlayerCount || (long)data["publicState"]["lastSequence"]!=Sequence || (long)data["privateState"]["lastSequence"]!=Sequence || Hand.Count>10)
                 throw new FormatException("Invalid online snapshot");
             if(data["publicState"]["hands"]!=null || data["privateState"]["hands"]!=null)throw new FormatException("Invalid private projection");
         }
@@ -103,7 +105,7 @@ namespace Domino.Online
                 EventApplied?.Invoke((string)e["type"]);
                 if((string)e["type"]=="PLAYER_PASSED" && e["event"]?["payload"]?["seat"]?.Type==JTokenType.Integer) {
                     int seat=(int)e["event"]["payload"]["seat"];
-                    if(seat>=0&&seat<2)PassPresented?.Invoke(next.Sequence,seat);
+                    if(seat>=0&&seat<next.PlayerCount)PassPresented?.Invoke(next.Sequence,seat);
                 }
             }
             return true;

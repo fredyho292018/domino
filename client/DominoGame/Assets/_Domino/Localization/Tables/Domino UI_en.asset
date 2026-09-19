@@ -959,6 +959,36 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 3327218598834176
+    m_Localized: 2 vs 2 Online
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3327218665943040
+    m_Localized: "4 players \xB7 Online"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3327218665943041
+    m_Localized: Play online
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3327218665943042
+    m_Localized: "Searching for players\u2026"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3336631518785536
+    m_Localized: "Choose your game \xB7 {0} modes"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 3336631564922880
+    m_Localized: "More modes \u2193"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1146,3 +1176,9 @@ MonoBehaviour:
         - id: 3304955283533824
         - id: 3304955338059776
         - id: 3304955338059777
+        - id: 3327218598834176
+        - id: 3327218665943040
+        - id: 3327218665943041
+        - id: 3327218665943042
+        - id: 3336631518785536
+        - id: 3336631564922880

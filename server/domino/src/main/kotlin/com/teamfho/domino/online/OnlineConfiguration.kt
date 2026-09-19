@@ -45,7 +45,19 @@ class OnlineConfiguration {
             override fun transact(matchId: String,expectedSequence: Long,commandId: String,fingerprint: String,transition:(OnlineState)->OnlineWrite)=ready().transact(matchId,expectedSequence,commandId,fingerprint,transition)
         }
     }
-    @Bean fun onlineMatchService(catalog: GameCatalogService,repository: OnlineRepository)=OnlineMatchService(catalog,repository)
+    @Bean fun onlineMatchService(catalog: GameCatalogService,repository: OnlineRepository,profiles:OnlineParticipantProfiles)=
+        OnlineMatchService(catalog,repository,profiles=profiles::get)
+    @Bean fun onlineParticipantProfiles(db:ObjectProvider<Firestore>)=OnlineParticipantProfiles {uid ->
+            try {
+                val database=db.ifAvailable?:throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)
+                val doc=database.document("players/${com.teamfho.domino.match.MatchIds.document(uid)}").get().get(15,java.util.concurrent.TimeUnit.SECONDS)
+                checkOnline(doc.exists(),OnlineError.STORAGE_UNAVAILABLE)
+                val name=doc.getString("displayName")
+                checkOnline(!name.isNullOrBlank(),OnlineError.STORAGE_UNAVAILABLE)
+                OnlineParticipantProfile(name)
+            } catch(e:OnlineFailure){throw e}
+            catch(_:Exception){throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)}
+        }
 }
 data class CreateOnlineMatch(val modeKey: String)
 data class JoinOnlineMatch(val commandId: String)

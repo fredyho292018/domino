@@ -16,6 +16,7 @@ namespace Domino.Client
         public string ConfigurationId => snapshot?.RuleSet.Id ?? "double-nine-partners";
         public int LocalPlayerCount => snapshot!=null&&!snapshot.BotsAllowed?snapshot.PlayerCount:1;
         public int BotCount => (snapshot?.PlayerCount ?? 4)-LocalPlayerCount;
+        public bool Online => snapshot!=null&&!snapshot.BotsAllowed&&System.Linq.Enumerable.Contains(snapshot.ExecutionModesSupported,"ONLINE");
         public int LocalPlayerSeat => 0;
         public IReadOnlyList<int> TeamA => snapshot!=null&&snapshot.SeatTeams.Count==0?Array.Empty<int>():snapshot?.SeatTeams[0] ?? throw new InvalidOperationException("Resolve catalog metadata first.");
         public IReadOnlyList<int> TeamB => snapshot!=null&&snapshot.SeatTeams.Count==0?Array.Empty<int>():snapshot?.SeatTeams[1] ?? throw new InvalidOperationException("Resolve catalog metadata first.");

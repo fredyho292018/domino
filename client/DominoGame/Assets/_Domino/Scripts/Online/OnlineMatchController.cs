@@ -20,6 +20,7 @@ namespace Domino.Online
         public event Action Closed;
         DominoTileView tilePrefab,selected;PlayerView playerPrefab;
         OnlineMatchSnapshot shown;bool rendering,disposed;
+        Domino.Configuration.GameConfigurationSnapshot configuration;
         readonly Queue<OnlineMatchSnapshot> presentation = new Queue<OnlineMatchSnapshot>();
         long queuedSequence=-1;
         bool resultDismissed;
@@ -57,8 +58,8 @@ namespace Domino.Online
                 if(!Board) {
                     var rules=shown.Rules;
                     var catalog=new JObject {["catalogSchemaVersion"]=1,["catalogVersion"]=rules["catalogVersion"].DeepClone(),["modes"]=new JArray(JObject.Parse((string)rules["effectiveModeJson"]))};
-                    var configuration=new GameCatalogCodec().Read(catalog.ToString()).Modes.Single().RuleSet.Configuration;
-                    Board=new GameObject("Online DUEL",typeof(RectTransform)).AddComponent<BoardView>();
+                    configuration=new GameCatalogCodec().Read(catalog.ToString()).Modes.Single().RuleSet.Configuration;
+                    Board=new GameObject("Online match",typeof(RectTransform)).AddComponent<BoardView>();
                     Board.GetComponent<Transform>().SetParent(transform,false);
                     Board.Initialize(tilePrefab,playerPrefab,configuration,shown.Seat);
                     Board.GetComponent<Canvas>().sortingOrder=20;
@@ -159,8 +160,9 @@ namespace Domino.Online
             DominoLocalization.Set(status,!Connected?"realtime.disconnected":Client.NeedsResync?"system.loading":choosing?"duel.choose_starter":shown.Phase=="MATCH_FINISHED"?"result.game_over":OwnTurn?"game.your_turn":"realtime.connected");
             if(Connected&&!Client.NeedsResync&&shown.RoundResult!=null) {
                 status.gameObject.SetActive(false);
-                bool won=(int?)shown.RoundResult["winnerSeat"]==shown.Seat;
-                DominoLocalization.Set(status,shown.Phase=="MATCH_FINISHED"?(won?"result.victory":"result.defeat"):(won?"result.round_won":"result.round_lost"));
+                int? winner=(int?)shown.RoundResult["winnerSeat"];
+                bool won=winner.HasValue&&configuration.GetScoreOwner(winner.Value)==configuration.GetScoreOwner(shown.Seat);
+                DominoLocalization.Set(status,!winner.HasValue?"result.draw":shown.Phase=="MATCH_FINISHED"?(won?"result.victory":"result.defeat"):(won?"result.round_won":"result.round_lost"));
             }
         }
         void Starter(int index) {

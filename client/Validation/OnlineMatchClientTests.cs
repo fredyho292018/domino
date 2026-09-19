@@ -89,6 +89,12 @@ class OnlineMatchClientTests
         Check(!client.ApplyUpdate(timed)&&feedback==2,"duplicate events do not repeat feedback");
         client.ConnectionLost();Check(client.NeedsResync&&!client.Pending,"disconnect input blocked");
         api.Value=Snapshot(16);await client.ConnectionRestoredAsync();Check(client.Snapshot.Sequence==16&&!client.NeedsResync,"reconnect resync current not rewind");
+        for(int seat=0;seat<4;seat++) {
+            var snapshot=Snapshot(30,seat);snapshot["publicState"]["modeKey"]="PARTNERS_2V2_ONLINE";snapshot["roundMultiplier"]=2;
+            var partners=new OnlineMatchSnapshot(snapshot);Check(partners.PlayerCount==4&&partners.Seat==seat&&partners.RoundMultiplier==2,"four seat snapshot and server multiplier");
+        }
+        var invalidSeat=Snapshot(30,4);invalidSeat["publicState"]["modeKey"]="PARTNERS_2V2_ONLINE";
+        bool invalid=false;try{new OnlineMatchSnapshot(invalidSeat);}catch(FormatException){invalid=true;}Check(invalid,"fifth private seat rejected");
         Console.WriteLine("ONLINE_CLIENT_TESTS=PASS CHECKS="+checks);
     }
 }

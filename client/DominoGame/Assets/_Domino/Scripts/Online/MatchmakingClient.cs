@@ -13,6 +13,7 @@ namespace Domino.Online
     {
         readonly IOnlineMatchApi api;
         readonly IRealtimeMatchChannel channel;
+        readonly string modeKey;
         readonly CancellationTokenSource lifetime = new CancellationTokenSource();
         Task join, cancel;
         bool disposed, connected;
@@ -22,8 +23,8 @@ namespace Domino.Online
         public int Seat { get; private set; } = -1;
         public event Action Changed;
         public event Action<string> Diagnostic;
-        public MatchmakingClient(IOnlineMatchApi api, IRealtimeMatchChannel channel)
-        { this.api=api; this.channel=channel; channel.MatchMessage+=Receive; }
+        public MatchmakingClient(IOnlineMatchApi api, IRealtimeMatchChannel channel,string modeKey="DUEL_1V1")
+        { if(modeKey!="DUEL_1V1"&&modeKey!="PARTNERS_2V2_ONLINE")throw new ArgumentException("Unsupported matchmaking mode");this.modeKey=modeKey;this.api=api; this.channel=channel; channel.MatchMessage+=Receive; }
 
         void Set(MatchmakingState value) { if(disposed)return; State=value; Changed?.Invoke(); }
         void Apply(JObject response)
@@ -32,7 +33,9 @@ namespace Domino.Online
             if((string)response["state"]=="MATCHED") {
                 string id=(string)response["match"]?["matchId"];
                 int? seat=(int?)response["match"]?["seat"];
-                if(!Guid.TryParse(id,out _) || seat<0 || seat>1 || seat==null)throw new FormatException("Invalid assignment");
+                string assignedMode=(string)response["match"]?["modeKey"]??modeKey;
+                int count=assignedMode=="PARTNERS_2V2_ONLINE"?4:assignedMode=="DUEL_1V1"?2:0;
+                if(!Guid.TryParse(id,out _) || seat<0 || seat>=count || seat==null)throw new FormatException("Invalid assignment");
                 if(MatchId!=null) {
                     if(MatchId!=id||Seat!=seat.Value)throw new FormatException("Assignment changed");
                     if(State!=MatchmakingState.FAILED)return;
@@ -81,7 +84,7 @@ namespace Domino.Online
         {
             long expected=++operation;
             Set(MatchmakingState.JOINING);
-            try { Reply(await api.SendAsync("POST","matchmaking/queue",new JObject{["modeKey"]="DUEL_1V1"},lifetime.Token),expected); }
+            try { Reply(await api.SendAsync("POST","matchmaking/queue",new JObject{["modeKey"]=modeKey},lifetime.Token),expected); }
             catch { if(MatchId==null&&expected==operation)Set(MatchmakingState.FAILED); }
         }
         public Task CancelAsync()

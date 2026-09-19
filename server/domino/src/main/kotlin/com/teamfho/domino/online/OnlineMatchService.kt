@@ -8,20 +8,24 @@ import java.util.UUID
 import org.slf4j.LoggerFactory
 
 class OnlineMatchService(private val catalog: GameCatalogService, private val repository: OnlineRepository,
-    private val engine: OnlineEngine=OnlineEngine(), private val clock: Clock=Clock.systemUTC()) {
+    private val engine: OnlineEngine=OnlineEngine(), private val clock: Clock=Clock.systemUTC(),
+    private val profiles: (String)->OnlineParticipantProfile = { OnlineParticipantProfile(null) }) {
     private val log=LoggerFactory.getLogger(javaClass)
     // Injected transport callback runs only after Firestore acknowledges the transaction.
     var committed: (OnlineWrite)->Unit = {}
-    fun createPaired(id:String,uidA:String,uidB:String,rules:MatchRuleSnapshot):OnlineState {
-        checkOnline(uidA!=uidB,OnlineError.SAME_PLAYER);validId(id);rules.verify()
-        val mode=rules.mode();checkOnline(mode.key=="DUEL_1V1"&&ExecutionMode.ONLINE in mode.executionModesSupported,OnlineError.MODE_UNAVAILABLE)
-        val uids=if(java.security.SecureRandom().nextBoolean())listOf(uidA,uidB) else listOf(uidB,uidA)
+    fun createPaired(id:String,uidA:String,uidB:String,rules:MatchRuleSnapshot)=createPaired(id,listOf(uidA,uidB),rules)
+    fun createPaired(id:String,players:List<String>,rules:MatchRuleSnapshot):OnlineState {
+        checkOnline(players.distinct().size==players.size,OnlineError.SAME_PLAYER);validId(id);rules.verify()
+        val mode=rules.mode();checkOnline(mode.key in setOf("DUEL_1V1",GameCatalogV4Publisher.KEY)&&ExecutionMode.ONLINE in mode.executionModesSupported&&players.size==mode.playerCount,OnlineError.MODE_UNAVAILABLE)
+        val uids=players.shuffled(java.security.SecureRandom())
+        val resolved=uids.map(profiles)
+        fun member(seat:Int)=participant(uids[seat],seat,resolved[seat]).copy(teamId=mode.seatTeams.indexOfFirst{seat in it}.takeIf{it>=0})
         val now=clock.instant()
         val match=Match(id,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,rules.catalogVersion,
-            mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,listOf(participant(uids[0],0)),
+            mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,(0 until uids.lastIndex).map(::member),
             0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,false)
         val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER)
-        val write=engine.join(before,participant(uids[1],1),"sys_pair_$id",now)
+        val write=engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)
         OnlineWrites.validate(before,write,"sys_pair_$id")
         return repository.createPaired(write)
     }
@@ -42,7 +46,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         val state=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER);repository.create(state)
         log.info("ONLINE_MATCH_CREATED");return snapshot(state,uid)
     }
-    private fun participant(uid: String,seat: Int)=MatchParticipant(seat,MatchIds.document(uid),"Player ${seat+1}",null,ControlType.REMOTE_HUMAN,ConnectionState.CONNECTED,clock.instant())
+    private fun participant(uid: String,seat: Int,profile:OnlineParticipantProfile=profiles(uid))=MatchParticipant(seat,MatchIds.document(uid),profile.displayName?:"Player ${seat+1}",null,ControlType.REMOTE_HUMAN,ConnectionState.CONNECTED,clock.instant())
     fun join(uid: String,id: String,commandId: String): OnlineCommit {
         clientId(commandId);val before=read(id)
         val result=repository.transact(id,before.match.lastSequence,commandId,fingerprint(uid,"JOIN:$id")) {engine.join(it,participant(uid,1),commandId,clock.instant())}
@@ -112,12 +116,12 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         fun snapshot(s: OnlineState,uid: String): OnlineSnapshot {
             val seat=OnlineEngine.seat(s,uid);val m=s.match;val seq=m.lastSequence
             val public=PublicMatchSnapshot(m.matchId,m.modeKey,m.status,m.participants.map {PublicParticipant(it.seatIndex,it.displayNameSnapshot,null,it.controlType,it.connectionState,it.disconnectedAt,it.reconnectDeadlineAt,it.abandonedAt)},
-                m.score,m.currentRoundNumber,m.currentTurnNumber,m.currentSeat,s.board,listOf(s.hands["0"].orEmpty().size,s.hands["1"].orEmpty().size),s.round?.starterSeat,s.turnDeadlineAt,seq,0)
+                m.score,m.currentRoundNumber,m.currentTurnNumber,m.currentSeat,s.board,(0 until m.ruleSnapshot.mode().playerCount).map{s.hands[it.toString()].orEmpty().size},s.round?.starterSeat,s.turnDeadlineAt,seq,0)
             val private=PrivatePlayerSnapshot(seat,s.hands[seat.toString()].orEmpty(),null,seq)
             val starter=s.starter?.let {OnlineStarterView(it.method,it.guessingSeat,it.attempt,it.selections.keys.map(String::toInt).sorted(),
                 if(it.method==StarterMethod.HIGH_TILE_SELECTION)(0..1).filter {n->n !in it.selections.values} else emptyList())}
             val round=s.round?.takeIf {it.status==RoundStatus.FINISHED}?.let {RoundFinished(it.finishType!!,it.winnerSeat,it.scoreRecipient,it.scoreAwarded,it.starterSeat,it.remainingPips,m.score)}
-            return OnlineSnapshot(public,private,s.phase,starter,round,seq,m.ruleSnapshot,s.turnStartedAt,s.turnDeadlineAt,java.time.Instant.now())
+            return OnlineSnapshot(public,private,s.phase,starter,round,seq,m.ruleSnapshot,s.turnStartedAt,s.turnDeadlineAt,java.time.Instant.now(),s.nextRoundMultiplier)
         }
     }
 }

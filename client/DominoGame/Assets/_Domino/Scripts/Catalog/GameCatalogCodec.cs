@@ -33,7 +33,7 @@ namespace Domino.Catalog
                 Require(topology>0 && (duel ? players==2&&m["teamSize"]?.Type==JTokenType.Null : players==4&&Int(m,"teamSize")==2&&teamMode=="FIXED_TEAMS"),"TOPOLOGY");
                 Require(Text(m,"availability")=="ALL","AVAILABILITY");
                 var executions=Array(m,"executionModesSupported");Require(executions.All(x=>x.Type==JTokenType.String)&&
-                    (executions.Values<string>().SequenceEqual(new[]{"LOCAL"})||key=="DUEL_1V1"&&executions.Values<string>().SequenceEqual(new[]{"LOCAL","ONLINE"})),"EXECUTION");
+                    (executions.Values<string>().SequenceEqual(new[]{"LOCAL"})||key=="DUEL_1V1"&&executions.Values<string>().SequenceEqual(new[]{"LOCAL","ONLINE"})||key=="PARTNERS_2V2_ONLINE"&&executions.Values<string>().SequenceEqual(new[]{"ONLINE"})),"EXECUTION");
                 int min=Int(m,"minHumans"),max=Int(m,"maxHumans");bool bots=Bool(m,"botsAllowed");
                 Require(min>=1&&min<=max&&max<=players&&(bots||min==players),"HUMANS");
                 var teams=Array(m,"seatTeams");
@@ -64,6 +64,12 @@ namespace Domino.Catalog
                     openingTilePolicy=Text(r,"openingTilePolicy"),passPolicy=Text(r,"passPolicy"),blocked=r["blockedPolicy"].ToObject<BlockedPolicyDto>(),
                     finishScoring=r["finishScoring"].ToObject<ScoringPolicyDto>(),blockedScoring=r["blockedScoring"].ToObject<ScoringPolicyDto>(),tie=r["tiePolicy"].ToObject<TiePolicyDto>(), turnPolicy=r["turnPolicy"]?.ToObject<TurnPolicyDto>(),capicuaPolicy=r["capicuaPolicy"]?.ToObject<CapicuaPolicyDto>() };
                 DisconnectPolicySnapshot online=null;
+                if(key=="PARTNERS_2V2_ONLINE") {
+                    Require(players==4&&!bots&&min==4&&max==4&&ruleId=="double-nine-partners"&&Int(r,"version")==1,"PARTNERS_ONLINE");
+                    var policy=m["onlinePolicy"] as JObject??throw new FormatException("ONLINE_POLICY");
+                    Require(Int(policy,"reconnectWindowSeconds")==180&&!Bool(policy,"turnClockContinuesWhileDisconnected")&&!Bool(policy,"autoPlayWhileDisconnected"),"ONLINE_POLICY");
+                    online=new DisconnectPolicySnapshot(180,false,false);
+                }
                 if(duel) {
                     Require(!bots&&min==2&&max==2,"DUEL_HUMANS");
                     var o=m["onlinePolicy"] as JObject??throw new FormatException("ONLINE_POLICY");
@@ -75,7 +81,7 @@ namespace Domino.Catalog
                     Require(Int(c,"pipMultiplier")==2&&!Bool(c,"multiplyBonus"),"CAPICUA_POLICY");
                 }
                 result.Add(new GameModeSnapshot(id,key,Text(m,"nameKey"),Text(m,"descriptionKey"),Text(m,"iconKey"),Bool(m,"active"),Int(m,"sortOrder"),topology,min,max,bots,
-                    new RuleSetSnapshot(GameConfigurationValidator.Validate(dto),hash,capabilities.Values<string>().Select(x=>(RuleCapability)Enum.Parse(typeof(RuleCapability),x)).ToArray()), online));
+                    new RuleSetSnapshot(GameConfigurationValidator.Validate(dto),hash,capabilities.Values<string>().Select(x=>(RuleCapability)Enum.Parse(typeof(RuleCapability),x)).ToArray()), online,executions.Values<string>().ToArray()));
             }
             return new GameCatalogSnapshot(version,result);
         }

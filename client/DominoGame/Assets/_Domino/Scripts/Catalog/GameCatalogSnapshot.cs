@@ -41,12 +41,13 @@ namespace Domino.Catalog
         public IReadOnlyList<System.Collections.ObjectModel.ReadOnlyCollection<int>> SeatTeams => RuleSet.Configuration.TeamAssignments;
         public int? TeamSize => SeatTeams.Count==0?(int?)null:SeatTeams[0].Count;
         public DisconnectPolicySnapshot OnlinePolicy { get; }
-        public string ExecutionMode => "LOCAL";
+        public IReadOnlyList<string> ExecutionModesSupported { get; }
+        public string ExecutionMode => ExecutionModesSupported[0];
         public string Availability => "ALL";
         internal GameModeSnapshot(string id,string key,string name,string description,string icon,bool active,int sort,int topology,
-            int min,int max,bool bots,RuleSetSnapshot rules,DisconnectPolicySnapshot onlinePolicy=null)
+            int min,int max,bool bots,RuleSetSnapshot rules,DisconnectPolicySnapshot onlinePolicy=null,string[] executions=null)
         { Id=id; Key=key; NameKey=name; DescriptionKey=description; IconKey=icon; Active=active; SortOrder=sort;
-            TopologyVersion=topology; MinHumans=min; MaxHumans=max; BotsAllowed=bots; RuleSet=rules;OnlinePolicy=onlinePolicy; }
+            TopologyVersion=topology; MinHumans=min; MaxHumans=max; BotsAllowed=bots; RuleSet=rules;OnlinePolicy=onlinePolicy;ExecutionModesSupported=Array.AsReadOnly((string[])(executions??new[]{"LOCAL"}).Clone()); }
     }
     public sealed class GameCatalogSnapshot
     {

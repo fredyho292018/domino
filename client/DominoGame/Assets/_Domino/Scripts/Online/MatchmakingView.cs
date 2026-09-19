@@ -14,22 +14,23 @@ namespace Domino.Online
         DominoTileView tile;PlayerView player;Action back;
         OnlineMatchController match;bool closing,entering,checking,resuming;float started;
         RealtimeConnectionState connection;
+        string requestedMode;
         public MatchmakingClient Client {get;private set;}
         public OnlineMatchController Match=>match;
-        public void Initialize(DominoTileView tilePrefab,PlayerView playerPrefab,Action onBack)
+        public void Initialize(DominoTileView tilePrefab,PlayerView playerPrefab,Action onBack,string modeKey="DUEL_1V1")
         {
-            tile=tilePrefab;player=playerPrefab;back=onBack;
+            tile=tilePrefab;player=playerPrefab;back=onBack;requestedMode=modeKey;
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=35;
             BoardView.ConfigureCanvas(gameObject);gameObject.AddComponent<GraphicRaycaster>();
             var bg=UiKit.Rect("Background",transform,Vector2.zero,Vector2.zero);bg.anchorMin=Vector2.zero;bg.anchorMax=Vector2.one;bg.sizeDelta=Vector2.zero;bg.gameObject.AddComponent<SoftBackdrop>();
             safe=UiKit.Rect("Safe area",transform,Vector2.zero,Vector2.zero);safe.gameObject.AddComponent<SafeArea>();
             panel=UiKit.Rect("Find opponent",safe,new Vector2(880,700),Vector2.zero);
-            UiKit.LLabel("Title",panel,"matchmaking.title",new Vector2(820,110),new Vector2(0,220),38,UiKit.Cream);
+            UiKit.LLabel("Title",panel,modeKey=="PARTNERS_2V2_ONLINE"?"mode.partners_online.title":"matchmaking.title",new Vector2(820,110),new Vector2(0,220),38,UiKit.Cream);
             status=UiKit.Label("Status",panel,"",new Vector2(780,130),new Vector2(0,85),28,UiKit.Gold);
             elapsed=UiKit.Label("Elapsed",panel,"",new Vector2(780,60),new Vector2(0,-35),23,UiKit.Muted);
             search=UiKit.LButton("Search",panel,"matchmaking.search",new Vector2(680,80),new Vector2(0,-145),UiKit.Hex("397566"),()=>{started=Time.realtimeSinceStartup;_=Search();});
             cancel=UiKit.LButton("Cancel",panel,"system.cancel",new Vector2(500,65),new Vector2(0,-265),Color.clear,()=>{_=Cancel();});
-            Client=new MatchmakingClient(ApplicationServices.OnlineApi,(IRealtimeMatchChannel)ApplicationServices.Realtime);
+            Client=new MatchmakingClient(ApplicationServices.OnlineApi,(IRealtimeMatchChannel)ApplicationServices.Realtime,modeKey);
             Client.Changed+=Render;Client.Diagnostic+=Diagnostic;connection=ApplicationServices.Realtime.State;ApplicationServices.Realtime.Changed+=ConnectionChanged;
             started=Time.realtimeSinceStartup;_=Recover();
         }
@@ -58,6 +59,7 @@ namespace Domino.Online
             if(closing)return;
             var state=Client.State;
             DominoLocalization.Set(status,checking&&state==MatchmakingState.IDLE?"matchmaking.recovering":"matchmaking."+state.ToString().ToLowerInvariant());
+            if(requestedMode=="PARTNERS_2V2_ONLINE"&&state==MatchmakingState.SEARCHING)DominoLocalization.Set(status,"matchmaking.searching_players");
             if(resuming&&Client.MatchId!=null&&state!=MatchmakingState.FAILED)DominoLocalization.Set(status,"matchmaking.resuming");
             search.gameObject.SetActive(state==MatchmakingState.IDLE||state==MatchmakingState.FAILED);
             search.interactable=!checking;

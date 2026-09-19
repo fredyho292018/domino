@@ -15,10 +15,10 @@ class MatchmakingClientTests
         public void Emit(string t,JObject p)=>MatchMessage?.Invoke(t,p);
     }
     sealed class Api:IOnlineMatchApi {
-        public int Joins,Leaves,Reads;public Func<string,Task<JObject>> Reply;
+        public int Joins,Leaves,Reads;public string Mode="DUEL_1V1";public Func<string,Task<JObject>> Reply;
         public Task<JObject> SendAsync(string method,string path,JObject body,CancellationToken token){
             Check(path=="matchmaking/queue","authenticated queue endpoint only");
-            if(method=="POST"){Joins++;Check(body.Count==1&&(string)body["modeKey"]=="DUEL_1V1","no UID rules seat or opponent authority");}
+            if(method=="POST"){Joins++;Check(body.Count==1&&(string)body["modeKey"]==Mode,"no UID rules seat or opponent authority");}
             else if(method=="DELETE")Leaves++;else Reads++;
             return Reply(method);
         }
@@ -80,6 +80,15 @@ class MatchmakingClientTests
             var recovery=client.RecoverAsync();await client.CancelAsync();pending.SetResult(Status("QUEUED"));await recovery;
             Check(client.State==MatchmakingState.IDLE,"late recovery cannot resurrect cancelled search");
         }
-        Console.WriteLine("I3_CLIENT_TESTS="+checks+" PASS");
+        for(int seat=0;seat<4;seat++) {
+            channel=new Channel();api=new Api{Mode="PARTNERS_2V2_ONLINE",Reply=m=>Task.FromResult(Status(m=="POST"?"QUEUED":"NOT_QUEUED"))};
+            using var partners=new MatchmakingClient(api,channel,api.Mode);
+            await partners.RecoverAsync();await partners.JoinAsync();Check(api.Joins==1&&partners.State==MatchmakingState.SEARCHING,"four player search");
+            var bad=Found(Guid.NewGuid().ToString(),4);bad["match"]["modeKey"]=api.Mode;channel.Emit("MATCH_FOUND",bad);Check(partners.MatchId==null,"fifth seat rejected");
+            var assignment=Found(Guid.NewGuid().ToString(),seat);assignment["match"]["modeKey"]=api.Mode;channel.Emit("MATCH_FOUND",assignment);
+            Check(partners.Seat==seat&&partners.MatchId==(string)assignment["match"]["matchId"],"all four server seats accepted");
+            int changes=0;partners.Changed+=()=>changes++;channel.Emit("MATCH_FOUND",assignment);Check(changes==0,"four player duplicate assignment ignored");
+        }
+        Console.WriteLine("I3_M5_CLIENT_TESTS="+checks+" PASS");
     }
 }

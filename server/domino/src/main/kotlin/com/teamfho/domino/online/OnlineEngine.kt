@@ -12,7 +12,13 @@ class SecureOnlineRandom: OnlineRandom { private val random=SecureRandom(); over
 class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
     fun join(before: OnlineState, participant: MatchParticipant, commandId: String, now: Instant): OnlineWrite {
         checkOnline(before.match.participants.none {it.playerUid==participant.playerUid},OnlineError.SAME_PLAYER)
-        checkOnline(before.match.status==MatchStatus.CREATED && before.match.participants.size==1,OnlineError.MATCH_FULL)
+        val mode=before.match.ruleSnapshot.mode()
+        checkOnline(before.match.status==MatchStatus.CREATED && before.match.participants.size==mode.playerCount-1,OnlineError.MATCH_FULL)
+        checkOnline(participant.seatIndex==before.match.participants.size,OnlineError.INVALID_COMMAND)
+        if(mode.teamMode==TeamMode.FIXED_TEAMS) {
+            val next=before.copy(match=before.match.copy(participants=before.match.participants+participant,status=MatchStatus.STARTING,startedAt=now))
+            return Builder(next,commandId,now).apply {emit(MatchStarted(next.match.score));deal(mode.ruleSet.firstRoundStarting.seat)}.build()
+        }
         val next=before.copy(match=before.match.copy(participants=before.match.participants+participant,
             status=MatchStatus.STARTING,startedAt=now),phase=OnlinePhase.STARTER_SELECTION,starter=starter(1))
         return Builder(next,commandId,now).apply {emit(MatchStarted(next.match.score));progress()}.build()
@@ -33,7 +39,8 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
             OnlineCommandType.PASS -> b.pass(seat)
             OnlineCommandType.NEXT_ROUND -> {
                 checkOnline(before.phase==OnlinePhase.ROUND_FINISHED,OnlineError.MATCH_NOT_ACTIVE)
-                b.deal(requireNotNull(before.round?.winnerSeat))
+                val starting=before.match.ruleSnapshot.mode().ruleSet.followingRoundStarting
+                b.deal(if(starting.mode==StartingMode.FIXED_SEAT)starting.seat else requireNotNull(before.round?.winnerSeat))
             }
         }
         return b.build()
@@ -114,13 +121,14 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
             val rules=s.match.ruleSnapshot.mode().ruleSet
             val deck=deck()
             for(i in deck.lastIndex downTo 1) {val j=random.next(i+1);val t=deck[i];deck[i]=deck[j];deck[j]=t}
-            val hands=mapOf("0" to mutableListOf<DominoPips>(),"1" to mutableListOf<DominoPips>())
+            val seats=(0 until s.match.ruleSnapshot.mode().playerCount).toList()
+            val hands=seats.associate{it.toString() to mutableListOf<DominoPips>()}
             repeat(rules.tilesPerPlayer){ for(seat in rules.dealPolicy.seatOrder)hands.getValue(seat.toString())+=deck.removeAt(0) }
-            val round=MatchRound(s.match.currentRoundNumber+1,winner,now,null,RoundStatus.IN_PROGRESS,s.match.lastSequence+1,null,null,null,null,0,null,dealtSeats=listOf(0,1))
+            val round=MatchRound(s.match.currentRoundNumber+1,winner,now,null,RoundStatus.IN_PROGRESS,s.match.lastSequence+1,null,null,null,null,0,null,dealtSeats=seats)
             s=s.copy(phase=OnlinePhase.PLAYING,starter=null,hands=hands,reserve=deck,board=emptyList(),consecutivePasses=0,round=round,
                 match=s.match.copy(status=MatchStatus.IN_PROGRESS,currentRoundNumber=round.roundNumber,currentTurnNumber=1,currentSeat=winner))
-            emit(RoundStarted(winner,listOf(rules.tilesPerPlayer,rules.tilesPerPlayer)))
-            for(seat in 0..1)emit(HandDealt(seat,hands.getValue(seat.toString())),target=seat)
+            emit(RoundStarted(winner,seats.map{rules.tilesPerPlayer}))
+            for(seat in seats)emit(HandDealt(seat,hands.getValue(seat.toString())),target=seat)
             startDeadline(winner);rounds+=round
         }
         fun playing(seat: Int) {
@@ -132,41 +140,55 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
             val hand=s.hands.getValue(seat.toString());val tile=hand.find {same(it,c.tile)}
             checkOnline(tile!=null,OnlineError.TILE_NOT_IN_HAND)
             checkOnline(c.chainEnd!=null && fits(s,tile!!,c.chainEnd),OnlineError.ILLEGAL_MOVE)
-            val capicua=hand.size==1 && s.board.isNotEmpty() && fits(s,tile!!,ChainEnd.LEFT) && fits(s,tile,ChainEnd.RIGHT)
+            val capicua=s.match.ruleSnapshot.mode().ruleSet.capicuaPolicy!=null && hand.size==1 && s.board.isNotEmpty() && fits(s,tile!!,ChainEnd.LEFT) && fits(s,tile,ChainEnd.RIGHT)
             val oriented=orient(s,tile!!,c.chainEnd!!)
             val placement=BoardPlacement(oriented,c.chainEnd,seat)
             val board=if(c.chainEnd==ChainEnd.LEFT)listOf(placement)+s.board else s.board+placement
             s=s.copy(hands=s.hands+(seat.toString() to hand.filterNot {same(it,tile)}),board=board,consecutivePasses=0)
             emit(TilePlayed(seat,oriented,c.chainEnd),seat)
-            if(hand.size==1)finish(seat,if(capicua)FinishType.CAPICUA else FinishType.NORMAL) else turn(1-seat)
+            if(hand.size==1)finish(seat,if(capicua)FinishType.CAPICUA else FinishType.NORMAL) else turn(nextSeat(seat))
         }
         fun pass(seat: Int) {
             playing(seat)
             checkOnline(s.hands.getValue(seat.toString()).none {fits(s,it,ChainEnd.LEFT)||fits(s,it,ChainEnd.RIGHT)},OnlineError.PASS_NOT_ALLOWED)
             s=s.copy(consecutivePasses=s.consecutivePasses+1);emit(PlayerPassed(seat),seat)
-            if(s.consecutivePasses==2) {
+            if(s.consecutivePasses==s.match.ruleSnapshot.mode().playerCount) {
+                if(s.match.ruleSnapshot.mode().teamMode==TeamMode.FIXED_TEAMS) {
+                    val points=(0 until s.match.ruleSnapshot.mode().playerCount).map{handPips(s,it)}
+                    val minima=points.indices.filter{points[it]==points.min()}
+                    finish(if(minima.map{scoreOwner(it)}.distinct().size>1)-1 else minima.first(),FinishType.BLOCKED)
+                    return
+                }
                 val a=handPips(s,0);val b=handPips(s,1)
                 finish(if(a==b)s.round!!.starterSeat else if(a<b)0 else 1,FinishType.BLOCKED)
-            } else turn(1-seat)
+            } else turn(nextSeat(seat))
         }
         fun startDeadline(seat: Int) {
-            val seconds=requireNotNull(s.match.ruleSnapshot.mode().ruleSet.turnPolicy).timeLimitSeconds.toLong()
+            val policy=s.match.ruleSnapshot.mode().ruleSet.turnPolicy
+            if(policy==null){s=s.copy(turnStartedAt=null,turnDeadlineAt=null);emit(TurnStarted(seat,null,s.match.currentTurnNumber));return}
+            val seconds=policy.timeLimitSeconds.toLong()
             s=s.copy(turnStartedAt=now,turnDeadlineAt=now.plusSeconds(seconds))
             emit(TurnStarted(seat,s.turnDeadlineAt,s.match.currentTurnNumber,now,s.turnDeadlineAt))
         }
         fun turn(seat: Int) {s=s.copy(match=s.match.copy(currentSeat=seat,currentTurnNumber=s.match.currentTurnNumber+1));emit(TurnChanged(seat));startDeadline(seat)}
+        fun nextSeat(seat:Int):Int {val order=s.match.ruleSnapshot.mode().ruleSet.turnOrder;return order[(order.indexOf(seat)+1)%order.size]}
+        fun scoreOwner(seat:Int):Int {val m=s.match.ruleSnapshot.mode();return if(m.teamMode==TeamMode.NONE)seat else m.seatTeams.indexOfFirst{seat in it}}
         fun finish(winner: Int,type: FinishType) {
-            val rules=s.match.ruleSnapshot.mode().ruleSet;val opponent=handPips(s,1-winner)
-            val award=when(type) {FinishType.BLOCKED->opponent+rules.blockedScoring.bonus
+            val mode=s.match.ruleSnapshot.mode();val rules=mode.ruleSet
+            val remaining=(0 until mode.playerCount).map{handPips(s,it)}
+            val owner=if(winner<0)null else ScoreRecipient(if(mode.teamMode==TeamMode.NONE)ScoreOwnerType.PLAYER else ScoreOwnerType.TEAM,scoreOwner(winner))
+            val opponent=if(winner<0)0 else remaining.indices.filter{scoreOwner(it)!=owner!!.index}.sumOf{remaining[it]}
+            val award=if(winner<0)0 else Math.multiplyExact(s.nextRoundMultiplier,when(type) {FinishType.BLOCKED->opponent+rules.blockedScoring.bonus
                 FinishType.NORMAL->opponent+rules.finishScoring.bonus
-                FinishType.CAPICUA->opponent*rules.capicuaPolicy!!.pipMultiplier+rules.finishScoring.bonus}
-            val score=s.match.score.toMutableList();score[winner]+=award
-            val owner=ScoreRecipient(ScoreOwnerType.PLAYER,winner);val remaining=listOf(handPips(s,0),handPips(s,1))
-            val round=s.round!!.copy(status=RoundStatus.FINISHED,finishedAt=now,endSequence=s.match.lastSequence+1,winnerSeat=winner,
+                FinishType.CAPICUA->opponent*rules.capicuaPolicy!!.pipMultiplier+rules.finishScoring.bonus})
+            val score=s.match.score.toMutableList();if(owner!=null)score[owner.index]=Math.addExact(score[owner.index],award)
+            val round=s.round!!.copy(status=RoundStatus.FINISHED,finishedAt=now,endSequence=s.match.lastSequence+1,winnerSeat=winner.takeIf{it>=0},
+                winnerTeam=owner?.takeIf{it.type==ScoreOwnerType.TEAM}?.index,
                 finishType=type,scoreAwarded=award,scoreRecipient=owner,remainingPips=remaining)
-            s=s.copy(phase=OnlinePhase.ROUND_FINISHED,round=round,turnStartedAt=null,turnDeadlineAt=null,match=s.match.copy(score=score,currentSeat=null));rounds+=round
-            emit(RoundFinished(type,winner,owner,award,round.starterSeat,remaining,score))
-            if(score[winner]>=rules.targetScore) {
+            s=s.copy(phase=OnlinePhase.ROUND_FINISHED,round=round,turnStartedAt=null,turnDeadlineAt=null,
+                nextRoundMultiplier=if(winner<0)rules.tiePolicy.nextRoundMultiplier else 1,match=s.match.copy(score=score,currentSeat=null));rounds+=round
+            emit(RoundFinished(type,round.winnerSeat,owner,award,round.starterSeat,remaining,score))
+            if(owner!=null&&score[owner.index]>=rules.targetScore) {
                 val result=MatchResult(owner,MatchFinishReason.TARGET_REACHED,score)
                 s=s.copy(phase=OnlinePhase.MATCH_FINISHED,match=s.match.copy(status=MatchStatus.FINISHED,finishedAt=now,result=result))
                 emit(MatchFinished(result))
@@ -175,8 +197,8 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
         fun build(): OnlineWrite {
             val m=s.match
             val history=if(m.status!=MatchStatus.FINISHED)emptyMap() else m.participants.associate {p->p.playerUid!! to
-                PlayerMatchHistory(m.matchId,m.modeKey,m.ruleSetId,m.ruleSetVersion,if(m.result!!.winner!!.index==p.seatIndex)HistoryResult.WIN else HistoryResult.LOSS,
-                    m.score,m.participants.filter {it.seatIndex!=p.seatIndex}.map {OpponentSummary(it.seatIndex,it.displayNameSnapshot,null)},m.startedAt,now,MatchFinishReason.TARGET_REACHED,m.validationData)}
+                PlayerMatchHistory(m.matchId,m.modeKey,m.ruleSetId,m.ruleSetVersion,if(m.result!!.winner!!.index==scoreOwner(p.seatIndex))HistoryResult.WIN else HistoryResult.LOSS,
+                    m.score,m.participants.filter {scoreOwner(it.seatIndex)!=scoreOwner(p.seatIndex)}.map {OpponentSummary(it.seatIndex,it.displayNameSnapshot,it.teamId)},m.startedAt,now,MatchFinishReason.TARGET_REACHED,m.validationData)}
             return OnlineWrite(s,events,rounds,history)
         }
     }

@@ -152,6 +152,29 @@ tasks.register<JavaExec>("publishGameCatalogV3") {
     args("--publish-v3")
 }
 
+tasks.register<JavaExec>("publishGameCatalogV4") {
+    group = "application"
+    description = "Explicit immutable v4 publication adding four-human partners with the unchanged shared v1 RuleSet."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.catalog.GameCatalogV4Publisher")
+    args("--publish-v4")
+}
+
+tasks.register<JavaExec>("exportPartnersFixtures") {
+    group = "verification"
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.PartnersFixtureExporter")
+}
+
+tasks.register<JavaExec>("inspectPartnersMatch") {
+    group = "verification"
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.PartnersRealInspection")
+    providers.gradleProperty("matchId").orNull?.let { args(it) }
+}
+
 tasks.register<JavaExec>("inspectTwoUnityMatch") {
     group = "verification"
     dependsOn(tasks.testClasses)
