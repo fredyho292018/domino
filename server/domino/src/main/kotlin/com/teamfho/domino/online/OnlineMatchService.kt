@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 
 class OnlineMatchService(private val catalog: GameCatalogService, private val repository: OnlineRepository,
     private val engine: OnlineEngine=OnlineEngine(), private val clock: Clock=Clock.systemUTC(),
-    private val profiles: (String)->OnlineParticipantProfile = { OnlineParticipantProfile(null) }) {
+    private val profiles: (String)->OnlineParticipantProfile = { OnlineParticipantProfile(null,false) }) {
     private val log=LoggerFactory.getLogger(javaClass)
     // Injected transport callback runs only after Firestore acknowledges the transaction.
     var committed: (OnlineWrite)->Unit = {}
@@ -23,7 +23,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         val now=clock.instant()
         val match=Match(id,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,rules.catalogVersion,
             mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,(0 until uids.lastIndex).map(::member),
-            0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,false)
+            0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,resolved.any{it.validationData})
         val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER)
         val write=engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)
         OnlineWrites.validate(before,write,"sys_pair_$id")

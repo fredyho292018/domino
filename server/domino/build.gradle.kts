@@ -77,6 +77,17 @@ tasks.register<Test>("emulatorTest") {
     environment("GOOGLE_CLOUD_PROJECT", "demo-domino-f0")
 }
 
+tasks.register<JavaExec>("swarmEmulatorBackend") {
+    description = "Loopback-only I3.1 backend on test classpath; no production verifier bypass."
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.SwarmEmulatorBackend")
+}
+
+tasks.register<JavaExec>("inspectSwarmEmulator") {
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.online.SwarmEmulatorInspection")
+}
+
 tasks.register<JavaExec>("seedMonetizationPolicy") {
     group = "application"
     description = "Explicitly create systemConfig/monetization only if absent; never overwrites. Uses fallback ENV/YAML and ADC."

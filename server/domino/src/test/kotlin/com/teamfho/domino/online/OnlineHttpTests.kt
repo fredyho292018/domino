@@ -25,7 +25,7 @@ class OnlineHttpTests {
     @TestConfiguration(proxyBeanMethods=false) class Fixture {
         @Bean @Primary fun testOnlineRepository(): OnlineRepository=MemoryOnlineRepository()
         @Bean @Primary fun testOnlineCatalog(): GameCatalogRepository=GameCatalogRepository {GameCatalogV2Publisher.canonical()}
-        @Bean @Primary fun testOnlineProfiles()=OnlineParticipantProfiles { OnlineParticipantProfile("Test Player") }
+        @Bean @Primary fun testOnlineProfiles()=OnlineParticipantProfiles { OnlineParticipantProfile("Test Player",false) }
     }
     @Test fun `create and join principal authority snapshot and event isolation`() {
         mvc.perform(post("/api/v1/matches").contentType(MediaType.APPLICATION_JSON).content("{\"modeKey\":\"DUEL_1V1\"}")).andExpect(status().isUnauthorized)

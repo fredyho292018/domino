@@ -54,7 +54,8 @@ class OnlineConfiguration {
                 checkOnline(doc.exists(),OnlineError.STORAGE_UNAVAILABLE)
                 val name=doc.getString("displayName")
                 checkOnline(!name.isNullOrBlank(),OnlineError.STORAGE_UNAVAILABLE)
-                OnlineParticipantProfile(name)
+                val marker=database.document("developmentTestAccounts/$uid").get().get(15,java.util.concurrent.TimeUnit.SECONDS)
+                OnlineParticipantProfile(name,marker.getBoolean("isTestAccount")==true&&marker.getString("testSource")=="BOT_SWARM")
             } catch(e:OnlineFailure){throw e}
             catch(_:Exception){throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)}
         }

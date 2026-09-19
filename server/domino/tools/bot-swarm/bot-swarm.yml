@@ -1,0 +1,13 @@
+clients: 10
+mode: DUEL_1V1
+environment: LOCAL
+baseUrl: http://127.0.0.1:8080
+thinkMinMs: 800
+thinkMaxMs: 2500
+requeue: true
+requeueMinMs: 1000
+requeueMaxMs: 5000
+startupMaxMs: 1500
+durationSeconds: 0
+maxFailures: 8
+summarySeconds: 10
