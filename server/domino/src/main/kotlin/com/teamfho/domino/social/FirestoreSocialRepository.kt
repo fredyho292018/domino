@@ -10,7 +10,8 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
     private fun get(path: String) = doc(path).get().get(5, TimeUnit.SECONDS)
     private fun active(p: DocumentSnapshot, marker: DocumentSnapshot) = p.exists() && p.getString("status") == "ACTIVE" && marker.getBoolean("isTestAccount") != true
     private fun identity(uid: String, d: DocumentSnapshot) = PublicPlayerIdentity(uid, d.getString("publicPlayerId")!!, d.getString("friendCode")!!)
-    private fun settings(d: DocumentSnapshot) = SocialPrivacySettings(d.getBoolean("discoverableByName") ?: false, revision=d.getLong("revision") ?: 1)
+    private fun settings(d: DocumentSnapshot) = SocialPrivacySettings(d.getBoolean("discoverableByName") ?: false,
+        friendRequests=ContactPermission.valueOf(d.getString("friendRequests")?:"EVERYONE"),revision=d.getLong("revision") ?: 1)
     override fun ensure(uid: String, candidate: PublicPlayerIdentity): PublicPlayerIdentity? = transaction { tx ->
         val owner = tx.get(doc("players/$uid/publicIdentity/current")).get()
         val player = tx.get(doc("players/$uid")).get()
@@ -79,6 +80,7 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
     override fun block(a: String,target: SocialCandidate,enabled: Boolean) = transaction { tx ->
         val forward = doc("players/$a/blocks/${target.uid}"); val inverse = doc("players/${target.uid}/blockedBy/$a")
         val existing = tx.get(forward).get(); val reverse = tx.get(inverse).get()
+        if(enabled) FriendshipService(FirestoreFriendships(db),SocialCursor()).removeInTransaction(FirestoreSocialTransaction(db,tx),a,target.uid,true)
         if (enabled && !existing.exists()) {
             tx.create(forward,mapOf("publicPlayerId" to target.profile.publicPlayerId,"displayName" to target.profile.displayName,
                 "friendCode" to target.profile.friendCode,"createdAt" to FieldValue.serverTimestamp()))

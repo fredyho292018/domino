@@ -21,11 +21,23 @@ object SocialValidationServer {
     @TestConfiguration(proxyBeanMethods=false)
     @Import(com.teamfho.domino.player.FakePlayerFoundationConfiguration::class)
     class Beans {
+        private val db=MemoryFriendships()
         @Bean @Primary fun verifier()=FirebaseTokenVerifier{token->
-            if(token!="s11-loopback")throw AuthFailure(ApiErrorCode.AUTH_TOKEN_INVALID)
-            FirebaseIdentity("s11-local-viewer",true)
+            if(token !in setOf("s11-loopback","s12-loopback-b","s12-loopback-limit"))throw AuthFailure(ApiErrorCode.AUTH_TOKEN_INVALID)
+            FirebaseIdentity(when(token){"s11-loopback"->"s11-local-viewer";"s12-loopback-b"->"local-social-1";else->"local-social-2"},true)
         }
-        @Bean @Primary fun socialValidationServices()=SocialHttpTests.memoryServices()
+        @Bean @Primary fun socialValidationServices()=SocialHttpTests.memoryServices(db).also {
+            db.docs["players/local-social-2/socialCounters/current"]=com.teamfho.domino.match.MatchCodec.map(SocialCounters(friendCount=20))
+            val now=java.time.Instant.now()
+            for(n in 3..22) {
+                val a="local-social-2";val b="local-social-$n";val pair=SocialPairIdentity.id(a,b)
+                db.docs["friendships/$pair"]=com.teamfho.domino.match.MatchCodec.map(Friendship(pair,minOf(a,b),maxOf(a,b),now,"local-fixture",1))
+                db.docs["players/$a/friends/$b"]=mapOf("pairId" to pair,"friendPublicPlayerId" to n.toString().padStart(22,'0'),"friendsSince" to now.toString(),"sortTime" to now.toEpochMilli())
+                db.docs["players/$b/friends/$a"]=mapOf("pairId" to pair,"friendPublicPlayerId" to "2".padStart(22,'0'),"friendsSince" to now.toString(),"sortTime" to now.toEpochMilli())
+                db.docs["players/$b/socialCounters/current"]=com.teamfho.domino.match.MatchCodec.map(SocialCounters(friendCount=1))
+            }
+        }
+        @Bean @Primary fun friendValidationServices()=FriendshipServices{FriendshipService(db,SocialCursor())}
         @Bean @Primary fun socialValidationRate()=SocialRateLimiter{_,_->}
     }
 }

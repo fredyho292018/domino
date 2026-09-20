@@ -5,7 +5,7 @@ import kotlin.test.*
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
 
-class MemorySocial : PublicIdentityRepository, SocialPrivacyRepository, BlockRepository {
+class MemorySocial(private val friendStore:MemoryFriendships?=null) : PublicIdentityRepository, SocialPrivacyRepository, BlockRepository {
     val identities=mutableMapOf<String,PublicPlayerIdentity>();val profiles=mutableMapOf<String,SocialCandidate>()
     val settings=mutableMapOf<String,SocialPrivacySettings>();val blocked=mutableSetOf<Pair<String,String>>()
     val hidden=mutableSetOf<String>();var budget=0
@@ -13,7 +13,11 @@ class MemorySocial : PublicIdentityRepository, SocialPrivacyRepository, BlockRep
         identities[uid]?.let{return it}
         if(profiles.containsKey(candidate.publicPlayerId)||identities.values.any{it.friendCode==candidate.friendCode})return null
         identities[uid]=candidate;profiles[candidate.publicPlayerId]=SocialCandidate(uid,PublicPlayerProfile(candidate.publicPlayerId,candidate.friendCode,"Alice"),"alice")
-        settings[uid]=SocialPrivacySettings(true);return candidate
+        settings[uid]=SocialPrivacySettings(true)
+        friendStore?.docs?.put("players/$uid",mapOf("status" to "ACTIVE"))
+        friendStore?.docs?.put("players/$uid/publicIdentity/current",mapOf("publicPlayerId" to candidate.publicPlayerId))
+        friendStore?.docs?.put("publicPlayerProfiles/${candidate.publicPlayerId}",mapOf("internalUid" to uid,"displayName" to "Alice","friendCode" to candidate.friendCode))
+        return candidate
     }
     override fun resolve(publicId:String)=profiles[publicId]?.takeUnless{it.uid in hidden}
     override fun code(code:String)=identities.values.find{it.friendCode==code}?.publicPlayerId
@@ -31,7 +35,10 @@ class MemorySocial : PublicIdentityRepository, SocialPrivacyRepository, BlockRep
     }
     @Synchronized override fun hasBlockEitherDirection(a:String,b:String)=(a to b) in blocked||(b to a) in blocked
     override fun blockedTarget(a:String,publicId:String)=profiles[publicId]?.takeIf{(a to it.uid) in blocked}
-    @Synchronized override fun block(a:String,target:SocialCandidate,enabled:Boolean){if(enabled)blocked.add(a to target.uid)else blocked.remove(a to target.uid)}
+    @Synchronized override fun block(a:String,target:SocialCandidate,enabled:Boolean){
+        friendStore?.atomic{tx->if(enabled){FriendshipService(friendStore,SocialCursor()).removeInTransaction(tx,a,target.uid,true);tx.put("players/$a/blocks/${target.uid}",mapOf("blocked" to true))}else tx.delete("players/$a/blocks/${target.uid}")}
+        if(enabled)blocked.add(a to target.uid)else blocked.remove(a to target.uid)
+    }
     override fun blocks(a:String,afterId:String?,limit:Int)=blocked.filter{it.first==a}.map{profiles[identities.getValue(it.second).publicPlayerId]!!.profile}
         .filter{afterId==null||it.publicPlayerId>afterId}.sortedBy{it.publicPlayerId}.take(limit).map{BlockRelationship(it.publicPlayerId,it.displayName,it.friendCode)}
 }

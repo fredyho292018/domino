@@ -1123,6 +1123,94 @@ MonoBehaviour:
     m_Key: social.error
     m_Metadata:
       m_Items: []
+  - m_Id: 5364562260684800
+    m_Key: social.friends
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793664
+    m_Key: social.requests
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793665
+    m_Key: social.show_incoming
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793666
+    m_Key: social.show_outgoing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793667
+    m_Key: social.add_friend
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793668
+    m_Key: social.accept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793669
+    m_Key: social.decline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793670
+    m_Key: social.cancel_request
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793671
+    m_Key: social.remove_friend
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793672
+    m_Key: social.remove_confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793673
+    m_Key: social.no_friends
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793674
+    m_Key: social.no_incoming
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793675
+    m_Key: social.no_outgoing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793676
+    m_Key: social.capacity
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793677
+    m_Key: social.limit_help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793678
+    m_Key: social.limit_reached
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793679
+    m_Key: social.cannot_complete
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793680
+    m_Key: social.request_sent
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793681
+    m_Key: social.friend_added
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793682
+    m_Key: social.friend_removed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793683
+    m_Key: social.request_canceled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5364562327793684
+    m_Key: social.request_declined
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

@@ -29,6 +29,8 @@ namespace Domino.Social
             Button("Back","menu.back",panel,160,new Vector2(-240,535),Close);
             code=Label("Own code","social.code",panel,420,new Vector2(90,535));
             Button("Copy","social.copy",panel,160,new Vector2(240,430),()=>{if(summary!=null){GUIUtility.systemCopyBuffer=(string)summary["profile"]["friendCode"];Message("social.copied");}});
+            Button("Friends tab","social.friends",panel,205,new Vector2(-220,430),()=>Navigate("friends"));
+            Button("Requests tab","social.requests",panel,205,new Vector2(0,430),()=>Navigate("incoming"));
             Button("Search tab","social.search",panel,205,new Vector2(-220,320),()=>Navigate("search"));
             Button("Blocked tab","social.blocked",panel,205,new Vector2(0,320),()=>Navigate("blocks"));
             Button("Privacy tab","social.privacy",panel,205,new Vector2(220,320),()=>Navigate("privacy"));
@@ -58,16 +60,18 @@ namespace Domino.Social
             input.transform.gameObject.SetActive(next=="search");panel.Find("Clear search").gameObject.SetActive(next=="search");panel.Find("Search submit").gameObject.SetActive(next=="search");
             status.rectTransform.anchoredPosition=new Vector2(0,next=="search"?-65:190);
             viewport.sizeDelta=new Vector2(670,next=="search"?480:700);viewport.anchoredPosition=new Vector2(0,next=="search"?-385:-260);
-            if(next=="blocks")Run(()=>Load(true));else if(next=="privacy")Run(async()=>{summary=await client.Summary(lifetime.Token);DrawPrivacy();});else Message("social.hint");
+            if(next=="blocks"||next=="friends"||next=="incoming"||next=="outgoing")Run(async()=>{await LoadSummary();await Load(true);});else if(next=="privacy")Run(async()=>{summary=await client.Summary(lifetime.Token);DrawPrivacy();});else Message("social.hint");
         }
         public void Search(){if(busy)return;section="search";query=input.text;Run(()=>Load(true));}
         async Task Load(bool reset) {
             if(reset){items.Clear();cursor=null;ClearRows();}
-            var page=section=="blocks"?await client.Blocks(cursor,lifetime.Token):await client.Search(query,cursor,lifetime.Token);
+            var page=section=="blocks"?await client.Blocks(cursor,lifetime.Token):section=="friends"?await client.Friends(cursor,lifetime.Token):section=="incoming"||section=="outgoing"?await client.Requests(section=="incoming",cursor,lifetime.Token):await client.Search(query,cursor,lifetime.Token);
             foreach(JObject item in (JArray)page["items"])items.Add(item);cursor=(string)page["nextCursor"];Draw();more.gameObject.SetActive(cursor!=null);
-            Message(items.Count==0?(section=="blocks"?"social.no_blocks":"social.empty"):"social.results");
+            Message(items.Count==0?(section=="blocks"?"social.no_blocks":section=="friends"?"social.no_friends":section=="incoming"?"social.no_incoming":section=="outgoing"?"social.no_outgoing":"social.empty"):"social.results");
+            if(section=="friends")DominoLocalization.Bind(status,()=>CapacityText()+(items.Count==0?"\n"+DominoLocalization.Get("social.no_friends"):""));
         }
         void Draw() {
+            if(section=="friends"||section=="incoming"||section=="outgoing"){DrawRelations();return;}
             ClearRows();for(int i=0;i<items.Count;i++) {
                 var item=items[i];var row=UiKit.Panel("Player row",rows,new Vector2(640,210),new Vector2(0,-110-i*225),UiKit.Hex("1D403E")).rectTransform;row.anchorMin=row.anchorMax=new Vector2(.5f,1);
                 UiKit.Disc("Default avatar",row,65,new Vector2(-265,40),UiKit.Gold);
@@ -79,7 +83,7 @@ namespace Domino.Social
             }rows.sizeDelta=new Vector2(650,items.Count*225);
         }
         void ShowProfile(JObject item) {
-            ClearRows();more.gameObject.SetActive(false);Message("social.profile");rows.sizeDelta=new Vector2(650,570);
+            ClearRows();more.gameObject.SetActive(false);Message("social.profile");rows.sizeDelta=new Vector2(650,980);
             var label=UiKit.Label("Public profile",rows,(string)item["displayName"]+"\n"+(string)item["friendCode"],new Vector2(640,120),new Vector2(0,-90),32,UiKit.Cream);label.rectTransform.anchorMin=label.rectTransform.anchorMax=new Vector2(.5f,1);
             var button=Button("Block player","social.block",rows,480,new Vector2(0,-250),()=>{
                 if(busy||confirming)return;confirming=true;Message("social.block_confirm");
@@ -87,6 +91,34 @@ namespace Domino.Social
                 var no=Button("Cancel block","system.cancel",rows,260,new Vector2(145,-410),()=>ShowProfile(item));
                 foreach(var b in new[]{yes,no})b.GetComponent<RectTransform>().anchorMin=b.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);
             });button.GetComponent<RectTransform>().anchorMin=button.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);
+            var relation=item["relationship"] as JObject;
+            string incoming=(string)relation?["incomingRequestId"],outgoing=(string)relation?["outgoingRequestId"],id=(string)item["publicPlayerId"];
+            if((string)relation?["friendship"]=="FRIENDS")RelationButton("Remove friend","social.remove_friend",-570,()=>ConfirmRemove(id));
+            else if(incoming!=null){RelationButton("Accept request","social.accept",-570,()=>Mutate(()=>client.ResolveRequest(incoming,"accept",lifetime.Token),id));RelationButton("Decline request","social.decline",-685,()=>Mutate(()=>client.ResolveRequest(incoming,"decline",lifetime.Token),id));}
+            else if(outgoing!=null)RelationButton("Cancel request","social.cancel_request",-570,()=>Mutate(()=>client.ResolveRequest(outgoing,"cancel",lifetime.Token),id));
+            else {var add=RelationButton("Add friend","social.add_friend",-570,()=>Mutate(()=>client.AddFriend(id,lifetime.Token),id));add.interactable=(bool?)summary?["friends"]?["canAddFriend"]??false;}
+            var capacity=Label("Friend capacity","social.limit_help",rows,630,new Vector2(0,-830));capacity.rectTransform.anchorMin=capacity.rectTransform.anchorMax=new Vector2(.5f,1);capacity.rectTransform.sizeDelta=new Vector2(630,170);DominoLocalization.Bind(capacity,()=>CapacityText());
+        }
+        string CapacityText() {
+            var f=summary?["friends"];if(f==null||(string)f["availability"]!="AVAILABLE")return DominoLocalization.Get("social.error");
+            return DominoLocalization.Get("social.capacity",(int)f["friendCount"],(int)f["effectiveFriendLimit"])+((bool)f["canAddFriend"]?"":"\n"+DominoLocalization.Get("social.limit_help"));
+        }
+        Button RelationButton(string name,string key,float y,UnityEngine.Events.UnityAction action) {var b=Button(name,key,rows,600,new Vector2(0,y),action);b.GetComponent<RectTransform>().anchorMin=b.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);return b;}
+        void Mutate(Func<Task<JObject>> mutation,string profileId=null)=>Run(async()=>{await mutation();await LoadSummary();items.Clear();cursor=null;if(profileId!=null)ShowProfile(await client.Profile(profileId,lifetime.Token));else await Load(true);});
+        void ConfirmRemove(string id) {if(busy)return;ClearRows();Message("social.remove_confirm");rows.sizeDelta=new Vector2(650,280);RelationButton("Confirm remove","system.confirm",-80,()=>Mutate(()=>client.RemoveFriend(id,lifetime.Token)));RelationButton("Cancel remove","system.cancel",-200,()=>Navigate("friends"));}
+        void DrawRelations() {
+            ClearRows();float offset=0;
+            if(section=="incoming"||section=="outgoing") {RelationButton("Request direction",section=="incoming"?"social.show_outgoing":"social.show_incoming",-60,()=>Navigate(section=="incoming"?"outgoing":"incoming"));offset=130;}
+            for(int i=0;i<items.Count;i++) {
+                var item=items[i];var p=(JObject)item["profile"];string id=(string)p["publicPlayerId"],request=(string)item["requestId"];
+                var row=UiKit.Panel("Relationship row",rows,new Vector2(640,370),new Vector2(0,-offset-185-i*385),UiKit.Hex("1D403E")).rectTransform;row.anchorMin=row.anchorMax=new Vector2(.5f,1);
+                var label=UiKit.Label("Friend name code date",row,"",new Vector2(610,140),new Vector2(0,95),26,UiKit.Cream);label.resizeTextForBestFit=true;
+                DominoLocalization.Bind(label,()=>{DateTimeOffset.TryParse((string)(item["friendsSince"]??item["createdAt"]),out var date);return (string)p["displayName"]+"\n"+(string)p["friendCode"]+"\n"+date.ToLocalTime().ToString("g",System.Globalization.CultureInfo.GetCultureInfo(DominoLocalization.Language));});
+                Button("View profile","social.profile",row,590,new Vector2(0,-25),()=>Run(async()=>ShowProfile(await client.Profile(id,lifetime.Token))));
+                if(section=="friends")Button("Remove friend","social.remove_friend",row,590,new Vector2(0,-140),()=>ConfirmRemove(id));
+                else if(section=="outgoing")Button("Cancel request","social.cancel_request",row,590,new Vector2(0,-140),()=>Mutate(()=>client.ResolveRequest(request,"cancel",lifetime.Token)));
+                else {Button("Accept request","social.accept",row,285,new Vector2(-150,-140),()=>Mutate(()=>client.ResolveRequest(request,"accept",lifetime.Token)));Button("Decline request","social.decline",row,285,new Vector2(150,-140),()=>Mutate(()=>client.ResolveRequest(request,"decline",lifetime.Token)));}
+            }rows.sizeDelta=new Vector2(650,offset+items.Count*385);
         }
         void DrawPrivacy() {
             ClearRows();Message("social.privacy");rows.sizeDelta=new Vector2(650,450);
@@ -96,12 +128,12 @@ namespace Domino.Social
                 summary["privacy"]=await client.Privacy(!enabled,(long)summary["privacy"]["revision"],lifetime.Token);DrawPrivacy();}));b.GetComponent<RectTransform>().anchorMin=b.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);
         }
         async void Run(Func<Task> operation) {
-            if(busy)return;busy=true;Message("system.loading");
+            if(busy)return;busy=true;foreach(var b in GetComponentsInChildren<Button>())b.interactable=false;Message("system.loading");
             try{await operation();}
             catch(OperationCanceledException){}
-            catch(Exception e){if(this){ClearRows();items.Clear();cursor=null;more.gameObject.SetActive(false);Message(e is SocialException s&&s.Code=="INVALID_SEARCH_QUERY"?"social.invalid_query":e is SocialException p&&p.Code=="PLAYER_NOT_FOUND"?"social.unavailable":"social.error");
+            catch(Exception e){if(this){ClearRows();items.Clear();cursor=null;more.gameObject.SetActive(false);Message(e is SocialException limit&&limit.Code=="FRIEND_LIMIT_REACHED"?"social.limit_reached":e is SocialException denied&&denied.Code=="SOCIAL_ACTION_NOT_ALLOWED"?"social.cannot_complete":e is SocialException s&&s.Code=="INVALID_SEARCH_QUERY"?"social.invalid_query":e is SocialException p&&p.Code=="PLAYER_NOT_FOUND"?"social.unavailable":"social.error");
                 var retry=Button("Retry","system.retry",rows,400,new Vector2(0,-90),()=>{if(section=="privacy")Navigate("privacy");else if(summary==null)Run(LoadSummary);else Run(()=>Load(true));});retry.GetComponent<RectTransform>().anchorMin=retry.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);rows.sizeDelta=new Vector2(650,220);}}
-            finally{busy=false;}
+            finally{busy=false;if(this){foreach(var b in GetComponentsInChildren<Button>())b.interactable=true;var add=rows.Find("Add friend");if(add)add.GetComponent<Button>().interactable=(bool?)summary?["friends"]?["canAddFriend"]??false;}}
         }
         void LateUpdate(){if(client==null)return;if(!client.SessionValid){Close();return;}panel.localScale=Vector3.one*Mathf.Max(.01f,Mathf.Min(safe.rect.width/750,safe.rect.height/1500));}
         public void Close(){lifetime.Cancel();items.Clear();summary=null;closed?.Invoke();closed=null;Destroy(gameObject);}

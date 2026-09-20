@@ -1403,7 +1403,117 @@ MonoBehaviour:
       m_Items:
       - rid: 7246862583952572445
   - m_Id: 5348534269014038
-    m_Localized: Search unavailable. Please try again.
+    m_Localized: Social unavailable. Please try again.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562260684800
+    m_Localized: Friends
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793664
+    m_Localized: Requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793665
+    m_Localized: Incoming requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793666
+    m_Localized: Outgoing requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793667
+    m_Localized: Add friend
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793668
+    m_Localized: Accept
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793669
+    m_Localized: Decline
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793670
+    m_Localized: Cancel request
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793671
+    m_Localized: Remove friend
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793672
+    m_Localized: Remove this friend?
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793673
+    m_Localized: No friends yet
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793674
+    m_Localized: No incoming requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793675
+    m_Localized: No outgoing requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793676
+    m_Localized: '{0} / {1} friends'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793677
+    m_Localized: You can keep your current friends. Be below your limit to add another.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793678
+    m_Localized: Friend limit reached
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793679
+    m_Localized: Friendship can't be completed right now.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793680
+    m_Localized: Friend request sent
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793681
+    m_Localized: Friend added
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793682
+    m_Localized: Friend removed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793683
+    m_Localized: Request canceled
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5364562327793684
+    m_Localized: Request declined
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
@@ -1683,3 +1793,25 @@ MonoBehaviour:
         - id: 5348534269014036
         - id: 5348534269014037
         - id: 5348534269014038
+        - id: 5364562260684800
+        - id: 5364562327793664
+        - id: 5364562327793665
+        - id: 5364562327793666
+        - id: 5364562327793667
+        - id: 5364562327793668
+        - id: 5364562327793669
+        - id: 5364562327793670
+        - id: 5364562327793671
+        - id: 5364562327793672
+        - id: 5364562327793673
+        - id: 5364562327793674
+        - id: 5364562327793675
+        - id: 5364562327793676
+        - id: 5364562327793677
+        - id: 5364562327793678
+        - id: 5364562327793679
+        - id: 5364562327793680
+        - id: 5364562327793681
+        - id: 5364562327793682
+        - id: 5364562327793683
+        - id: 5364562327793684

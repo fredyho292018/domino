@@ -52,15 +52,26 @@ open class SocialServices(private val repository:()->FirestoreSocialRepository,p
         val privacy:SocialPrivacyService,val blocks:BlockService)
 }
 @RestController
-class SocialController(private val services:SocialServices,private val rate:SocialRateLimiter) {
+class SocialController(private val services:SocialServices,private val rate:SocialRateLimiter,private val friends:ObjectProvider<FriendshipServices>) {
     private fun ready(identity:FirebaseIdentity,action:String):SocialServices.Bundle {
         rate.check(identity.uid,action)
         return services.ready().also {it.identity.ensure(identity.uid)}
     }
     @GetMapping("/api/v1/player/social-summary")
-    fun summary(@AuthenticationPrincipal i:FirebaseIdentity)=ready(i,"summary").profiles.summary(i.uid)
+    fun summary(@AuthenticationPrincipal i:FirebaseIdentity):Map<String,Any> {
+        val s=ready(i,"summary").profiles.summary(i.uid)
+        val result=mutableMapOf<String,Any>("profile" to s.profile,"privacy" to s.privacy)
+        friends.ifAvailable?.let { provider->
+            result["friends"]=try{provider.ready().summary(i.uid)}catch(_:Exception){FriendCapacity(0,null,false,0,"UNAVAILABLE")}
+        }
+        return result
+    }
     @GetMapping("/api/v1/players/{id}/profile")
-    fun profile(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,"profile").profiles.profile(i.uid,id)
+    fun profile(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Any?> {
+        val p=ready(i,"profile").profiles.profile(i.uid,id)
+        return mapOf("publicPlayerId" to p.publicPlayerId,"friendCode" to p.friendCode,"displayName" to p.displayName,"avatarKey" to p.avatarKey,
+            "relationship" to friends.ifAvailable?.ready()?.relationship(i.uid,id))
+    }
     @GetMapping("/api/v1/players/search")
     fun search(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam mode:String,@RequestParam(required=false) q:String?,
         @RequestParam(required=false) friendCode:String?,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int):SocialPage<PublicPlayerProfile> {
@@ -82,7 +93,7 @@ class SocialController(private val services:SocialServices,private val rate:Soci
     @DeleteMapping("/api/v1/players/{id}/block")
     fun unblock(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,"unblock").blocks.set(i.uid,id,false);return mapOf("success" to true)}
 }
-@RestControllerAdvice(assignableTypes=[SocialController::class])
+@RestControllerAdvice(assignableTypes=[SocialController::class,FriendshipController::class])
 @org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 class SocialErrors {
     @ExceptionHandler(Exception::class)

@@ -4,6 +4,14 @@
       {"fieldPath":"searchEligible","order":"ASCENDING"},
       {"fieldPath":"normalizedDisplayName","order":"ASCENDING"},
       {"fieldPath":"__name__","order":"ASCENDING"}
+    ]},
+    {"collectionGroup":"friendRequests","queryScope":"COLLECTION","fields":[
+      {"fieldPath":"recipientUid","order":"ASCENDING"}, {"fieldPath":"status","order":"ASCENDING"},
+      {"fieldPath":"sortTime","order":"DESCENDING"}, {"fieldPath":"__name__","order":"DESCENDING"}
+    ]},
+    {"collectionGroup":"friendRequests","queryScope":"COLLECTION","fields":[
+      {"fieldPath":"senderUid","order":"ASCENDING"}, {"fieldPath":"status","order":"ASCENDING"},
+      {"fieldPath":"sortTime","order":"DESCENDING"}, {"fieldPath":"__name__","order":"DESCENDING"}
     ]}
   ],
   "fieldOverrides": []

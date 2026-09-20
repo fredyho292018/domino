@@ -20,12 +20,31 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 class SocialHttpTests {
     @Autowired lateinit var mvc:MockMvc
     @TestConfiguration(proxyBeanMethods=false) class Fixture {
-        @Bean @Primary fun socialTestServices():SocialServices=memoryServices()
+        private val db=MemoryFriendships()
+        @Bean @Primary fun socialTestServices():SocialServices=memoryServices(db)
+        @Bean @Primary fun friendTestServices()=FriendshipServices{FriendshipService(db,SocialCursor())}
         @Bean @Primary fun socialTestRate()=SocialRateLimiter{_,_->}
     }
     @Test fun `all social routes require identity`() {
         for(path in listOf("player/social-summary","player/social-settings","player/blocks","players/search?mode=NAME&q=ali","players/aaaaaaaaaaaaaaaaaaaaaa/profile"))
             mvc.perform(get("/api/v1/$path")).andExpect(status().isUnauthorized)
+    }
+    @Test fun `friend REST lifecycle authenticated actor and private list ownership`() {
+        fun summary(token:String):String {
+            val body=mvc.perform(get("/api/v1/player/social-summary").header("Authorization","Bearer $token")).andExpect(status().isOk).andReturn().response.contentAsString
+            return com.teamfho.domino.catalog.GameCatalogCodec.mapper.readTree(body)["profile"]["publicPlayerId"].asText()
+        }
+        val a=summary("valid-guest");val b=summary("valid-registered")
+        mvc.perform(post("/api/v1/players/$b/friend-request")).andExpect(status().isUnauthorized)
+        val sent=mvc.perform(post("/api/v1/players/$b/friend-request").header("Authorization","Bearer valid-guest").contentType("application/json").content("""{"sourceUid":"victim","coins":100}"""))
+            .andExpect(status().isOk).andReturn().response.contentAsString
+        val id=com.teamfho.domino.catalog.GameCatalogCodec.mapper.readTree(sent)["outgoingRequestId"].asText()
+        mvc.perform(post("/api/v1/friend-requests/$id/accept").header("Authorization","Bearer valid-guest")).andExpect(status().isForbidden)
+        mvc.perform(delete("/api/v1/friend-requests/$id").header("Authorization","Bearer valid-registered")).andExpect(status().isForbidden)
+        mvc.perform(get("/api/v1/player/friend-requests?direction=INCOMING").header("Authorization","Bearer valid-registered")).andExpect(status().isOk).andExpect(jsonPath("$.items[0].profile.publicPlayerId").value(a))
+        mvc.perform(post("/api/v1/friend-requests/$id/accept").header("Authorization","Bearer valid-registered")).andExpect(status().isOk).andExpect(jsonPath("$.friendship").value("FRIENDS"))
+        mvc.perform(get("/api/v1/player/friends?uid=victim").header("Authorization","Bearer valid-guest")).andExpect(status().isOk).andExpect(jsonPath("$.items[0].profile.publicPlayerId").value(b)).andExpect(jsonPath("$.items[0].profile.uid").doesNotExist())
+        repeat(2){mvc.perform(delete("/api/v1/player/friends/$b").header("Authorization","Bearer valid-guest")).andExpect(status().isOk)}
     }
     @Test fun `public summary and search contain no private authority`() {
         mvc.perform(get("/api/v1/player/social-summary").header("Authorization","Bearer valid-guest"))
@@ -53,8 +72,8 @@ class SocialHttpTests {
         mvc.perform(get("/api/v1/players/$target/profile").header("Authorization","Bearer valid-guest")).andExpect(status().isOk)
     }
     companion object {
-        fun memoryServices():SocialServices {
-            val r=MemorySocial();val cursor=SocialCursor();val identity=PublicPlayerIdentityService(r);val access=SocialAccess(r,r);val privacy=SocialPrivacyService(identity,r)
+        fun memoryServices(db:MemoryFriendships?=null):SocialServices {
+            val r=MemorySocial(db);val cursor=SocialCursor();val identity=PublicPlayerIdentityService(r);val access=SocialAccess(r,r);val privacy=SocialPrivacyService(identity,r)
             for(i in 1..25)r.ensure("local-social-$i",PublicPlayerIdentity("local-social-$i",i.toString().padStart(22,'0'),"FHO-"+i.toString().padStart(12,'0')))
             val bundle=SocialServices.Bundle(identity,PublicPlayerProfileService(identity,r,privacy,access),PlayerDiscoveryService(r,r,access,cursor),privacy,BlockService(r,access,cursor))
             return object:SocialServices({throw IllegalStateException("NO_FIRESTORE")},cursor){override fun ready()=bundle}

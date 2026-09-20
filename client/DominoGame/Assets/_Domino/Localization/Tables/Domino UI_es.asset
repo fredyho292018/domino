@@ -1404,7 +1404,118 @@ MonoBehaviour:
       m_Items:
       - rid: 7246862583952572444
   - m_Id: 5348534269014038
-    m_Localized: "B\xFAsqueda no disponible. Int\xE9ntalo de nuevo."
+    m_Localized: "Social no disponible. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562260684800
+    m_Localized: Amigos
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793664
+    m_Localized: Solicitudes
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793665
+    m_Localized: Solicitudes recibidas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793666
+    m_Localized: Solicitudes enviadas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793667
+    m_Localized: "A\xF1adir amigo"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793668
+    m_Localized: Aceptar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793669
+    m_Localized: Rechazar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793670
+    m_Localized: Cancelar solicitud
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793671
+    m_Localized: Eliminar amigo
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793672
+    m_Localized: "\xBFEliminar este amigo?"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793673
+    m_Localized: "A\xFAn no tienes amigos"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793674
+    m_Localized: No tienes solicitudes recibidas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793675
+    m_Localized: No tienes solicitudes enviadas
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793676
+    m_Localized: '{0} / {1} amigos'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793677
+    m_Localized: "Puedes conservar tus amigos. Debes estar por debajo del l\xEDmite
+      para a\xF1adir otro."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793678
+    m_Localized: "L\xEDmite de amigos alcanzado"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793679
+    m_Localized: No se puede completar la amistad ahora.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793680
+    m_Localized: Solicitud de amistad enviada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793681
+    m_Localized: "Amigo a\xF1adido"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793682
+    m_Localized: Amigo eliminado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793683
+    m_Localized: Solicitud cancelada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5364562327793684
+    m_Localized: Solicitud rechazada
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
@@ -1686,3 +1797,25 @@ MonoBehaviour:
         - id: 5348534269014036
         - id: 5348534269014037
         - id: 5348534269014038
+        - id: 5364562260684800
+        - id: 5364562327793664
+        - id: 5364562327793665
+        - id: 5364562327793666
+        - id: 5364562327793667
+        - id: 5364562327793668
+        - id: 5364562327793669
+        - id: 5364562327793670
+        - id: 5364562327793671
+        - id: 5364562327793672
+        - id: 5364562327793673
+        - id: 5364562327793674
+        - id: 5364562327793675
+        - id: 5364562327793676
+        - id: 5364562327793677
+        - id: 5364562327793678
+        - id: 5364562327793679
+        - id: 5364562327793680
+        - id: 5364562327793681
+        - id: 5364562327793682
+        - id: 5364562327793683
+        - id: 5364562327793684

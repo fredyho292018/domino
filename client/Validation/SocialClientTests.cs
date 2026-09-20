@@ -28,6 +28,14 @@ static class SocialClientTests
         await client.Privacy(false,3,token);Check(transport.Method=="PATCH"&&transport.Json.Contains("revision")&&!transport.Json.Contains("uid"),"Privacy fields");
         string id=new string('a',22);await client.Block(id,true,token);Check(transport.Method=="POST","Block method");await client.Block(id,false,token);Check(transport.Method=="DELETE","Unblock method");
         await Reject(()=>client.Profile("bad",token),typeof(SocialException));
+        await client.AddFriend(id,token);Check(transport.Method=="POST"&&transport.Path.EndsWith("/friend-request")&&transport.Json==null,"Send uses public ID only");
+        string request="12345678-1234-1234-1234-123456789abc";
+        foreach(string action in new[]{"accept","decline","cancel"}) {await client.ResolveRequest(request,action,token);Check(transport.Method==(action=="cancel"?"DELETE":"POST"),"Request method "+action);}
+        await client.RemoveFriend(id,token);Check(transport.Method=="DELETE"&&transport.Path.Contains("/player/friends/"),"Remove friend");
+        await client.Friends(null,token);Check(transport.Path.EndsWith("/player/friends"),"Friends page");
+        await client.Requests(true,null,token);Check(transport.Path.EndsWith("/player/friend-requests"),"Request page");
+        await Reject(()=>client.ResolveRequest("../invalid","accept",token),typeof(SocialException));
+        await Reject(()=>client.ResolveRequest(request,"forged",token),typeof(SocialException));
         transport.Status=404;transport.Body="{\"code\":\"PLAYER_NOT_FOUND\"}";await Reject(()=>client.Profile(id,token),typeof(SocialException));
         transport.Status=401;transport.Body="{}";int before=tokens.Calls;await Reject(()=>client.Summary(token),typeof(SocialException));Check(tokens.Calls-before==2,"One auth refresh");
         var d=new Deferred();var scoped=new SocialClient(d,()=>uid);var pending=scoped.Summary(token);uid="b";d.Result.SetResult(new JObject());await Reject(()=>pending,typeof(OperationCanceledException));Check(!scoped.SessionValid,"Session invalidated");

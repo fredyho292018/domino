@@ -20,10 +20,14 @@ namespace Domino.Social
         {
             if(!config.IsAvailable)throw new SocialException("SOCIAL_SERVICE_UNAVAILABLE");
             string resource=path.Split('?')[0];
-            bool own=resource=="player/social-summary"||resource=="player/social-settings"||resource=="player/blocks";
+            bool own=resource=="player/social-summary"||resource=="player/social-settings"||resource=="player/blocks"||resource=="player/friends"||resource=="player/friend-requests";
             bool profile=System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/profile$");
             bool block=System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/block$");
-            if(!(method=="GET"&&(own||profile||resource=="players/search")||method=="PATCH"&&resource=="player/social-settings"||(method=="POST"||method=="DELETE")&&block)||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid social path");
+            bool friendship=method=="POST"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/friend-request$") ||
+                method=="POST"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^friend-requests/[a-f0-9-]{36}/(accept|decline)$") ||
+                method=="DELETE"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^friend-requests/[a-f0-9-]{36}$") ||
+                method=="DELETE"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^player/friends/[A-Za-z0-9_-]{22}$");
+            if(!(friendship||method=="GET"&&(own||profile||resource=="players/search")||method=="PATCH"&&resource=="player/social-settings"||(method=="POST"||method=="DELETE")&&block)||path.Contains("..")||path.Contains(":")||path.Contains("\\"))throw new ArgumentException("Invalid social path");
             for(int attempt=0;attempt<2;attempt++) {
                 using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellation);timeout.CancelAfter(TimeSpan.FromSeconds(config.TimeoutSeconds));
                 var bearer=await CancellableTask.Wait(tokens.GetIdTokenAsync(attempt==1,timeout.Token),timeout.Token);
@@ -32,7 +36,7 @@ namespace Domino.Social
                 if(response.Status==401&&attempt==0)continue;
                 if(response.Status!=200) {
                     string code=null;try{code=(string)JObject.Parse(response.Body)["code"];}catch(JsonException){}
-                    switch(code){case "PLAYER_NOT_FOUND":case "INVALID_FRIEND_CODE":case "INVALID_SEARCH_QUERY":case "SOCIAL_ACTION_RATE_LIMITED":case "REVISION_MISMATCH":throw new SocialException(code);}
+                    switch(code){case "FRIEND_LIMIT_REACHED":case "SOCIAL_ACTION_NOT_ALLOWED":case "ALREADY_FRIENDS":case "FRIEND_REQUEST_NOT_FOUND":case "FRIEND_REQUEST_NOT_PENDING":case "FRIEND_REQUEST_NOT_RECIPIENT":case "FRIEND_REQUEST_NOT_SENDER":case "PLAYER_NOT_FOUND":case "INVALID_FRIEND_CODE":case "INVALID_SEARCH_QUERY":case "SOCIAL_ACTION_RATE_LIMITED":case "REVISION_MISMATCH":throw new SocialException(code);}
                     throw new SocialException("SOCIAL_SERVICE_UNAVAILABLE");
                 }
                 return JObject.Parse(response.Body);
@@ -52,6 +56,15 @@ namespace Domino.Social
             if(!SessionValid)throw new OperationCanceledException();return result;
         }
         public Task<JObject> Summary(CancellationToken t)=>Send("GET","player/social-summary",null,t);
+        public Task<JObject> Friends(string cursor,CancellationToken t)=>Send("GET","player/friends?limit=20"+Page(cursor),null,t);
+        public Task<JObject> Requests(bool incoming,string cursor,CancellationToken t)=>Send("GET","player/friend-requests?direction="+(incoming?"INCOMING":"OUTGOING")+"&limit=20"+Page(cursor),null,t);
+        public Task<JObject> AddFriend(string id,CancellationToken t)=>Send("POST","players/"+Id(id)+"/friend-request",null,t);
+        public Task<JObject> RemoveFriend(string id,CancellationToken t)=>Send("DELETE","player/friends/"+Id(id),null,t);
+        public Task<JObject> ResolveRequest(string id,string action,CancellationToken t) {
+            if(id==null||!System.Text.RegularExpressions.Regex.IsMatch(id,@"^[a-f0-9-]{36}$")||!(action=="accept"||action=="decline"||action=="cancel"))throw new SocialException("FRIEND_REQUEST_NOT_FOUND");
+            return Send(action=="cancel"?"DELETE":"POST","friend-requests/"+id+(action=="cancel"?"":"/"+action),null,t);
+        }
+        static string Page(string cursor)=>cursor==null?"":"&cursor="+Uri.EscapeDataString(cursor);
         public Task<JObject> Search(string input,string cursor,CancellationToken t) {
             string value=(input??"").Trim();bool code=value.StartsWith("FHO-",StringComparison.OrdinalIgnoreCase);
             if(!code&&!System.Text.RegularExpressions.Regex.IsMatch(value,@"^[A-Za-z0-9_-]{3,16}$"))throw new SocialException("INVALID_SEARCH_QUERY");
