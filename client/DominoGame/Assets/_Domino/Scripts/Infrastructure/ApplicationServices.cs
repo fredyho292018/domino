@@ -22,6 +22,7 @@ namespace Domino.Infrastructure
         public static PlayerService Player { get; private set; }
         public static IRealtimeConnectionService Realtime { get; private set; }
         public static Domino.Online.IOnlineMatchApi OnlineApi { get; private set; }
+        public static Domino.Online.IOnlineMatchApi SocialApi { get; private set; }
         public static IAdsService Ads { get; private set; }
         public static IRewardedAdsService Rewarded { get; private set; }
         public static RewardVerificationService RewardVerification { get; private set; }
@@ -50,6 +51,7 @@ namespace Domino.Infrastructure
             RoundRewards = null;
             Monetization = null;
             GameCatalog = null;
+            SocialApi = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -86,6 +88,7 @@ namespace Domino.Infrastructure
 #endif
             } catch { Debug.LogWarning("[GAME-CATALOG] initialization unavailable; no valid bundled catalog"); }
             IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
+            SocialApi = new Domino.Social.SocialApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
             var rewardHttp = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
             IRewardIntentApi rewardApi = rewardHttp;
             Domino.Rewards.IMonetizationPolicyApi monetizationApi = new Domino.Rewards.MonetizationPolicyApi(rewardHttp);

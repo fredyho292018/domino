@@ -1,0 +1,10 @@
+{
+  "indexes": [
+    {"collectionGroup":"publicPlayerProfiles","queryScope":"COLLECTION","fields":[
+      {"fieldPath":"searchEligible","order":"ASCENDING"},
+      {"fieldPath":"normalizedDisplayName","order":"ASCENDING"},
+      {"fieldPath":"__name__","order":"ASCENDING"}
+    ]}
+  ],
+  "fieldOverrides": []
+}

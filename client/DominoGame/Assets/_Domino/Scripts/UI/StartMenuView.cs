@@ -34,6 +34,7 @@ namespace Domino.UI
         public PlayerProfileView Profile { get; private set; }
         public event Action<GameModeDefinition> StartRequested;
         public event Action HistoryRequested;
+        public event Action SocialRequested;
         void OnEnable() { _ = Domino.Infrastructure.ApplicationServices.RefreshGameCatalogAsync(); }
 
         public void Initialize(GameModeDefinition mode, GameConfigurationSnapshot configuration)
@@ -53,7 +54,8 @@ namespace Domino.UI
             UiKit.Label("Title", main.transform, "DOMINO", new Vector2(800,110), new Vector2(0,90), 76, UiKit.Cream);
             UiKit.LLabel("Welcome", main.transform, "menu.welcome", new Vector2(850,45), new Vector2(0,-5), 23, UiKit.Muted);
             MainPlay = UiKit.LButton("Play", main.transform, "menu.play", new Vector2(300,64), new Vector2(0,-125), UiKit.Hex("397566"), () => Show(StartScreen.ModeSelector));
-            UiKit.LButton("History",main.transform,"history.title",new Vector2(300,58),new Vector2(0,-205),UiKit.Hex("254B47"),()=>HistoryRequested?.Invoke());
+            UiKit.LButton("History",main.transform,"history.title",new Vector2(300,64),new Vector2(-170,-205),UiKit.Hex("254B47"),()=>HistoryRequested?.Invoke());
+            UiKit.LButton("Social",main.transform,"social.title",new Vector2(300,64),new Vector2(170,-205),UiKit.Hex("254B47"),()=>SocialRequested?.Invoke());
             selector = UiKit.Rect("Mode selector", composition, new Vector2(1100,590), Vector2.zero).gameObject;
             Back = UiKit.LButton("Back", selector.transform, "menu.back", new Vector2(140,42), new Vector2(-460,245), Color.clear, () => Show(StartScreen.MainMenu));
             choose=UiKit.LLabel("Choose", selector.transform, "menu.choose", new Vector2(800,38), new Vector2(0,240), 23, UiKit.Cream);

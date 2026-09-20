@@ -80,7 +80,7 @@ class PlayerDisplayNameTests {
         assertEquals(before - setOf("displayName", "updatedAt"), after - setOf("displayName", "updatedAt"))
         assertNotEquals(before["updatedAt"], after["updatedAt"])
         assertEquals(wallet, repository.store.documents[walletPath])
-        assertEquals(listOf("read:$playerPath", "read:$walletPath", "update:$playerPath"), repository.store.callbacks.last())
+        assertEquals(listOf("read:$playerPath", "read:$walletPath", "read:$playerPath/publicIdentity/current", "update:$playerPath"), repository.store.callbacks.last())
         rename("""{"displayName":"Fredy92"}""").andExpect(status().isOk)
         assertEquals(listOf("read:$playerPath", "read:$walletPath"), repository.store.callbacks.last())
         assertEquals(after, repository.store.documents[playerPath])

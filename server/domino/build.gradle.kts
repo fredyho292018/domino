@@ -100,6 +100,12 @@ tasks.register<JavaExec>("entitlementValidationServer") {
     mainClass.set("com.teamfho.domino.entitlement.EntitlementValidationServer")
 }
 
+tasks.register<JavaExec>("socialValidationServer") {
+    description = "S1.1 test-classpath loopback host; in-memory only, no Firebase or Firestore."
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.social.SocialValidationServer")
+}
+
 tasks.register<JavaExec>("seedMonetizationPolicy") {
     group = "application"
     description = "Explicitly create systemConfig/monetization only if absent; never overwrites. Uses fallback ENV/YAML and ADC."

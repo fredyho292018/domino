@@ -29,7 +29,10 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                 val wallet = FirestoreFoundationMapping.wallet(walletDoc.data ?: emptyMap())
                 if (player.displayName == displayName) BootstrapResult(player, wallet)
                 else {
+                    val publicIdentity = tx.get(firestore.document("players/${identity.uid}/publicIdentity/current")).get()
                     tx.update(playerRef, mapOf("displayName" to displayName, "updatedAt" to FieldValue.serverTimestamp()))
+                    if (publicIdentity.exists()) tx.update(firestore.document("publicPlayerProfiles/${publicIdentity.getString("publicPlayerId")}"),
+                        mapOf("displayName" to displayName, "normalizedDisplayName" to com.teamfho.domino.social.SocialNames.normalize(displayName), "updatedAt" to FieldValue.serverTimestamp()))
                     BootstrapResult(player.copy(displayName = displayName, updatedAt = FoundationTimestamp.ServerAssigned), wallet)
                 }
             }, TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(5).build()).get(30, TimeUnit.SECONDS)
@@ -61,7 +64,7 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                     PlayerStatus.ACTIVE, serverTime, serverTime, serverTime)
                 val wallet = existingWallet ?: Wallet(0, 0, 0, serverTime, serverTime)
                 if (existingPlayer == null) {
-                    tx.create(playerRef, FirestoreFoundationMapping.newPlayer(player))
+                    tx.create(playerRef, FirestoreFoundationMapping.newPlayer(player) + ("socialDefaultDiscoverable" to true))
                 } else {
                     val changes = mutableMapOf<String, Any>()
                     if (existingPlayer.accountType == PlayerAccountType.GUEST && !identity.isAnonymous) {

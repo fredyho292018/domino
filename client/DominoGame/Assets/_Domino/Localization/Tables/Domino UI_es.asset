@@ -1286,6 +1286,128 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 5348534227070976
+    m_Localized: Social
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014016
+    m_Localized: Buscar jugadores
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014017
+    m_Localized: "Nombre o c\xF3digo de amigo"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014018
+    m_Localized: "C\xF3digo de amigo"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014019
+    m_Localized: Copiar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014020
+    m_Localized: "C\xF3digo de amigo copiado"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014021
+    m_Localized: Borrar
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014022
+    m_Localized: Bloqueados
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014023
+    m_Localized: Privacidad
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014024
+    m_Localized: No se encontraron jugadores
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014025
+    m_Localized: No hay jugadores bloqueados
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014026
+    m_Localized: Jugadores
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014027
+    m_Localized: Ver perfil
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014028
+    m_Localized: Bloquear jugador
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014029
+    m_Localized: Desbloquear
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014030
+    m_Localized: "\xBFBloquear a este jugador? No aparecer\xE1n en las b\xFAsquedas
+      del otro."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014031
+    m_Localized: Jugador bloqueado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014032
+    m_Localized: Jugador desbloqueado
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014033
+    m_Localized: "Elige si otros jugadores pueden encontrarte por nombre. Tu c\xF3digo
+      compartido seguir\xE1 funcionando."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014034
+    m_Localized: "Visible por nombre: S\xED"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014035
+    m_Localized: 'Visible por nombre: No'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014036
+    m_Localized: "Escribe de 3 a 16 letras, n\xFAmeros, - o _."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014037
+    m_Localized: Jugador no disponible
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5348534269014038
+    m_Localized: "B\xFAsqueda no disponible. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -1540,3 +1662,27 @@ MonoBehaviour:
         - id: 5056665228177413
         - id: 5056665228177414
         - id: 5056665228177415
+        - id: 5348534227070976
+        - id: 5348534269014016
+        - id: 5348534269014017
+        - id: 5348534269014018
+        - id: 5348534269014019
+        - id: 5348534269014020
+        - id: 5348534269014021
+        - id: 5348534269014022
+        - id: 5348534269014023
+        - id: 5348534269014024
+        - id: 5348534269014025
+        - id: 5348534269014026
+        - id: 5348534269014027
+        - id: 5348534269014028
+        - id: 5348534269014029
+        - id: 5348534269014030
+        - id: 5348534269014031
+        - id: 5348534269014032
+        - id: 5348534269014033
+        - id: 5348534269014034
+        - id: 5348534269014035
+        - id: 5348534269014036
+        - id: 5348534269014037
+        - id: 5348534269014038

@@ -43,6 +43,11 @@ namespace Domino.Client
             startMenu = new GameObject("Domino Start Menu", typeof(RectTransform)).AddComponent<StartMenuView>();
             startMenu.Initialize(new GameModeDefinition(preview.Mode), preview.Configuration);
             startMenu.StartRequested += StartFromMenu;
+            startMenu.SocialRequested += () => {
+                startMenu.Show(StartScreen.Match);
+                var social=new GameObject("Social",typeof(RectTransform)).AddComponent<Domino.Social.SocialView>();
+                social.Initialize(new Domino.Social.SocialClient(ApplicationServices.SocialApi,()=>ApplicationServices.Identity?.Current?.Uid),()=>{if(startMenu)startMenu.Show(StartScreen.MainMenu);});
+            };
             startMenu.HistoryRequested += () => {
                 startMenu.Show(StartScreen.Match);
                 var history=new GameObject("Match history",typeof(RectTransform)).AddComponent<Domino.Replay.HistoryReplayView>();

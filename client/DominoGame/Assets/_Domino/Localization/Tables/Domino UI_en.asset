@@ -1286,6 +1286,127 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 5348534227070976
+    m_Localized: Social
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014016
+    m_Localized: Search players
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014017
+    m_Localized: Name or friend code
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014018
+    m_Localized: Friend code
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014019
+    m_Localized: Copy
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014020
+    m_Localized: Friend code copied
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014021
+    m_Localized: Clear
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014022
+    m_Localized: Blocked players
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014023
+    m_Localized: Privacy
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014024
+    m_Localized: No players found
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014025
+    m_Localized: No blocked players
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014026
+    m_Localized: Players
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014027
+    m_Localized: Player profile
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014028
+    m_Localized: Block player
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014029
+    m_Localized: Unblock player
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014030
+    m_Localized: Block this player? You will be hidden from each other's discovery.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014031
+    m_Localized: Player blocked
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014032
+    m_Localized: Player unblocked
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014033
+    m_Localized: Choose whether other players can find you by name. Your shared friend
+      code still works.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014034
+    m_Localized: 'Discoverable by name: On'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014035
+    m_Localized: 'Discoverable by name: Off'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014036
+    m_Localized: "Enter 3\u201316 letters, numbers, - or _."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014037
+    m_Localized: Player unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5348534269014038
+    m_Localized: Search unavailable. Please try again.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1538,3 +1659,27 @@ MonoBehaviour:
         - id: 5056665228177413
         - id: 5056665228177414
         - id: 5056665228177415
+        - id: 5348534227070976
+        - id: 5348534269014016
+        - id: 5348534269014017
+        - id: 5348534269014018
+        - id: 5348534269014019
+        - id: 5348534269014020
+        - id: 5348534269014021
+        - id: 5348534269014022
+        - id: 5348534269014023
+        - id: 5348534269014024
+        - id: 5348534269014025
+        - id: 5348534269014026
+        - id: 5348534269014027
+        - id: 5348534269014028
+        - id: 5348534269014029
+        - id: 5348534269014030
+        - id: 5348534269014031
+        - id: 5348534269014032
+        - id: 5348534269014033
+        - id: 5348534269014034
+        - id: 5348534269014035
+        - id: 5348534269014036
+        - id: 5348534269014037
+        - id: 5348534269014038
