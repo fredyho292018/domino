@@ -16,6 +16,8 @@ class RealtimeProtocolTests {
     fun `invalid envelope closes`(message: String) {
         val fixture=RealtimeHandlerTests();val peer=fixture.peer()
         fixture.handler.handleMessage(peer.socket,TextMessage(message))
+        kotlin.test.assertTrue(fixture.handler.awaitOutboundIdle())
         assertFalse(peer.socket.isOpen)
+        fixture.shutdown()
     }
 }

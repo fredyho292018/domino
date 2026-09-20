@@ -12,12 +12,19 @@ import java.util.UUID
 import kotlin.test.*
 
 class OnlineTransportTests {
-    class Peer(val socket: WebSocketSession,val uid: String) {val output=mutableListOf<String>();var sequence=0L}
+    class Peer(val socket: WebSocketSession,val uid: String) {val output=java.util.concurrent.CopyOnWriteArrayList<String>();var sequence=0L}
     @Test fun `authenticated commands fan out only to participant UID connections with private cursors`() {
         val f=OnlineFixture();val presence=RealtimeHandlerTests.MemoryPresence()
         val handler=RealtimeHandler(FirebaseTokenVerifier {FirebaseIdentity(it,true)},presence,RealtimeProperties(),f.service)
         fun send(p: Peer,type: String,payload: Any) {
             handler.handleMessage(p.socket,TextMessage(GameCatalogCodec.mapper.writeValueAsString(mapOf("type" to type,"version" to 1,"sequence" to ++p.sequence,"timestamp" to Instant.now().toString(),"payload" to payload))))
+            assertTrue(handler.awaitOutboundIdle())
+            if(type=="MATCH_COMMAND" && p.output.last().contains("COMMAND_ACCEPTED")) {
+                val nodes=p.output.map{GameCatalogCodec.mapper.readTree(it)}
+                val ack=nodes.last()["payload"]
+                val update=nodes.last{it["type"].asString()=="MATCH_UPDATE"}["payload"]
+                assertEquals(ack["resultingSequence"].asLong(),update["snapshot"]["publicState"]["lastSequence"].asLong())
+            }
         }
         fun peer(uid: String): Peer {
             val p=Peer(mock(WebSocketSession::class.java),uid)
@@ -26,7 +33,7 @@ class OnlineTransportTests {
             handler.afterConnectionEstablished(p.socket);send(p,"AUTH",mapOf("idToken" to uid));return p
         }
         val a=peer("p0");val a2=peer("p0");val b=peer("p1");val other=peer("unrelated")
-        f.join()
+        f.join();assertTrue(handler.awaitOutboundIdle())
         repeat(30) {
             val s=f.state();if(s.phase==OnlinePhase.PLAYING)return@repeat
             val st=s.starter!!
@@ -52,5 +59,15 @@ class OnlineTransportTests {
         val before=f.state()
         send(other,"MATCH_COMMAND",OnlineCommand(1,"attack",f.id,OnlineCommandType.PASS))
         assertTrue(other.output.last().contains("NOT_PARTICIPANT"));assertEquals(before,f.state())
+        handler.afterConnectionClosed(a.socket,CloseStatus.NORMAL);assertTrue(handler.awaitOutboundIdle())
+        val reconnect=peer("p0")
+        assertEquals(1,GameCatalogCodec.mapper.readTree(reconnect.output.first())["sequence"].asInt())
+        val restored=f.service.snapshot("p0",f.id)
+        assertEquals(OnlineMatchService.snapshot(before,"p0").copy(serverNow=restored.serverNow),restored)
+        f.move();assertTrue(handler.awaitOutboundIdle())
+        assertTrue(reconnect.output.any{it.contains("MATCH_UPDATE")})
+        val updated=f.service.snapshot("p0",f.id)
+        assertEquals(OnlineMatchService.snapshot(f.state(),"p0").copy(serverNow=updated.serverNow),updated)
+        handler.shutdown();assertTrue(handler.awaitOutboundIdle())
     }
 }

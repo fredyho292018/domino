@@ -25,6 +25,7 @@ class RealtimeHandler(
     private val online: OnlineMatchService? = null,
     private val turnWorker: OnlineTurnWorker? = null,
     private val matchmaking: com.teamfho.domino.matchmaking.MatchmakingService? = null,
+    private val outboundMetrics: OutboundMetrics? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -33,7 +34,9 @@ class RealtimeHandler(
         var lastLease = opened
         @Volatile var uid: String? = null
         var subscribed = false
-        var sequence = 0L
+        lateinit var outbound: ConnectionOutbound
+        val leaseLock = Any()
+        var cleaned = false
         var incoming = 0L
         var rateWindow = opened
         var messages = 0
@@ -69,17 +72,25 @@ class RealtimeHandler(
         }
     }
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        if (connections.size >= 1000) { session.close(CloseStatus.SERVICE_OVERLOAD); return }
-        session.textMessageSizeLimit = MAX_BYTES
-        session.binaryMessageSizeLimit = 1
-        connections[session.id] = Connection(session)
+        val admitted = synchronized(connections) {
+            if (connections.size >= 1000) false else {
+                session.textMessageSizeLimit = MAX_BYTES
+                session.binaryMessageSizeLimit = 1
+                val c = Connection(session)
+                c.outbound = ConnectionOutbound(session, cleaned = { cleanup(c) }, metrics = outboundMetrics)
+                connections[session.id] = c
+                true
+            }
+        }
+        // Pre-admission framework rejection: there is no application writer/session lease.
+        if (!admitted) session.close(CloseStatus.SERVICE_OVERLOAD)
     }
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         val c = connections[session.id] ?: return
         var onlineCommand: OnlineCommand? = null
         try {
             synchronized(c) {
-                if (!session.isOpen) return
+                if (!session.isOpen || !c.outbound.isAccepting()) return
                 val now = System.nanoTime()
                 if (now - c.rateWindow >= 1_000_000_000) { c.rateWindow = now; c.messages = 0 }
                 if (++c.messages > properties.messagesPerSecond) { fail(c, "RATE_LIMIT"); return }
@@ -100,10 +111,13 @@ class RealtimeHandler(
                         if (token.isBlank() || token.length > 8192) { fail(c, "AUTH_TOKEN_INVALID", true); return }
                         val identity = verifier.verify(token)
                         // Timeout task may have closed the socket during Firebase verification.
-                        if (!session.isOpen || expired(c.opened, properties.authTimeoutSeconds)) { close(c, 1008); return }
+                        if (!c.outbound.isAccepting() || !session.isOpen || expired(c.opened, properties.authTimeoutSeconds)) { close(c, 1008); return }
                         presence.touch(identity.uid, c.id, serverId)
-                        if (!session.isOpen) { presence.remove(identity.uid, c.id); cleanup(c); return }
-                        c.uid = identity.uid
+                        val ownsLease = synchronized(c.leaseLock) {
+                            if (c.cleaned) false else { c.uid = identity.uid; true }
+                        }
+                        if (!ownsLease) { presence.remove(identity.uid, c.id); return }
+                        if (!c.outbound.isAccepting()) return
                         c.lastHeartbeat = System.nanoTime(); c.lastLease = c.lastHeartbeat
                         send(c, "AUTHENTICATED", mapOf("heartbeatIntervalSeconds" to properties.heartbeatIntervalSeconds,
                             "heartbeatTimeoutSeconds" to properties.heartbeatTimeoutSeconds))
@@ -116,7 +130,10 @@ class RealtimeHandler(
                             "PING" -> {
                                 c.lastHeartbeat = now
                                 if (expired(c.lastLease, properties.heartbeatIntervalSeconds)) {
-                                    presence.touch(c.uid!!, c.id, serverId); c.lastLease = now
+                                    synchronized(c.leaseLock) {
+                                        if(c.cleaned) return
+                                        presence.touch(c.uid!!, c.id, serverId); c.lastLease = now
+                                    }
                                 }
                                 send(c, "PONG", emptyMap())
                             }
@@ -160,34 +177,46 @@ class RealtimeHandler(
         "waitingPlayers" to (matchmaking?.waiting()?:0), "openRooms" to 0, "generatedAt" to Instant.now().toString())
     private fun expired(since: Long, seconds: Long) = System.nanoTime() - since >= seconds * 1_000_000_000
     private fun send(c: Connection, type: String, payload: Map<String, Any>) {
-        c.socket.sendMessage(TextMessage(json.writeValueAsString(mapOf("type" to type, "version" to 1,
-            "sequence" to ++c.sequence, "timestamp" to Instant.now().toString(), "payload" to payload))))
+        when(type) {
+            "MATCH_UPDATE", "COMMAND_ACCEPTED", "COMMAND_REJECTED", "MATCH_FOUND", "MATCHMAKING_STATUS" -> c.outbound.offerCritical(type,payload)
+            else -> c.outbound.offerControl(type,payload)
+        }
     }
     private fun fail(c: Connection, code: String, auth: Boolean = false, retryable: Boolean = false) {
-        try { send(c, if (auth) "AUTH_FAILED" else "SYSTEM_ERROR", mapOf("code" to code)) }
-        finally { close(c, if (retryable) 1013 else 1008) }
+        send(c, if (auth) "AUTH_FAILED" else "SYSTEM_ERROR", mapOf("code" to code))
+        c.outbound.finish(if(retryable) 1013 else 1008)
     }
-    private fun close(c: Connection, code: Int) {
-        try { c.socket.close(CloseStatus(code, "Realtime closed")) } catch (_: Exception) { }
-        cleanup(c)
-    }
+    private fun close(c: Connection, code: Int) = c.outbound.close(code)
     private fun cleanup(c: Connection) {
-        if (!connections.remove(c.socket.id, c)) return
-        c.uid?.let { try { presence.remove(it, c.id) } catch (_: Exception) { /* lease expires */ };turnWorker?.connectionChanged(it);matchmaking?.connectionLost(it) }
+        val uid = synchronized(c.leaseLock) {
+            if(c.cleaned) return
+            c.cleaned=true
+            c.uid
+        }
+        try {
+            uid?.let {
+                try { presence.remove(it,c.id) } catch(_:Exception) { /* existing TTL fallback */ }
+                turnWorker?.connectionChanged(it)
+                matchmaking?.connectionLost(it)
+            }
+        } finally { connections.remove(c.socket.id,c) }
     }
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        connections[session.id]?.let { synchronized(it) { cleanup(it) } }
+        connections[session.id]?.outbound?.close(remote=true)
     }
     override fun handleTransportError(session: WebSocketSession, exception: Throwable) {
-        connections[session.id]?.let { synchronized(it) { close(it, 1011) } }
+        connections[session.id]?.outbound?.close(1011)
     }
+    internal fun awaitOutboundIdle():Boolean = connections.values.toList().all {it.outbound.awaitIdle()}
+    @jakarta.annotation.PreDestroy
+    fun shutdown() {connections.values.toList().forEach {it.outbound.close()} }
+
     @Scheduled(fixedDelay = 1000)
     fun expireConnections() {
         connections.values.forEach { c ->
             // Closing an unauthenticated transport must not wait for token verification.
             if (c.uid == null && expired(c.opened, properties.authTimeoutSeconds)) {
-                try { c.socket.close(CloseStatus.POLICY_VIOLATION) } catch (_: Exception) { }
-                cleanup(c)
+                close(c,1008)
                 return@forEach // verification thread performs cleanup; do not block the deadline scheduler
             }
             synchronized(c) {

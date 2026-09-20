@@ -40,18 +40,20 @@ class MatchmakingContractTests {
         val presence=RealtimeHandlerTests.MemoryPresence()
         val handler=RealtimeHandler(FirebaseTokenVerifier{FirebaseIdentity(it,true)},presence,RealtimeProperties(),matchmaking=service)
         fun peer(uid:String):MutableList<String> {
-            val socket=mock(WebSocketSession::class.java);val out=mutableListOf<String>()
+            val socket=mock(WebSocketSession::class.java);val out=java.util.concurrent.CopyOnWriteArrayList<String>()
             `when`(socket.id).thenReturn(UUID.randomUUID().toString());`when`(socket.isOpen).thenReturn(true)
             doAnswer{out.add((it.arguments[0] as TextMessage).payload);null}.`when`(socket).sendMessage(any())
             handler.afterConnectionEstablished(socket)
             handler.handleMessage(socket,TextMessage(GameCatalogCodec.mapper.writeValueAsString(mapOf("type" to "AUTH","version" to 1,"sequence" to 1,"timestamp" to Instant.now().toString(),"payload" to mapOf("idToken" to uid)))))
-            out.clear();return out
+            assertTrue(handler.awaitOutboundIdle());out.clear();return out
         }
         val first=peer("a");val second=peer("a");val other=peer("b")
         service.notify("a","MATCH_FOUND",QueueStatus(QueueState.MATCHED,MatchFound(UUID.randomUUID().toString(),0,"Opponent","DUEL_1V1","double-nine-duel",1)))
+        assertTrue(handler.awaitOutboundIdle())
         assertEquals(1,first.size);assertEquals(1,second.size);assertTrue(other.isEmpty())
         val payload=GameCatalogCodec.mapper.readTree(first.single())["payload"]
         assertEquals("MATCHED",payload["state"].asText())
         assertFalse(first.single().contains("uid"));assertFalse(first.single().contains("token"));assertFalse(first.single().contains("hand"))
+        handler.shutdown();assertTrue(handler.awaitOutboundIdle())
     }
 }
