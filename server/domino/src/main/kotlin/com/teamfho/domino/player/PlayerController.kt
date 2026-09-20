@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-class PlayerController(private val service: PlayerBootstrapService, private val displayNames: PlayerDisplayNameService) {
+class PlayerController(private val service: PlayerBootstrapService, private val displayNames: PlayerDisplayNameService,
+    private val entitlements: com.teamfho.domino.entitlement.EntitlementService) {
     @PutMapping("/api/v1/player/display-name", consumes = ["application/json"], produces = ["application/json"])
     fun updateDisplayName(@AuthenticationPrincipal identity: FirebaseIdentity,
         @RequestBody request: PlayerDisplayNameRequest): PlayerBootstrapResponse =
@@ -18,4 +19,5 @@ class PlayerController(private val service: PlayerBootstrapService, private val 
         @AuthenticationPrincipal identity: FirebaseIdentity,
         @RequestBody(required = false) request: PlayerBootstrapRequest?
     ): PlayerBootstrapResponse = PlayerBootstrapResponse.from(service.bootstrap(identity, request))
+        .copy(entitlements=entitlements.bootstrap(identity))
 }

@@ -25,6 +25,13 @@ namespace Domino.Player
         public BackendAvailability Availability { get; private set; }
         public PlayerSnapshot Player { get; private set; }
         public WalletSnapshot Wallet { get; private set; }
+        public EntitlementSummaryDto Entitlements { get; private set; }
+        public event Action EntitlementsChanged;
+        // Presentation snapshot only; server endpoints remain the access authority.
+        public void ReceiveEntitlements(string uid, EntitlementSummaryDto value) {
+            if(disposed || Player?.Uid!=uid || identity.Current?.Uid!=uid)return;
+            Entitlements=value;EntitlementsChanged?.Invoke();
+        }
         public DominoApiException Error { get; private set; }
         public bool HasConfirmedSnapshots => Player != null && Wallet != null;
         public bool IsFresh => HasConfirmedSnapshots && State == PlayerSyncState.SYNCED;
@@ -97,6 +104,7 @@ namespace Domino.Player
                     player.AccountType != Player.AccountType || player.Language != Player.Language || player.Status != Player.Status))
                     throw new DominoApiException(ApiFailure.Contract, 200);
                 Player = player;
+                if(!IsSaving) ReceiveEntitlements(user.Uid,result.entitlements);
                 if (!IsSaving) Wallet = wallet;
                 IsSaving = false;
                 Notify(SnapshotChanged, Player);

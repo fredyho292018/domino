@@ -16,6 +16,7 @@ namespace Domino.UI
         Text summary, balance, account, status, feedback;
         string feedbackKey;
         bool saving;
+        EntitlementProfilePresentation premium;
         public Button OpenButton { get; private set; }
         public Button SaveButton { get; private set; }
         public Button RetryButton { get; private set; }
@@ -44,7 +45,9 @@ namespace Domino.UI
             DominoLocalization.Bind(summary, () => DisplayedName + "\n" + DisplayedStatus);
             overlay = UiKit.Panel("Profile overlay", parent, new Vector2(2600,3400), Vector2.zero, new Color(0,0,0,.78f)).gameObject;
             overlay.GetComponent<Image>().raycastTarget = true;
-            panel = UiKit.Panel("Player profile", overlay.transform, new Vector2(880,690), Vector2.zero, UiKit.Hex("1D403E")).rectTransform;
+            panel = UiKit.Panel("Player profile", overlay.transform, new Vector2(880,860), Vector2.zero, UiKit.Hex("1D403E")).rectTransform;
+            var premiumLabel=UiKit.Label("Premium state",panel,"",new Vector2(770,90),new Vector2(0,365),20,UiKit.Gold);
+            premium=gameObject.AddComponent<EntitlementProfilePresentation>();premium.Initialize(service,premiumLabel);
             UiKit.LLabel("Title", panel, "profile.title", new Vector2(770,55), new Vector2(0,285), 32, UiKit.Cream);
             balance = UiKit.Label("Coins", panel, "", new Vector2(750,45), new Vector2(0,218), 27, UiKit.Gold);
             DominoLocalization.Bind(balance, () => DisplayedCoins);
@@ -73,11 +76,13 @@ namespace Domino.UI
         {
             if (service != null) { service.SyncStateChanged -= OnState; service.BackendAvailabilityChanged -= OnAvailability; service.SnapshotChanged -= OnSnapshot; }
             service = playerService;
+            premium?.Bind(playerService);
             if (service != null) { service.SyncStateChanged += OnState; service.BackendAvailabilityChanged += OnAvailability; service.SnapshotChanged += OnSnapshot; }
             Refresh();
         }
         public void Open()
         {
+            premium?.Refresh();
             overlay.SetActive(true); overlay.transform.SetAsLastSibling(); feedbackKey = null;
             AliasInput.text = service?.Player == null || DisplayNameRules.IsGenerated(service.Player.DisplayName) ? "" : service.Player.DisplayName;
             Refresh();

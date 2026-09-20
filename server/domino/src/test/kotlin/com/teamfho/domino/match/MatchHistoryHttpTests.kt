@@ -29,6 +29,9 @@ class MatchHistoryHttpTests {
     @Autowired @Qualifier("requestMappingHandlerMapping") lateinit var mappings: RequestMappingHandlerMapping
     @TestConfiguration(proxyBeanMethods=false)
     class HistoryFixture {
+        @Bean @Primary fun testEntitlements()=com.teamfho.domino.entitlement.EntitlementService(
+            com.teamfho.domino.entitlement.SubscriptionPolicyService({com.teamfho.domino.entitlement.SubscriptionPolicy()}),
+            com.teamfho.domino.entitlement.MemoryEntitlements())
         @Bean @Primary fun testMatchHistory(): PlayerMatchHistoryRepository = object: PlayerMatchHistoryRepository {
             override fun history(uid: String,limit: Int,beforeMatchId: String?): HistoryPage = HistoryPage(listOf(
                 PlayerMatchHistory("history-for-$uid","DUEL_1V1","double-nine-duel",1,HistoryResult.WIN,listOf(150,27),

@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All current Domino data is served through authenticated Spring Boot APIs.
+    // Admin SDK uses IAM; client SDKs must not write grants, projections, trial
+    // evidence, test markers or policy, even for their own Firebase UID.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

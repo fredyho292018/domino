@@ -38,6 +38,12 @@ object ReplayValidationServer {
     @TestConfiguration(proxyBeanMethods=false)
     @org.springframework.context.annotation.Import(com.teamfho.domino.player.FakePlayerFoundationConfiguration::class)
     class Beans {
+        @Bean @Primary fun replayEntitlements():com.teamfho.domino.entitlement.EntitlementService {
+            val repo=com.teamfho.domino.entitlement.MemoryEntitlements();val now=java.time.Instant.now()
+            repo.adminGrant(participant,com.teamfho.domino.entitlement.EntitlementGrant("i4-validation",com.teamfho.domino.entitlement.EntitlementSource.ADMIN_GRANT,
+                validFrom=now.minusSeconds(60),validUntil=now.plusSeconds(3600),createdAt=now,policyVersion=1,reason="I4_REPLAY_VALIDATION",grantedBy="test"))
+            return com.teamfho.domino.entitlement.EntitlementService(com.teamfho.domino.entitlement.SubscriptionPolicyService({com.teamfho.domino.entitlement.SubscriptionPolicy()}),repo)
+        }
         @Bean @Primary fun verifier()=FirebaseTokenVerifier {token->
             if(token!="i4-loopback-participant")throw AuthFailure(ApiErrorCode.AUTH_TOKEN_INVALID)
             FirebaseIdentity(participant,true)

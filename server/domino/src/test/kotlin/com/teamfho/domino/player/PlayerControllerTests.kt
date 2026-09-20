@@ -57,6 +57,8 @@ class PlayerControllerTests {
         val json = mapper.readTree(response.contentAsString)
         val name = json["player"]["displayName"].asText()
         assertTrue(name.matches(Regex("Guest-[A-Z0-9]{8}")))
+        assertEquals("UNAVAILABLE",json["entitlements"]["availability"].asText())
+        (json as tools.jackson.databind.node.ObjectNode).remove("entitlements")
         assertEquals(mapper.readTree("""{"player":{"uid":"$uid","accountType":"$type","displayName":"$name","language":"es","status":"ACTIVE"},"wallet":{"coins":0}}"""), json)
     }
 
@@ -67,7 +69,7 @@ class PlayerControllerTests {
     @ParameterizedTest @ValueSource(strings = ["fr", "de", "ES", "english", ""])
     fun `unsupported language`(language: String) { error(400, "LANGUAGE_UNSUPPORTED", """{"language":"$language"}"""); assertEquals(0, repository.calls) }
 
-    @ParameterizedTest @ValueSource(strings = ["uid", "coins", "accountType", "status", "isAnonymous", "unexpected"])
+    @ParameterizedTest @ValueSource(strings = ["uid", "coins", "accountType", "status", "isAnonymous", "unexpected", "plan", "feature", "validUntil", "trial"])
     fun `unknown fields rejected by actual Jackson mapper`(field: String) { error(400, "REQUEST_INVALID", """{"$field":"secret-internal"}"""); assertEquals(0, repository.calls) }
 
     @ParameterizedTest @ValueSource(strings = ["{", "[]", "{\"language\":{}}", "{\"coins\":null}"])

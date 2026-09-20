@@ -813,6 +813,15 @@
       "key": "online.join_failed",
       "en": "Unable to enter the match. Check your connection and retry.",
       "es": "No se pudo entrar. Revisa la conexión e inténtalo de nuevo."
-    }
+    },
+    {"key": "premium.free", "en": "Free", "es": "Gratis"},
+    {"key": "premium.active", "en": "Premium", "es": "Premium"},
+    {"key": "premium.unavailable", "en": "Premium status temporarily unavailable", "es": "Estado Premium temporalmente no disponible"},
+    {"key": "premium.welcome", "en": "Premium for 7 days — ends {0}\nNo payment. No automatic renewal.", "es": "Premium por 7 días — hasta {0}\nSin pago. Sin renovación automática."},
+    {"key": "premium.trial", "en": "Premium — trial ends {0}\nNo payment. No automatic renewal.", "es": "Premium — prueba hasta {0}\nSin pago. Sin renovación automática."},
+    {"key": "premium.expired", "en": "Your Premium trial ended.\nYou can keep playing for free.", "es": "Tu prueba Premium terminó.\nPuedes seguir jugando gratis."},
+    {"key": "premium.locked", "en": "Premium · Locked", "es": "Premium · Bloqueado"},
+    {"key": "premium.history_limited", "en": "Premium unlocks your full history.", "es": "Premium desbloquea todo tu historial."},
+    {"key": "premium.replay_limited", "en": "This replay requires Premium.", "es": "Este replay requiere Premium."}
   ]
 }

@@ -30,13 +30,15 @@ class MatchStore(private val delegate: FirestoreMatchRepository?): MatchReposito
     override fun history(uid: String,limit: Int,afterMatchId: String?)=ready().history(uid,limit,afterMatchId)
 }
 @RestController
-class MatchHistoryController(private val history: PlayerMatchHistoryRepository) {
+class MatchHistoryController(private val history: PlayerMatchHistoryRepository,
+    private val access:com.teamfho.domino.entitlement.EntitlementHistory) {
     @GetMapping("/api/v1/players/me/matches")
     fun history(@AuthenticationPrincipal identity: FirebaseIdentity,@RequestParam(defaultValue="20") limit: Int,
         @RequestParam(required=false) cursor: String?): ResponseEntity<*> {
         if(limit !in 1..100)return ResponseEntity.badRequest().body(mapOf("code" to "HISTORY_PAGE_INVALID"))
         if(cursor!=null && runCatching {MatchIds.document(cursor)}.isFailure)return ResponseEntity.badRequest().body(mapOf("code" to "HISTORY_CURSOR_INVALID"))
-        return try {ResponseEntity.ok(history.history(identity.uid,limit,cursor))}
+        return try {ResponseEntity.ok(access.page(identity.uid,limit,cursor))}
+        catch(e:com.teamfho.domino.entitlement.EntitlementFailure){throw e}
         catch (_: Exception) {ResponseEntity.status(503).body(mapOf("code" to "MATCH_HISTORY_UNAVAILABLE"))}
     }
 }

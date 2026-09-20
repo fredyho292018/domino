@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.*
 
-class ReplayFixture(partners:Boolean=false):ReplaySource {
+class ReplayFixture(partners:Boolean=false, beforeCommand:(Int)->Unit={}):ReplaySource {
     var reads=0;var eventPages=0
     val events=mutableListOf<MatchEvent>()
     val rounds=mutableMapOf<Int,MatchRound>()
@@ -25,6 +25,7 @@ class ReplayFixture(partners:Boolean=false):ReplaySource {
         var n=0
         while(state.phase!=OnlinePhase.MATCH_FINISHED) {
             check(n++<5000)
+            beforeCommand(n)
             val command=when(state.phase) {
                 OnlinePhase.STARTER_SELECTION->{val st=state.starter!!
                     if(st.method==StarterMethod.EVEN_ODD_GUESS)st.guessingSeat to OnlineCommand(1,"c$n",m.matchId,OnlineCommandType.SUBMIT_EVEN_ODD_GUESS,even=true)

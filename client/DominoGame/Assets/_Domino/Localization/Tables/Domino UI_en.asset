@@ -1239,6 +1239,53 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 5056665186234368
+    m_Localized: Free
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177408
+    m_Localized: Premium
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177409
+    m_Localized: Premium status temporarily unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177410
+    m_Localized: "Premium for 7 days \u2014 ends {0}\nNo payment. No automatic renewal."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177411
+    m_Localized: "Premium \u2014 trial ends {0}\nNo payment. No automatic renewal."
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177412
+    m_Localized: 'Your Premium trial ended.
+
+      You can keep playing for free.'
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177413
+    m_Localized: "Premium \xB7 Locked"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177414
+    m_Localized: Premium unlocks your full history.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5056665228177415
+    m_Localized: This replay requires Premium.
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1482,3 +1529,12 @@ MonoBehaviour:
         - id: 5029480132014083
         - id: 5029480132014084
         - id: 5029480132014085
+        - id: 5056665186234368
+        - id: 5056665228177408
+        - id: 5056665228177409
+        - id: 5056665228177410
+        - id: 5056665228177411
+        - id: 5056665228177412
+        - id: 5056665228177413
+        - id: 5056665228177414
+        - id: 5056665228177415

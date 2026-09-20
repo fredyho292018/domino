@@ -23,6 +23,13 @@ class ReplayHttpTests {
     @Autowired lateinit var mvc: MockMvc
     @TestConfiguration(proxyBeanMethods=false)
     class Fixture {
+        @Bean @Primary fun entitlementFixture():com.teamfho.domino.entitlement.EntitlementService {
+            val repo=com.teamfho.domino.entitlement.MemoryEntitlements()
+            val now=java.time.Instant.now()
+            repo.adminGrant("verified-guest",com.teamfho.domino.entitlement.EntitlementGrant("fixture",com.teamfho.domino.entitlement.EntitlementSource.ADMIN_GRANT,
+                validFrom=now.minusSeconds(60),validUntil=now.plusSeconds(3600),createdAt=now,policyVersion=1,reason="I4_PRIVACY_FIXTURE",grantedBy="test"))
+            return com.teamfho.domino.entitlement.EntitlementService(com.teamfho.domino.entitlement.SubscriptionPolicyService({com.teamfho.domino.entitlement.SubscriptionPolicy()}),repo)
+        }
         @Bean @Primary fun replayFixture():ReplaySource {
             val f=ReplayFixture()
             return object:ReplaySource {

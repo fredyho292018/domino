@@ -21,7 +21,9 @@ namespace Domino.Replay
             if(last<1||last>100000)throw new ReplayDataException("INCOMPLETE_REPLAY");
             var events=new List<JObject>();
             while(events.Count<last) {
-                var page=await api.SendAsync("GET","matches/"+id+"/replay/events?after="+events.Count+"&limit=250",null,token);
+                string session=(string)manifest["accessSession"];
+                var page=await api.SendAsync("GET","matches/"+id+"/replay/events?after="+events.Count+"&limit=250"+
+                    (session==null?"":"&session="+Uri.EscapeDataString(session)),null,token);
                 var items=page["items"] as JArray;
                 if(items==null||items.Count==0||(long?)page["lastSequence"]!=last)throw new ReplayDataException("INCOMPLETE_REPLAY");
                 foreach(JObject e in items){if((long?)e["sequence"]!=events.Count+1L)throw new ReplayDataException("INCOMPLETE_REPLAY");events.Add(e);}

@@ -94,6 +94,12 @@ tasks.register<JavaExec>("replayValidationServer") {
     mainClass.set("com.teamfho.domino.match.ReplayValidationServer")
 }
 
+tasks.register<JavaExec>("entitlementValidationServer") {
+    description = "P0.1 exact-loopback in-memory validation host; test classpath only."
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.teamfho.domino.entitlement.EntitlementValidationServer")
+}
+
 tasks.register<JavaExec>("seedMonetizationPolicy") {
     group = "application"
     description = "Explicitly create systemConfig/monetization only if absent; never overwrites. Uses fallback ENV/YAML and ADC."

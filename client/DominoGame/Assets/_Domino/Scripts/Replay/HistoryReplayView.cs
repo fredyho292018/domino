@@ -51,10 +51,11 @@ namespace Domino.Replay
                 if(reset){history.Clear();cursor=null;}
                 var page=await client.History(cursor,lifetime.Token);if(!this)return;
                 history.AddRange(((JArray)page["items"]).Cast<JObject>());cursor=(string)page["nextCursor"];
-                DrawHistory();DominoLocalization.Set(message,history.Count==0?"history.empty":"history.subtitle");
+                DrawHistory();DominoLocalization.Set(message,history.Count==0?"history.empty":(bool?)page["historyLimited"]==true?"premium.history_limited":"history.subtitle");
                 more.gameObject.SetActive(cursor!=null);more.interactable=true;
             }catch(OperationCanceledException){}
-            catch {if(this){DominoLocalization.Set(message,"history.error");more.gameObject.SetActive(true);more.interactable=true;DominoLocalization.Set(more.GetComponentInChildren<Text>(),"system.retry");}}
+            catch(Exception) {
+                if(this){DominoLocalization.Set(message,"history.error");more.gameObject.SetActive(true);more.interactable=true;DominoLocalization.Set(more.GetComponentInChildren<Text>(),"system.retry");}}
             finally{loading=false;}
         }
         void DrawHistory()
@@ -65,11 +66,18 @@ namespace Domino.Replay
                 row.anchorMin=row.anchorMax=new Vector2(.5f,1);
                 string names=Names(item["participants"] as JArray,item["teams"] as JArray);
                 var label=UiKit.Label("Summary",row,"",new Vector2(810,150),new Vector2(0,30),24,UiKit.Cream);
-                DominoLocalization.Bind(label,()=>DominoLocalization.Get((string)h["modeKey"]=="DUEL_1V1"?"mode.duel.title":"mode.partners_online.title")+"\n"+names+"\n"+string.Join(" — ",h["score"].Values<int>())+" · "+DominoLocalization.Get((string)h["result"]=="WIN"?"result.victory":"result.defeat")+"\n"+DateTimeOffset.Parse((string)h["finishedAt"]).ToLocalTime().ToString("g",System.Globalization.CultureInfo.GetCultureInfo(DominoLocalization.Language)));
+                DominoLocalization.Bind(label,()=>DominoLocalization.Get((string)h["modeKey"]=="DUEL_1V1"?"mode.duel.title":"mode.partners_online.title")+"\n"+names+"\n"+string.Join(" — ",h["score"].Values<int>())+" · "+DominoLocalization.Get((string)h["result"]=="WIN"?"result.victory":"result.defeat")+"\n"+ReadTimestamp(h["finishedAt"]).ToLocalTime().ToString("g",System.Globalization.CultureInfo.GetCultureInfo(DominoLocalization.Language)));
                 bool available=(bool)item["replayAvailable"];
-                UiKit.LButton("View match",row,available?"history.view":"replay.unavailable",new Vector2(400,62),new Vector2(0,-80),UiKit.Hex("397566"),()=>Open((string)h["matchId"]));
+                bool locked=(bool?)item["premiumLocked"]==true;
+                UiKit.LButton("View match",row,locked?"premium.locked":available?"history.view":"replay.unavailable",new Vector2(400,62),new Vector2(0,-80),UiKit.Hex("397566"),()=>{
+                    if(locked)DominoLocalization.Set(message,"premium.replay_limited");else Open((string)h["matchId"]);
+                });
             }
             list.sizeDelta=new Vector2(900,history.Count*260);StyleControls();
+        }
+        static DateTimeOffset ReadTimestamp(JToken token) {
+            if(token is JValue value && value.Value is DateTime date)return new DateTimeOffset(date);
+            return DateTimeOffset.Parse((string)token,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind);
         }
         static string Names(JArray players,JArray teams)
         {

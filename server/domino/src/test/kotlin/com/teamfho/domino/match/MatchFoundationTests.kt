@@ -143,7 +143,14 @@ class MatchFoundationTests {
         val first=repo.history("m4-test-0",2,null);val second=repo.history("m4-test-0",2,first.nextCursor)
         assertEquals(2,first.items.size);assertEquals(1,second.items.size);assertNull(second.nextCursor)
         assertEquals(3,(first.items+second.items).map {it.matchId}.distinct().size)
-        val controller=MatchHistoryController(repo)
+        val policy=com.teamfho.domino.entitlement.SubscriptionPolicyService({com.teamfho.domino.entitlement.SubscriptionPolicy()})
+        val entitlements=com.teamfho.domino.entitlement.EntitlementService(policy,com.teamfho.domino.entitlement.MemoryEntitlements())
+        val source=object:ReplaySource {
+            override fun match(id:String)=repo.read(id)
+            override fun events(id:String,after:Long,limit:Int)=repo.readTrustedEvents(id,after,limit)
+            override fun round(id:String,number:Int)=repo.round(id,number)
+        }
+        val controller=MatchHistoryController(repo,com.teamfho.domino.entitlement.EntitlementHistory(entitlements,repo,source))
         assertTrue((controller.history(FirebaseIdentity("intruder",true),20,null).body as HistoryPage).items.isEmpty())
         assertEquals(400,controller.history(FirebaseIdentity("m4-test-0",true),101,null).statusCode.value())
         assertEquals(400,controller.history(FirebaseIdentity("m4-test-0",true),20,"../bad").statusCode.value())

@@ -14,7 +14,7 @@ data class ReplayManifest(val replaySchemaVersion: Int, val eventSchemaVersion: 
     val modeKey: String, val ruleSnapshot: MatchRuleSnapshot, val participants: List<PublicParticipant>,
     val selfSeat: Int, val teams: List<List<Int>>, val rounds: List<MatchRound>, val finalScore: List<Int>,
     val result: MatchResult?, val firstSequence: Long, val lastSequence: Long, val perspectives: List<Int>,
-    val replayAvailable: Boolean, val replayAvailabilityReason: ReplayAvailability)
+    val replayAvailable: Boolean, val replayAvailabilityReason: ReplayAvailability, val accessSession:String?=null)
 data class ReplayPage(val items: List<MatchEvent>, val nextSequence: Long?, val lastSequence: Long)
 
 /** Read-only dependency surface: replay cannot obtain a transaction or an online command handler. */
@@ -24,7 +24,21 @@ interface ReplaySource {
     fun round(id: String, number: Int): MatchRound?
 }
 
-class ReplayService(private val source: ReplaySource) {
+class ReplayService(private val source: ReplaySource, private val authorizeEntry:((String,String)->Unit)?=null,
+    private val clock:java.time.Clock=java.time.Clock.systemUTC()) {
+    private data class Session(val uid:String,val id:String,val until:java.time.Instant)
+    private val sessions=object:LinkedHashMap<String,Session>() {
+        override fun removeEldestEntry(eldest:MutableMap.MutableEntry<String,Session>)=size>2048
+    }
+    @Synchronized private fun enter(uid:String,id:String):String? {
+        authorizeEntry?.invoke(uid,id)?:return null
+        sessions.entries.removeIf{clock.instant()>=it.value.until}
+        return java.util.UUID.randomUUID().toString().also{sessions[it]=Session(uid,id,clock.instant().plusSeconds(1800))}
+    }
+    @Synchronized private fun access(uid:String,id:String,session:String?) {
+        val s=session?.let{sessions[it]}
+        if(s==null || s.uid!=uid || s.id!=id || clock.instant()>=s.until) authorizeEntry?.invoke(uid,id)
+    }
     private data class Archive(val match: Match, val rounds: List<MatchRound>, val events: List<MatchEvent>)
     // Only finished immutable archives. Bounded by both match count and per-match event count.
     private val cache=object: LinkedHashMap<String,Archive>(16,.75f,true) {
@@ -76,15 +90,17 @@ class ReplayService(private val source: ReplaySource) {
     }
     fun manifest(uid: String,id: String): ReplayManifest {
         val m=authorized(uid,id)
+        val session=enter(uid,id)
         var availability=ReplayAvailability.AVAILABLE
         val archive=try{archive(m)}catch(e:ReplayFailure){availability=e.reason;null}
         return ReplayManifest(1,1,id,m.modeKey,m.ruleSnapshot,m.participants.map{PublicParticipant(it.seatIndex,it.displayNameSnapshot,it.teamId,it.controlType)},
             m.participants.single{it.playerUid==uid}.seatIndex,m.ruleSnapshot.mode().seatTeams,archive?.rounds.orEmpty(),m.score,m.result,1,m.lastSequence,
-            if(archive!=null)m.participants.map{it.seatIndex}else emptyList(),archive!=null,availability)
+            if(archive!=null)m.participants.map{it.seatIndex}else emptyList(),archive!=null,availability,session)
     }
-    fun page(uid: String,id: String,after: Long,limit: Int): ReplayPage {
+    fun page(uid: String,id: String,after: Long,limit: Int,session:String?=null): ReplayPage {
         require(after>=0&&limit in 1..250)
-        val a=archive(authorized(uid,id));require(after<=a.match.lastSequence)
+        val m=authorized(uid,id);access(uid,id,session)
+        val a=archive(m);require(after<=a.match.lastSequence)
         val page=a.events.drop(after.toInt()).take(limit).map{it.copy(causedByCommandId=null)}
         val next=page.lastOrNull()?.sequence?.takeIf{it<a.match.lastSequence}
         return ReplayPage(page,next,a.match.lastSequence)
@@ -98,7 +114,7 @@ class ReplayConfiguration {
         override fun events(id:String,after:Long,limit:Int)=store.readTrustedEvents(id,after,limit)
         override fun round(id:String,number:Int)=store.round(id,number)
     }
-    @Bean fun replayService(source:ReplaySource)=ReplayService(source)
+    @Bean fun replayService(source:ReplaySource,access:com.teamfho.domino.entitlement.EntitlementHistory)=ReplayService(source,access::requireReplay)
 }
 @RestController
 class ReplayController(private val replay:ReplayService) {
@@ -106,9 +122,11 @@ class ReplayController(private val replay:ReplayService) {
     fun manifest(@AuthenticationPrincipal principal:FirebaseIdentity,@PathVariable id:String)=respond{replay.manifest(principal.uid,id)}
     @GetMapping("/api/v1/matches/{id}/replay/events")
     fun page(@AuthenticationPrincipal principal:FirebaseIdentity,@PathVariable id:String,
-        @RequestParam(defaultValue="0") after:Long,@RequestParam(defaultValue="250") limit:Int)=respond{replay.page(principal.uid,id,after,limit)}
+        @RequestParam(defaultValue="0") after:Long,@RequestParam(defaultValue="250") limit:Int,
+        @RequestParam(required=false) session:String?=null)=respond{replay.page(principal.uid,id,after,limit,session)}
     private fun respond(action:()->Any):ResponseEntity<*> = try{ResponseEntity.ok(action())}
         catch(_:ReplayForbidden){ResponseEntity.status(403).body(mapOf("code" to "REPLAY_FORBIDDEN"))}
+        catch(e:com.teamfho.domino.entitlement.EntitlementFailure){throw e}
         catch(e:ReplayFailure){ResponseEntity.status(409).body(mapOf("code" to e.reason.name))}
         catch(_:IllegalArgumentException){ResponseEntity.badRequest().body(mapOf("code" to "REPLAY_REQUEST_INVALID"))}
         catch(_:Exception){ResponseEntity.status(503).body(mapOf("code" to "REPLAY_UNAVAILABLE"))}

@@ -991,6 +991,42 @@ MonoBehaviour:
     m_Key: replay.pips
     m_Metadata:
       m_Items: []
+  - m_Id: 5056665186234368
+    m_Key: premium.free
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177408
+    m_Key: premium.active
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177409
+    m_Key: premium.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177410
+    m_Key: premium.welcome
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177411
+    m_Key: premium.trial
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177412
+    m_Key: premium.expired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177413
+    m_Key: premium.locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177414
+    m_Key: premium.history_limited
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5056665228177415
+    m_Key: premium.replay_limited
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
