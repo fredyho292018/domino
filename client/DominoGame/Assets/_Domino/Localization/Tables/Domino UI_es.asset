@@ -1519,6 +1519,101 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572444
+  - m_Id: 5380159941931008
+    m_Localized: Seguir
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651264
+    m_Localized: Siguiendo
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651265
+    m_Localized: Seguidores
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651266
+    m_Localized: "Seguir tambi\xE9n"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651267
+    m_Localized: Dejar de seguir
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651268
+    m_Localized: "A\xFAn no tienes seguidores"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651269
+    m_Localized: "A\xFAn no sigues a nadie"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651270
+    m_Localized: Ahora sigues a este jugador
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651271
+    m_Localized: Has dejado de seguir al jugador
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651272
+    m_Localized: No se puede seguir al jugador
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651273
+    m_Localized: Este jugador no acepta seguidores en este momento
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651274
+    m_Localized: "Qui\xE9n puede seguirme"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651275
+    m_Localized: "Qui\xE9n puede enviarme solicitudes"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651276
+    m_Localized: Todos
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651277
+    m_Localized: Nadie
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651278
+    m_Localized: "Qui\xE9n puede ver cu\xE1ndo estoy conectado"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651279
+    m_Localized: "Qui\xE9n puede ver mi actividad de partidas"
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651280
+    m_Localized: Privacidad actualizada
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
+  - m_Id: 5380160000651281
+    m_Localized: No se puede actualizar la privacidad
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572444
   references:
     version: 2
     RefIds:
@@ -1819,3 +1914,22 @@ MonoBehaviour:
         - id: 5364562327793682
         - id: 5364562327793683
         - id: 5364562327793684
+        - id: 5380159941931008
+        - id: 5380160000651264
+        - id: 5380160000651265
+        - id: 5380160000651266
+        - id: 5380160000651267
+        - id: 5380160000651268
+        - id: 5380160000651269
+        - id: 5380160000651270
+        - id: 5380160000651271
+        - id: 5380160000651272
+        - id: 5380160000651273
+        - id: 5380160000651274
+        - id: 5380160000651275
+        - id: 5380160000651276
+        - id: 5380160000651277
+        - id: 5380160000651278
+        - id: 5380160000651279
+        - id: 5380160000651280
+        - id: 5380160000651281

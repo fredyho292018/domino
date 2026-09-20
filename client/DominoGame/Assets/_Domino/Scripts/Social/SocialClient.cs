@@ -20,9 +20,9 @@ namespace Domino.Social
         {
             if(!config.IsAvailable)throw new SocialException("SOCIAL_SERVICE_UNAVAILABLE");
             string resource=path.Split('?')[0];
-            bool own=resource=="player/social-summary"||resource=="player/social-settings"||resource=="player/blocks"||resource=="player/friends"||resource=="player/friend-requests";
+            bool own=resource=="player/social-summary"||resource=="player/social-settings"||resource=="player/blocks"||resource=="player/followers"||resource=="player/following"||resource=="player/friends"||resource=="player/friend-requests";
             bool profile=System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/profile$");
-            bool block=System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/block$");
+            bool block=System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/(block|follow)$");
             bool friendship=method=="POST"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^players/[A-Za-z0-9_-]{22}/friend-request$") ||
                 method=="POST"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^friend-requests/[a-f0-9-]{36}/(accept|decline)$") ||
                 method=="DELETE"&&System.Text.RegularExpressions.Regex.IsMatch(resource,@"^friend-requests/[a-f0-9-]{36}$") ||
@@ -36,7 +36,7 @@ namespace Domino.Social
                 if(response.Status==401&&attempt==0)continue;
                 if(response.Status!=200) {
                     string code=null;try{code=(string)JObject.Parse(response.Body)["code"];}catch(JsonException){}
-                    switch(code){case "FRIEND_LIMIT_REACHED":case "SOCIAL_ACTION_NOT_ALLOWED":case "ALREADY_FRIENDS":case "FRIEND_REQUEST_NOT_FOUND":case "FRIEND_REQUEST_NOT_PENDING":case "FRIEND_REQUEST_NOT_RECIPIENT":case "FRIEND_REQUEST_NOT_SENDER":case "PLAYER_NOT_FOUND":case "INVALID_FRIEND_CODE":case "INVALID_SEARCH_QUERY":case "SOCIAL_ACTION_RATE_LIMITED":case "REVISION_MISMATCH":throw new SocialException(code);}
+                    switch(code){case "SELF_RELATION_NOT_ALLOWED":case "FRIEND_LIMIT_REACHED":case "SOCIAL_ACTION_NOT_ALLOWED":case "ALREADY_FRIENDS":case "FRIEND_REQUEST_NOT_FOUND":case "FRIEND_REQUEST_NOT_PENDING":case "FRIEND_REQUEST_NOT_RECIPIENT":case "FRIEND_REQUEST_NOT_SENDER":case "PLAYER_NOT_FOUND":case "INVALID_FRIEND_CODE":case "INVALID_SEARCH_QUERY":case "SOCIAL_ACTION_RATE_LIMITED":case "REVISION_MISMATCH":throw new SocialException(code);}
                     throw new SocialException("SOCIAL_SERVICE_UNAVAILABLE");
                 }
                 return JObject.Parse(response.Body);
@@ -56,6 +56,13 @@ namespace Domino.Social
             if(!SessionValid)throw new OperationCanceledException();return result;
         }
         public Task<JObject> Summary(CancellationToken t)=>Send("GET","player/social-summary",null,t);
+        public Task<JObject> Follows(bool following,string cursor,CancellationToken t)=>Send("GET","player/"+(following?"following":"followers")+"?limit=20"+Page(cursor),null,t);
+        public Task<JObject> Follow(string id,bool enabled,CancellationToken t)=>Send(enabled?"POST":"DELETE","players/"+Id(id)+"/follow",null,t);
+        public Task<JObject> Privacy(string field,string value,long revision,CancellationToken t) {
+            bool contact=field=="friendRequests"||field=="follow",visibility=field=="presenceVisibility"||field=="matchActivityVisibility";
+            if(!(contact||visibility)||!(value=="EVERYONE"||value=="NO_ONE"||visibility&&value=="FRIENDS"))throw new SocialException("INVALID_SEARCH_QUERY");
+            return Send("PATCH","player/social-settings",new JObject{[field]=value,["revision"]=revision},t);
+        }
         public Task<JObject> Friends(string cursor,CancellationToken t)=>Send("GET","player/friends?limit=20"+Page(cursor),null,t);
         public Task<JObject> Requests(bool incoming,string cursor,CancellationToken t)=>Send("GET","player/friend-requests?direction="+(incoming?"INCOMING":"OUTGOING")+"&limit=20"+Page(cursor),null,t);
         public Task<JObject> AddFriend(string id,CancellationToken t)=>Send("POST","players/"+Id(id)+"/friend-request",null,t);

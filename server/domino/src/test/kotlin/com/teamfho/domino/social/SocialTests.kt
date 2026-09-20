@@ -24,7 +24,7 @@ class MemorySocial(private val friendStore:MemoryFriendships?=null) : PublicIden
     override fun privacy(uid:String)=settings.getValue(uid)
     @Synchronized override fun patchPrivacy(uid:String,patch:PrivacyPatch):SocialPrivacySettings {
         val old=privacy(uid);socialCheck(old.revision==patch.revision,"REVISION_MISMATCH",409)
-        return old.copy(discoverableByName=patch.discoverableByName,revision=old.revision+if(old.discoverableByName==patch.discoverableByName)0 else 1).also{settings[uid]=it}
+        return patch.apply(old).also{settings[uid]=it;friendStore?.docs?.put("players/$uid/socialSettings/current",com.teamfho.domino.match.MatchCodec.map(it))}
     }
     override fun search(prefix:String,afterName:String?,afterId:String?,budget:Int):CandidatePage {
         this.budget=budget

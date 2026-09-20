@@ -21,8 +21,10 @@ class SocialHttpTests {
     @Autowired lateinit var mvc:MockMvc
     @TestConfiguration(proxyBeanMethods=false) class Fixture {
         private val db=MemoryFriendships()
+        private val relationCursor=SocialCursor()
         @Bean @Primary fun socialTestServices():SocialServices=memoryServices(db)
-        @Bean @Primary fun friendTestServices()=FriendshipServices{FriendshipService(db,SocialCursor())}
+        @Bean @Primary fun friendTestServices()=FriendshipServices{FriendshipService(db,relationCursor)}
+        @Bean @Primary fun followTestServices()=FollowServices{FollowService(db,relationCursor)}
         @Bean @Primary fun socialTestRate()=SocialRateLimiter{_,_->}
     }
     @Test fun `all social routes require identity`() {
@@ -45,6 +47,24 @@ class SocialHttpTests {
         mvc.perform(post("/api/v1/friend-requests/$id/accept").header("Authorization","Bearer valid-registered")).andExpect(status().isOk).andExpect(jsonPath("$.friendship").value("FRIENDS"))
         mvc.perform(get("/api/v1/player/friends?uid=victim").header("Authorization","Bearer valid-guest")).andExpect(status().isOk).andExpect(jsonPath("$.items[0].profile.publicPlayerId").value(b)).andExpect(jsonPath("$.items[0].profile.uid").doesNotExist())
         repeat(2){mvc.perform(delete("/api/v1/player/friends/$b").header("Authorization","Bearer valid-guest")).andExpect(status().isOk)}
+    }
+    @Test fun `follow HTTP verified actor privacy owner lists and hidden public counts`() {
+        fun id(token:String)=com.teamfho.domino.catalog.GameCatalogCodec.mapper.readTree(mvc.perform(get("/api/v1/player/social-summary").header("Authorization","Bearer $token")).andExpect(status().isOk).andReturn().response.contentAsString)["profile"]["publicPlayerId"].asText()
+        val a=id("valid-guest");val b=id("valid-registered")
+        mvc.perform(post("/api/v1/players/$b/follow")).andExpect(status().isUnauthorized)
+        repeat(2){mvc.perform(post("/api/v1/players/$b/follow").header("Authorization","Bearer valid-guest").contentType("application/json").content("""{"sourceUid":"victim"}""")).andExpect(status().isOk)}
+        mvc.perform(get("/api/v1/player/following?uid=victim").header("Authorization","Bearer valid-guest")).andExpect(status().isOk).andExpect(jsonPath("$.items[0].profile.publicPlayerId").value(b)).andExpect(jsonPath("$.items[0].profile.uid").doesNotExist())
+        mvc.perform(get("/api/v1/player/followers").header("Authorization","Bearer valid-registered")).andExpect(status().isOk).andExpect(jsonPath("$.items[0].profile.publicPlayerId").value(a))
+        mvc.perform(get("/api/v1/players/$b/profile").header("Authorization","Bearer valid-guest")).andExpect(status().isOk).andExpect(jsonPath("$.relationship.following").value(true)).andExpect(jsonPath("$.followerCount").doesNotExist()).andExpect(jsonPath("$.relationship.blockedByOther").doesNotExist())
+        for(path in listOf("followers","following"))mvc.perform(get("/api/v1/players/$b/$path").header("Authorization","Bearer valid-guest")).andExpect { result -> kotlin.test.assertNotEquals(200,result.response.status);kotlin.test.assertFalse(result.response.contentAsString.contains("items")) }
+        val settings=com.teamfho.domino.catalog.GameCatalogCodec.mapper.readTree(mvc.perform(get("/api/v1/player/social-settings").header("Authorization","Bearer valid-registered")).andReturn().response.contentAsString)
+        val rev=settings["revision"].asLong()
+        mvc.perform(patch("/api/v1/player/social-settings").header("Authorization","Bearer valid-registered").contentType("application/json").content("""{"revision":$rev,"follow":"NO_ONE"}""")).andExpect(status().isOk)
+        mvc.perform(post("/api/v1/players/$b/follow").header("Authorization","Bearer valid-guest")).andExpect(status().isOk)
+        repeat(2){mvc.perform(delete("/api/v1/players/$b/follow").header("Authorization","Bearer valid-guest")).andExpect(status().isOk)}
+        mvc.perform(post("/api/v1/players/$b/follow").header("Authorization","Bearer valid-guest")).andExpect(status().isForbidden).andExpect(jsonPath("$.code").value("SOCIAL_ACTION_NOT_ALLOWED"))
+        mvc.perform(patch("/api/v1/player/social-settings").header("Authorization","Bearer valid-registered").contentType("application/json").content("""{"revision":$rev,"follow":"EVERYONE"}""")).andExpect(status().isConflict)
+        mvc.perform(patch("/api/v1/player/social-settings").header("Authorization","Bearer valid-registered").contentType("application/json").content("""{"revision":${rev+1},"follow":"EVERYONE"}""")).andExpect(status().isOk)
     }
     @Test fun `public summary and search contain no private authority`() {
         mvc.perform(get("/api/v1/player/social-summary").header("Authorization","Bearer valid-guest"))

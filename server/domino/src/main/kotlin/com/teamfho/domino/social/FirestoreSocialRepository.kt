@@ -11,7 +11,7 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
     private fun active(p: DocumentSnapshot, marker: DocumentSnapshot) = p.exists() && p.getString("status") == "ACTIVE" && marker.getBoolean("isTestAccount") != true
     private fun identity(uid: String, d: DocumentSnapshot) = PublicPlayerIdentity(uid, d.getString("publicPlayerId")!!, d.getString("friendCode")!!)
     private fun settings(d: DocumentSnapshot) = SocialPrivacySettings(d.getBoolean("discoverableByName") ?: false,
-        friendRequests=ContactPermission.valueOf(d.getString("friendRequests")?:"EVERYONE"),revision=d.getLong("revision") ?: 1)
+        friendRequests=ContactPermission.valueOf(d.getString("friendRequests")?:"EVERYONE"),follow=ContactPermission.valueOf(d.getString("follow")?:"EVERYONE"),presenceVisibility=SocialVisibility.valueOf(d.getString("presenceVisibility")?:"FRIENDS"),matchActivityVisibility=SocialVisibility.valueOf(d.getString("matchActivityVisibility")?:"FRIENDS"),revision=d.getLong("revision") ?: 1)
     override fun ensure(uid: String, candidate: PublicPlayerIdentity): PublicPlayerIdentity? = transaction { tx ->
         val owner = tx.get(doc("players/$uid/publicIdentity/current")).get()
         val player = tx.get(doc("players/$uid")).get()
@@ -65,11 +65,12 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
         socialCheck(active(p,marker),"SOCIAL_ACTION_NOT_ALLOWED",403)
         socialCheck(owner.exists(),"SOCIAL_IDENTITY_UNAVAILABLE",503)
         socialCheck(current.revision == patch.revision,"REVISION_MISMATCH",409)
-        if (current.discoverableByName == patch.discoverableByName) current else {
-            tx.update(ref,mapOf("discoverableByName" to patch.discoverableByName,"revision" to current.revision+1))
-            tx.update(doc("publicPlayerProfiles/${owner.getString("publicPlayerId")}"),mapOf("searchEligible" to patch.discoverableByName,"updatedAt" to FieldValue.serverTimestamp()))
-            current.copy(discoverableByName=patch.discoverableByName,revision=current.revision+1)
+        val next=patch.apply(current)
+        if(next!=current) {
+            tx.set(ref,com.teamfho.domino.match.MatchCodec.map(next))
+            if(next.discoverableByName!=current.discoverableByName)tx.update(doc("publicPlayerProfiles/${owner.getString("publicPlayerId")}"),mapOf("searchEligible" to next.discoverableByName,"updatedAt" to FieldValue.serverTimestamp()))
         }
+        next
     }
     override fun hasBlockEitherDirection(a: String,b: String): Boolean = db.getAll(doc("players/$a/blocks/$b"),doc("players/$b/blocks/$a"))
         .get(5,TimeUnit.SECONDS).any { it.exists() }

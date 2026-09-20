@@ -75,6 +75,7 @@ namespace Domino.Editor
                 foreach(string invalid in new[]{"a","ab","abc@","abcdefghijklmnopq"}){try{await scoped.Search(invalid,null,CancellationToken.None);throw new Exception("QUERY_ACCEPTED");}catch(SocialException){Check(true,"QUERY_VALIDATION");}}
                 var api=new Api();typeof(ApplicationServices).GetProperty("SocialApi").SetValue(null,api);typeof(ApplicationServices).GetProperty("Identity").SetValue(null,new Identity());
                 var menu=UnityEngine.Object.FindFirstObjectByType<Domino.Client.DominoClientController>().Menu;
+                await FollowFlow();
                 await FriendsFlow();
                 foreach(string lang in new[]{"en","es"})foreach(var size in new[]{new Vector2Int(1080,1920),new Vector2Int(1080,2400),new Vector2Int(1536,2048)}) {
                     DominoLocalization.Select(lang);Resize(size.x,size.y);menu.GetComponentsInChildren<Button>().Single(b=>b.name=="Social").onClick.Invoke();await Frames();
@@ -98,6 +99,41 @@ namespace Domino.Editor
                 }
                 Check(ValidationNetworkPolicy.NetworkEntrypoints==0,"NO_REAL_SERVICES");Finish(true,"REAL_FIRESTORE_CALLS=0");
             }catch(Exception e){Finish(false,e.ToString());}
+        }
+        static async Task FollowFlow() {
+            Resize(1080,1920);await Frames();
+            var a=new SocialClient(new Api("s13-loopback-a"),()=>"local-social-23");var b=new SocialClient(new Api("s13-loopback-b"),()=>"local-social-24");var t=CancellationToken.None;
+            var sa=await a.Summary(t);var sb=await b.Summary(t);string aid=(string)sa["profile"]["publicPlayerId"],bid=(string)sb["profile"]["publicPlayerId"];
+            async Task<SocialView> Open(SocialClient client){var v=new GameObject("S13 controlled social").AddComponent<SocialView>();v.Initialize(client,()=>{});await Ready(v);return v;}
+            async Task Profile(SocialView v,string code){Find(v,"Search tab").onClick.Invoke();v.SearchInput.text=code;Find(v,"Search submit").onClick.Invoke();await Ready(v);Find(v,"View profile").onClick.Invoke();await Ready(v);}
+            foreach(var lang in new[]{"en","es"}) {
+                DominoLocalization.Select(lang);
+                var v=await Open(a);Find(v,"Following tab").onClick.Invoke();await Ready(v);Check(v.ResultCount==0,"FOLLOWING_EMPTY");
+                await Profile(v,(string)sb["profile"]["friendCode"]);Find(v,"Follow").onClick.Invoke();Find(v,"Follow").onClick.Invoke();await Ready(v);Check(Find(v,"Unfollow"),"FOLLOW_DUPLICATE_UI");
+                Find(v,"Following tab").onClick.Invoke();await Ready(v);Check(v.ResultCount==1,"FOLLOWING_LIST");ScreenCapture.CaptureScreenshot(Path.Combine(Output,"following-"+lang+".png"));await Frames();v.Close();await Frames();
+                v=await Open(b);Find(v,"Followers tab").onClick.Invoke();await Ready(v);Check(v.ResultCount==1,"FOLLOWERS_LIST");Find(v,"View profile").onClick.Invoke();await Ready(v);Find(v,"Follow back").onClick.Invoke();await Ready(v);Check(Find(v,"Unfollow"),"FOLLOW_BACK");
+                Check((bool)(await a.Profile(bid,t))["relationship"]["followedBy"],"MUTUAL_FOLLOW");
+                Find(v,"Privacy tab").onClick.Invoke();await Ready(v);Find(v,"Follow privacy").onClick.Invoke();await Ready(v);
+                ScreenCapture.CaptureScreenshot(Path.Combine(Output,"follow-privacy-"+lang+".png"));await Frames();
+                Check((bool)(await a.Profile(bid,t))["relationship"]["following"],"EXISTING_SURVIVES_PRIVACY");
+                await a.Follow(bid,false,t);try{await a.Follow(bid,true,t);throw new Exception("PRIVACY_NOT_ENFORCED");}catch(SocialException e){Check(e.Code=="SOCIAL_ACTION_NOT_ALLOWED","PRIVACY_DENIED");}
+                Find(v,"Follow privacy").onClick.Invoke();await Ready(v);v.Close();await Frames();
+                await a.Follow(bid,true,t);
+                var request=await a.AddFriend(bid,t);await b.ResolveRequest((string)request["outgoingRequestId"],"accept",t);
+                Check((string)(await a.Profile(bid,t))["relationship"]["friendship"]=="FRIENDS","FRIEND_PLUS_FOLLOW");
+                await a.RemoveFriend(bid,t);Check((bool)(await a.Profile(bid,t))["relationship"]["following"],"UNFRIEND_PRESERVES_FOLLOW");
+                request=await a.AddFriend(bid,t);await a.ResolveRequest((string)request["outgoingRequestId"],"cancel",t);Check((bool)(await a.Profile(bid,t))["relationship"]["following"],"CANCEL_PRESERVES_FOLLOW");
+                v=await Open(a);await Profile(v,(string)sb["profile"]["friendCode"]);Find(v,"Block player").onClick.Invoke();Find(v,"Confirm block").onClick.Invoke();await Ready(v);
+                Check(((JArray)(await b.Follows(true,null,t))["items"]).Count==0,"BLOCK_REMOVES_INVERSE_FOLLOW");
+                Check(((JArray)(await a.Follows(true,null,t))["items"]).Count==0,"BLOCK_REMOVES_FOLLOW");
+                await a.Block(bid,false,t);Check(!(bool)(await a.Profile(bid,t))["relationship"]["following"],"UNBLOCK_NO_RESTORE");v.Close();await Frames();
+            }
+            // Pagination uses bounded local fixtures and normal Follow calls, never a swarm or Firebase identity.
+            for(int i=1;i<=21;i++)await a.Follow(i.ToString().PadLeft(22,'0'),true,t);
+            var paged=await Open(a);Find(paged,"Following tab").onClick.Invoke();await Ready(paged);Check(paged.ResultCount==20,"FOLLOW_PAGE_20");
+            Find(paged,"More").onClick.Invoke();await Ready(paged);Check(paged.ResultCount==21,"FOLLOW_PAGE_NEXT");paged.Close();await Frames();
+            for(int i=1;i<=21;i++)await a.Follow(i.ToString().PadLeft(22,'0'),false,t);
+            paged=await Open(a);Find(paged,"Followers tab").onClick.Invoke();await Ready(paged);Check(paged.ResultCount==0,"FOLLOWERS_EMPTY");paged.Close();await Frames();
         }
         static async Task FriendsFlow() {
             Resize(1080,1920);await Frames();

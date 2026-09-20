@@ -11,10 +11,10 @@ enum class FriendRequestStatus { PENDING, ACCEPTED, DECLINED, CANCELED }
 data class FriendRequest(val requestId:String, val pairId:String, val generation:Long, val senderUid:String,
     val recipientUid:String, val status:FriendRequestStatus, val createdAt:Instant, val resolvedAt:Instant?=null)
 data class Friendship(val pairId:String,val lowerUid:String,val upperUid:String,val createdAt:Instant,val sourceRequestId:String,val generation:Long)
-data class SocialCounters(val friendCount:Int=0,val pendingIncomingCount:Int=0,val pendingOutgoingCount:Int=0)
+data class SocialCounters(val friendCount:Int=0,val pendingIncomingCount:Int=0,val pendingOutgoingCount:Int=0,val followerCount:Int=0,val followingCount:Int=0)
 data class SocialPair(val lowerUid:String,val upperUid:String,val generation:Long=0,val pendingRequestId:String?=null,
     val declinedUntil:Instant?=null)
-data class FriendRelationship(val friendship:String="NONE",val incomingRequestId:String?=null,val outgoingRequestId:String?=null)
+data class FriendRelationship(val friendship:String="NONE",val incomingRequestId:String?=null,val outgoingRequestId:String?=null,val following:Boolean=false,val followedBy:Boolean=false)
 data class FriendItem(val profile:PublicPlayerProfile,val friendsSince:Instant)
 data class FriendRequestItem(val requestId:String,val profile:PublicPlayerProfile,val direction:String,val createdAt:Instant)
 data class FriendCapacity(val friendCount:Int,val effectiveFriendLimit:Int?,val canAddFriend:Boolean,val pendingIncomingCount:Int,val availability:String)
@@ -27,6 +27,7 @@ interface SocialTransaction {
 interface FriendshipRepository {
     fun <T> atomic(body:(SocialTransaction)->T):T
     fun read(path:String):Map<String,Any>?
+    fun readAll(paths:List<String>):Map<String,Map<String,Any>?> = paths.associateWith{read(it)}
     fun page(collection:String,filters:Map<String,Any>,timeField:String,after:Pair<String,String>?,limit:Int):List<Pair<String,Map<String,Any>>>
 }
 object SocialPairIdentity {
@@ -42,7 +43,7 @@ class FriendshipService(private val repository:FriendshipRepository,private val 
     private inline fun <reified T> decode(data:Map<String,Any>?)=data?.let{MatchCodec.read(if(T::class==FriendRequest::class)it-"sortTime" else it,T::class.java)}
     private fun counter(tx:SocialTransaction,uid:String)=decode<SocialCounters>(tx.read("players/$uid/socialCounters/current"))?:SocialCounters()
     private fun writeCounter(tx:SocialTransaction,uid:String,c:SocialCounters) {
-        check(c.friendCount>=0 && c.pendingIncomingCount>=0 && c.pendingOutgoingCount>=0)
+        check(c.friendCount>=0 && c.pendingIncomingCount>=0 && c.pendingOutgoingCount>=0 && c.followerCount>=0 && c.followingCount>=0)
         tx.put("players/$uid/socialCounters/current",MatchCodec.map(c))
     }
     private fun eligible(tx:SocialTransaction,uid:String) {
@@ -133,15 +134,21 @@ class FriendshipService(private val repository:FriendshipRepository,private val 
         val req=pair?.pendingRequestId?.let{decode<FriendRequest>(tx.read("friendRequests/$it"))}
         val a=counter(tx,actor);val b=counter(tx,other)
         val pending=blocking && req?.status==FriendRequestStatus.PENDING
+        val ab=if(blocking)tx.read("players/$actor/following/$other") else null
+        val ba=if(blocking)tx.read("players/$other/following/$actor") else null
+        if(ab!=null){tx.delete("players/$actor/following/$other");tx.delete("players/$other/followers/$actor")}
+        if(ba!=null){tx.delete("players/$other/following/$actor");tx.delete("players/$actor/followers/$other")}
         if(f!=null) {tx.delete("friendships/$id");tx.delete("players/$actor/friends/$other");tx.delete("players/$other/friends/$actor")}
         if(pending) {
             tx.put("friendRequests/${req!!.requestId}",MatchCodec.map(req.copy(status=FriendRequestStatus.CANCELED,resolvedAt=clock.instant()))+("sortTime" to req.createdAt.toEpochMilli()))
             tx.put("socialPairs/$id",MatchCodec.map(pair!!.copy(pendingRequestId=null)))
         }
-        if(f!=null || pending) {
+        if(f!=null || pending || ab!=null || ba!=null) {
             fun next(uid:String,c:SocialCounters)=c.copy(friendCount=c.friendCount-if(f!=null)1 else 0,
                 pendingOutgoingCount=c.pendingOutgoingCount-if(pending && req!!.senderUid==uid)1 else 0,
-                pendingIncomingCount=c.pendingIncomingCount-if(pending && req!!.recipientUid==uid)1 else 0)
+                pendingIncomingCount=c.pendingIncomingCount-if(pending && req!!.recipientUid==uid)1 else 0,
+                followingCount=c.followingCount-if((uid==actor && ab!=null)||(uid==other && ba!=null))1 else 0,
+                followerCount=c.followerCount-if((uid==actor && ba!=null)||(uid==other && ab!=null))1 else 0)
             writeCounter(tx,actor,next(actor,a));writeCounter(tx,other,next(other,b))
         }
     }
@@ -150,7 +157,7 @@ class FriendshipService(private val repository:FriendshipRepository,private val 
         val other=target(tx,publicId);safety(tx,actor,other,other,false)
         val id=SocialPairIdentity.id(actor,other);val p=decode<SocialPair>(tx.read("socialPairs/$id"))
         val f=tx.read("friendships/$id");val req=p?.pendingRequestId?.let{decode<FriendRequest>(tx.read("friendRequests/$it"))}
-        relation(actor,req,f!=null)
+        relation(actor,req,f!=null).copy(following=tx.read("players/$actor/following/$other")!=null,followedBy=tx.read("players/$other/following/$actor")!=null)
     }
     fun summary(actor:String):FriendCapacity=repository.atomic { tx->
         val c=counter(tx,actor)

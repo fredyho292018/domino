@@ -1517,6 +1517,101 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 5380159941931008
+    m_Localized: Follow
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651264
+    m_Localized: Following
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651265
+    m_Localized: Followers
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651266
+    m_Localized: Follow back
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651267
+    m_Localized: Unfollow
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651268
+    m_Localized: No followers yet
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651269
+    m_Localized: Not following anyone yet
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651270
+    m_Localized: Player followed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651271
+    m_Localized: Player unfollowed
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651272
+    m_Localized: Unable to follow player
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651273
+    m_Localized: This player is not accepting followers right now
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651274
+    m_Localized: Who can follow me
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651275
+    m_Localized: Who can send friend requests
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651276
+    m_Localized: Everyone
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651277
+    m_Localized: No one
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651278
+    m_Localized: Who can see when I am online
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651279
+    m_Localized: Who can see my match activity
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651280
+    m_Localized: Privacy updated
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5380160000651281
+    m_Localized: Unable to update privacy
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1815,3 +1910,22 @@ MonoBehaviour:
         - id: 5364562327793682
         - id: 5364562327793683
         - id: 5364562327793684
+        - id: 5380159941931008
+        - id: 5380160000651264
+        - id: 5380160000651265
+        - id: 5380160000651266
+        - id: 5380160000651267
+        - id: 5380160000651268
+        - id: 5380160000651269
+        - id: 5380160000651270
+        - id: 5380160000651271
+        - id: 5380160000651272
+        - id: 5380160000651273
+        - id: 5380160000651274
+        - id: 5380160000651275
+        - id: 5380160000651276
+        - id: 5380160000651277
+        - id: 5380160000651278
+        - id: 5380160000651279
+        - id: 5380160000651280
+        - id: 5380160000651281

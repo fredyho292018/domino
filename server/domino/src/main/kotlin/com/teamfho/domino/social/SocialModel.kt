@@ -15,7 +15,16 @@ data class SocialPrivacySettings(val discoverableByName: Boolean = false,
     val follow: ContactPermission = ContactPermission.EVERYONE,
     val presenceVisibility: SocialVisibility = SocialVisibility.FRIENDS,
     val matchActivityVisibility: SocialVisibility = SocialVisibility.FRIENDS, val revision: Long = 1)
-data class PrivacyPatch(val discoverableByName: Boolean, val revision: Long)
+data class PrivacyPatch(val discoverableByName: Boolean? = null, val revision: Long,
+    val friendRequests: ContactPermission? = null, val follow: ContactPermission? = null,
+    val presenceVisibility: SocialVisibility? = null, val matchActivityVisibility: SocialVisibility? = null) {
+    fun apply(current:SocialPrivacySettings):SocialPrivacySettings {
+        val next=current.copy(discoverableByName=discoverableByName?:current.discoverableByName,
+            friendRequests=friendRequests?:current.friendRequests,follow=follow?:current.follow,
+            presenceVisibility=presenceVisibility?:current.presenceVisibility,matchActivityVisibility=matchActivityVisibility?:current.matchActivityVisibility)
+        return if(next==current)current else next.copy(revision=current.revision+1)
+    }
+}
 data class SocialSummary(val profile: PublicPlayerProfile, val privacy: SocialPrivacySettings)
 data class BlockRelationship(val publicPlayerId: String, val displayName: String, val friendCode: String)
 data class SocialPage<T>(val items: List<T>, val nextCursor: String?)

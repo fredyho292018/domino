@@ -33,7 +33,7 @@ class SocialRulesEmulatorTests {
         val probe=rules.replace("// All current Domino", "match /__s11AuthProbe/{id} { allow write: if request.auth.uid == 's11-attacker'; }\n    // All current Domino")
         try {
             load(probe);assertEquals(200,write("__s11AuthProbe/check"))
-            val paths=listOf("publicPlayerProfiles/fake", "publicPlayerCodes/FHO-000000000000", "players/s11-attacker/publicIdentity/current", "players/s11-attacker/blocks/target", "players/s11-attacker/blockedBy/target", "players/s11-attacker/socialSettings/current", "socialPairs/fake", "friendRequests/fake", "friendships/fake", "players/s11-attacker/friends/target", "players/s11-attacker/socialCounters/current")
+            val paths=listOf("publicPlayerProfiles/fake", "publicPlayerCodes/FHO-000000000000", "players/s11-attacker/publicIdentity/current", "players/s11-attacker/blocks/target", "players/s11-attacker/blockedBy/target", "players/s11-attacker/socialSettings/current", "socialPairs/fake", "friendRequests/fake", "friendships/fake", "players/s11-attacker/friends/target", "players/s11-attacker/socialCounters/current","players/s11-attacker/following/target","players/s11-attacker/followers/target")
             for(path in paths) {
                 assertEquals(403,write(path),path)
                 val response=http.send(HttpRequest.newBuilder(URI("$host/v1/projects/demo-domino-f0/databases/(default)/documents/$path")).header("Authorization","Bearer $token").GET().build(),HttpResponse.BodyHandlers.ofString())

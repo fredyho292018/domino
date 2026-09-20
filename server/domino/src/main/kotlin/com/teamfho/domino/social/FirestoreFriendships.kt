@@ -11,6 +11,10 @@ class FirestoreSocialTransaction(private val db:Firestore,private val tx:Transac
 class FirestoreFriendships(private val db:Firestore):FriendshipRepository {
     override fun <T> atomic(body:(SocialTransaction)->T):T=db.runTransaction {tx->body(FirestoreSocialTransaction(db,tx))}.get(20,TimeUnit.SECONDS)
     override fun read(path:String)=db.document(path).get().get(5,TimeUnit.SECONDS).data
+    override fun readAll(paths:List<String>):Map<String,Map<String,Any>?> {
+        if(paths.isEmpty())return emptyMap()
+        return db.getAll(*paths.distinct().map{db.document(it)}.toTypedArray()).get(5,TimeUnit.SECONDS).associate{it.reference.path to it.data}
+    }
     override fun page(collection:String,filters:Map<String,Any>,timeField:String,after:Pair<String,String>?,limit:Int):List<Pair<String,Map<String,Any>>> {
         var q:Query=db.collection(collection)
         for((k,v) in filters)q=q.whereEqualTo(k,v)

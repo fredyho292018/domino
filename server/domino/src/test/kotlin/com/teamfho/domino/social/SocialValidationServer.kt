@@ -22,9 +22,10 @@ object SocialValidationServer {
     @Import(com.teamfho.domino.player.FakePlayerFoundationConfiguration::class)
     class Beans {
         private val db=MemoryFriendships()
+        private val relationCursor=SocialCursor()
         @Bean @Primary fun verifier()=FirebaseTokenVerifier{token->
-            if(token !in setOf("s11-loopback","s12-loopback-b","s12-loopback-limit"))throw AuthFailure(ApiErrorCode.AUTH_TOKEN_INVALID)
-            FirebaseIdentity(when(token){"s11-loopback"->"s11-local-viewer";"s12-loopback-b"->"local-social-1";else->"local-social-2"},true)
+            if(token !in setOf("s11-loopback","s12-loopback-b","s12-loopback-limit","s13-loopback-a","s13-loopback-b"))throw AuthFailure(ApiErrorCode.AUTH_TOKEN_INVALID)
+            FirebaseIdentity(when(token){"s11-loopback"->"s11-local-viewer";"s12-loopback-b"->"local-social-1";"s13-loopback-a"->"local-social-23";"s13-loopback-b"->"local-social-24";else->"local-social-2"},true)
         }
         @Bean @Primary fun socialValidationServices()=SocialHttpTests.memoryServices(db).also {
             db.docs["players/local-social-2/socialCounters/current"]=com.teamfho.domino.match.MatchCodec.map(SocialCounters(friendCount=20))
@@ -37,7 +38,8 @@ object SocialValidationServer {
                 db.docs["players/$b/socialCounters/current"]=com.teamfho.domino.match.MatchCodec.map(SocialCounters(friendCount=1))
             }
         }
-        @Bean @Primary fun friendValidationServices()=FriendshipServices{FriendshipService(db,SocialCursor())}
+        @Bean @Primary fun friendValidationServices()=FriendshipServices{FriendshipService(db,relationCursor)}
+        @Bean @Primary fun followTestServices()=FollowServices{FollowService(db,relationCursor)}
         @Bean @Primary fun socialValidationRate()=SocialRateLimiter{_,_->}
     }
 }

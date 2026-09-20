@@ -36,6 +36,13 @@ static class SocialClientTests
         await client.Requests(true,null,token);Check(transport.Path.EndsWith("/player/friend-requests"),"Request page");
         await Reject(()=>client.ResolveRequest("../invalid","accept",token),typeof(SocialException));
         await Reject(()=>client.ResolveRequest(request,"forged",token),typeof(SocialException));
+        await client.Follow(id,true,token);Check(transport.Method=="POST"&&transport.Json==null&&transport.Path.EndsWith("/follow"),"Follow authenticated route");
+        await client.Follow(id,false,token);Check(transport.Method=="DELETE","Unfollow route");
+        foreach(bool following in new[]{true,false}) {await client.Follows(following,"opaque-cursor",token);Check(transport.Path=="/api/v1/player/"+(following?"following":"followers"),"Owner graph");}
+        foreach(string field in new[]{"friendRequests","follow","presenceVisibility","matchActivityVisibility"}) {await client.Privacy(field,"NO_ONE",4,token);Check(transport.Json.Contains(field)&&transport.Json.Contains("revision")&&!transport.Json.Contains("uid"),"Typed privacy "+field);}
+        await Reject(()=>client.Privacy("sourceUid","victim",4,token),typeof(SocialException));
+        await Reject(()=>client.Privacy("follow","FRIENDS",4,token),typeof(SocialException));
+        await Reject(()=>api.SendAsync("GET","players/"+id+"/followers",null,token),typeof(ArgumentException));
         transport.Status=404;transport.Body="{\"code\":\"PLAYER_NOT_FOUND\"}";await Reject(()=>client.Profile(id,token),typeof(SocialException));
         transport.Status=401;transport.Body="{}";int before=tokens.Calls;await Reject(()=>client.Summary(token),typeof(SocialException));Check(tokens.Calls-before==2,"One auth refresh");
         var d=new Deferred();var scoped=new SocialClient(d,()=>uid);var pending=scoped.Summary(token);uid="b";d.Result.SetResult(new JObject());await Reject(()=>pending,typeof(OperationCanceledException));Check(!scoped.SessionValid,"Session invalidated");

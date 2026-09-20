@@ -22,6 +22,12 @@ class RedisSocialRateLimiter(private val redis: () -> StringRedisTemplate?) : So
         if tokens<1 then return 0 end
         redis.call('HSET',KEYS[1],'tokens',tokens-1,'time',now);redis.call('EXPIRE',KEYS[1],120);return 1
     """.trimIndent(),Long::class.java)
+    private val followScript=DefaultRedisScript("""
+        local t=redis.call('TIME'); local now=tonumber(t[1])*1000+math.floor(tonumber(t[2])/1000)
+        redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now-86400000)
+        if redis.call('ZCARD',KEYS[1])>=200 or redis.call('ZCOUNT',KEYS[1],now-60000+1,'+inf')>=30 then return 0 end
+        redis.call('ZADD',KEYS[1],now,ARGV[1]);redis.call('PEXPIRE',KEYS[1],86400000);return 1
+    """.trimIndent(),Long::class.java)
     override fun check(uid: String,action: String) {
         // A safety block must remain usable when Redis is unavailable.
         if(action=="block")return
@@ -29,7 +35,8 @@ class RedisSocialRateLimiter(private val redis: () -> StringRedisTemplate?) : So
         val burst=if(action=="NAME")5 else limit
         val hash=java.security.MessageDigest.getInstance("SHA-256").digest(uid.toByteArray()).joinToString(""){"%02x".format(it)}
         try {
-            val result=redis()?.execute(script,listOf("domino:v1:social:rate:$hash:$action"),limit.toString(),burst.toString())
+            val result=(if(action=="follow")redis()?.execute(followScript,listOf("domino:v1:social:rate:$hash:follow"),java.util.UUID.randomUUID().toString())
+                else redis()?.execute(script,listOf("domino:v1:social:rate:$hash:$action"),limit.toString(),burst.toString()))
                 ?:throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE")
             if(result!=1L)throw SocialFailure("SOCIAL_ACTION_RATE_LIMITED",429)
         } catch(e:SocialFailure){throw e}catch(_:Exception){throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE")}
@@ -52,7 +59,7 @@ open class SocialServices(private val repository:()->FirestoreSocialRepository,p
         val privacy:SocialPrivacyService,val blocks:BlockService)
 }
 @RestController
-class SocialController(private val services:SocialServices,private val rate:SocialRateLimiter,private val friends:ObjectProvider<FriendshipServices>) {
+class SocialController(private val services:SocialServices,private val rate:SocialRateLimiter,private val friends:ObjectProvider<FriendshipServices>,private val follows:FollowServices) {
     private fun ready(identity:FirebaseIdentity,action:String):SocialServices.Bundle {
         rate.check(identity.uid,action)
         return services.ready().also {it.identity.ensure(identity.uid)}
@@ -64,6 +71,7 @@ class SocialController(private val services:SocialServices,private val rate:Soci
         friends.ifAvailable?.let { provider->
             result["friends"]=try{provider.ready().summary(i.uid)}catch(_:Exception){FriendCapacity(0,null,false,0,"UNAVAILABLE")}
         }
+        result["follows"]=follows.ready().counts(i.uid)
         return result
     }
     @GetMapping("/api/v1/players/{id}/profile")
@@ -82,9 +90,13 @@ class SocialController(private val services:SocialServices,private val rate:Soci
     fun settings(@AuthenticationPrincipal i:FirebaseIdentity)=ready(i,"settings").privacy.getEffectiveSocialPrivacy(i.uid)
     @PatchMapping("/api/v1/player/social-settings")
     fun settings(@AuthenticationPrincipal i:FirebaseIdentity,@RequestBody fields:Map<String,Any?>):SocialPrivacySettings {
-        socialCheck(fields.keys==setOf("discoverableByName","revision") && fields["discoverableByName"] is Boolean &&
-            fields["revision"] is Number && Regex("[1-9][0-9]{0,15}").matches(fields["revision"].toString()),"INVALID_SEARCH_QUERY")
-        return ready(i,"settings").privacy.update(i.uid,PrivacyPatch(fields["discoverableByName"] as Boolean,(fields["revision"] as Number).toLong()))
+        val allowed=setOf("discoverableByName","revision","friendRequests","follow","presenceVisibility","matchActivityVisibility")
+        socialCheck(fields.keys.all{it in allowed} && fields.size>=2 && fields["revision"] is Number && Regex("[1-9][0-9]{0,15}").matches(fields["revision"].toString()),"INVALID_SEARCH_QUERY")
+        socialCheck("discoverableByName" !in fields || fields["discoverableByName"] is Boolean,"INVALID_SEARCH_QUERY")
+        fun contact(key:String):ContactPermission? {if(key !in fields)return null;return ContactPermission.entries.find{it.name==fields[key]}?:throw SocialFailure("INVALID_SEARCH_QUERY",400)}
+        fun visibility(key:String):SocialVisibility? {if(key !in fields)return null;return SocialVisibility.entries.find{it.name==fields[key]}?:throw SocialFailure("INVALID_SEARCH_QUERY",400)}
+        val patch=PrivacyPatch(fields["discoverableByName"] as Boolean?,(fields["revision"] as Number).toLong(),contact("friendRequests"),contact("follow"),visibility("presenceVisibility"),visibility("matchActivityVisibility"))
+        return ready(i,"settings").privacy.update(i.uid,patch)
     }
     @GetMapping("/api/v1/player/blocks")
     fun blocks(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,"blocks").blocks.list(i.uid,cursor,limit)
@@ -93,7 +105,7 @@ class SocialController(private val services:SocialServices,private val rate:Soci
     @DeleteMapping("/api/v1/players/{id}/block")
     fun unblock(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,"unblock").blocks.set(i.uid,id,false);return mapOf("success" to true)}
 }
-@RestControllerAdvice(assignableTypes=[SocialController::class,FriendshipController::class])
+@RestControllerAdvice(assignableTypes=[SocialController::class,FriendshipController::class,FollowController::class])
 @org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 class SocialErrors {
     @ExceptionHandler(Exception::class)
