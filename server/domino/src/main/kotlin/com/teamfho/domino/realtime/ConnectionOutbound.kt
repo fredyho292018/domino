@@ -10,6 +10,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 enum class OutboundClass { CRITICAL, CONTROL, SOCIAL_EPHEMERAL }
 enum class OfferResult { ENQUEUED, COALESCED, REJECTED_STALE, UNAUTHENTICATED, CLOSED }
@@ -28,12 +30,23 @@ data class OutboundSnapshot(val lifecycle:String,val counts:List<Int>,val bytes:
 /** One lazy virtual writer per admitted connection. Producers only encode and enqueue.
  * Queue accounting uses the exact UTF-8 JSON payload, excluding the fixed envelope.
  * The lock protects admission/selection; it is NEVER held across socket I/O.
- * Selection under this lock is the transmission commit point. Invalidation before
- * that point removes a candidate; after that point an in-flight frame cannot be recalled. */
+ * SOCIAL_EPHEMERAL commits at the final local capability check after selection/encoding.
+ * No authority monitor or queue lock is held across socket I/O. */
 class ConnectionOutbound(private val session:WebSocketSession,
     val limits:OutboundLimits=OutboundLimits(), private val cleaned:()->Unit={},
-    private val metrics:OutboundMetrics?=null) {
-    private data class Pending(val type:String,val json:String,val bytes:Int,val at:Long)
+    private val metrics:OutboundMetrics?=null,
+    internal val beforeEphemeralCommit:()->Unit={}) {
+    private class Pending(val type:String,val json:String,val bytes:Int,val at:Long,
+        val authorization:EphemeralAuthorization?=null) {
+        private val done=AtomicBoolean()
+        private val subscription=AtomicReference<AutoCloseable?>()
+        fun observe(revoked:()->Unit) {
+            val value=authorization?.onRevoked(revoked)?:return
+            subscription.set(value)
+            if(done.get())subscription.getAndSet(null)?.close()
+        }
+        fun release(){done.set(true);subscription.getAndSet(null)?.close()}
+    }
     private enum class Life { OPEN, DRAINING, CLOSING, CLOSED }
     private val lock=ReentrantLock()
     private val changed=lock.newCondition()
@@ -63,16 +76,18 @@ class ConnectionOutbound(private val session:WebSocketSession,
 
     fun offerCritical(type:String,payload:Map<String,Any>)=offer(OutboundClass.CRITICAL,type,payload)
     fun offerControl(type:String,payload:Map<String,Any>)=offer(OutboundClass.CONTROL,type,payload)
-    fun offerEphemeral(key:String,type:String,payload:Map<String,Any>):OfferResult {
+    fun offerEphemeral(key:String,type:String,payload:Map<String,Any>,authorization:EphemeralAuthorization?=null):OfferResult {
         require(key.isNotEmpty() && key.length<=128)
-        return offer(OutboundClass.SOCIAL_EPHEMERAL,type,payload,key)
+        if(authorization==null)return OfferResult.UNAUTHENTICATED
+        return offer(OutboundClass.SOCIAL_EPHEMERAL,type,payload,key,authorization)
     }
-    private fun offer(kind:OutboundClass,type:String,payload:Map<String,Any>,key:String=""):OfferResult {
+    private fun offer(kind:OutboundClass,type:String,payload:Map<String,Any>,key:String="",authorization:EphemeralAuthorization?=null):OfferResult {
         require(type.matches(Regex("[A-Z_]{1,64}")))
         // Immutable encoded payload: later producer mutations cannot change size/content.
         val encoded=json.writeValueAsString(payload)
         val size=encoded.toByteArray(Charsets.UTF_8).size
         var fatal=false
+        var admitted:Pending?=null
         val result=lock.withLock {
             if(life!=Life.OPEN)return@withLock OfferResult.CLOSED
             if(kind!=OutboundClass.CONTROL && !authorized)return@withLock OfferResult.UNAUTHENTICATED
@@ -85,13 +100,14 @@ class ConnectionOutbound(private val session:WebSocketSession,
             if(size>frameLimit || (old==null && count>=maxCount) || bytes[i]-(old?.bytes?:0)+size>maxBytes) {
                 if(kind==OutboundClass.SOCIAL_EPHEMERAL) {
                     // Do not leave an older value queued after rejecting its replacement.
-                    if(old!=null){social.remove(key);bytes[i]-=old.bytes;metrics?.queue(kind,-1,-old.bytes.toLong())}
+                    if(old!=null){social.remove(key);old.release();bytes[i]-=old.bytes;metrics?.queue(kind,-1,-old.bytes.toLong())}
                     stale=true;rejected++;metrics?.event("social_rejected")
                     changed.signalAll();return@withLock OfferResult.REJECTED_STALE
                 }
                 fatal=true;return@withLock OfferResult.CLOSED
             }
-            val p=Pending(type,encoded,size,System.nanoTime())
+            val p=Pending(type,encoded,size,System.nanoTime(),authorization)
+            if(kind==OutboundClass.SOCIAL_EPHEMERAL){old?.release();admitted=p}
             when(kind){OutboundClass.CRITICAL->critical.addLast(p);OutboundClass.CONTROL->control.addLast(p);else->social[key]=p}
             bytes[i]+=size-(old?.bytes?:0)
             metrics?.queue(kind,if(old==null)1 else 0,(size-(old?.bytes?:0)).toLong())
@@ -100,13 +116,19 @@ class ConnectionOutbound(private val session:WebSocketSession,
             armAge();changed.signalAll()
             if(old==null)OfferResult.ENQUEUED else OfferResult.COALESCED
         }
+        // Subscribe outside the queue lock. A revoke racing admission invokes removal immediately.
+        admitted?.let{p->p.observe{invalidateCandidate(key,p)}}
         if(fatal)close(1013,"queue_pressure")
         return result
     }
     /** No Social protocol is implemented here; future callers supply their own Control cleanup. */
     fun invalidate(key:String)=lock.withLock {
-        social.remove(key)?.let {bytes[2]-=it.bytes;metrics?.queue(OutboundClass.SOCIAL_EPHEMERAL,-1,-it.bytes.toLong())}
+        social.remove(key)?.let {it.release();bytes[2]-=it.bytes;metrics?.queue(OutboundClass.SOCIAL_EPHEMERAL,-1,-it.bytes.toLong())}
         changed.signalAll()
+    }
+    private fun invalidateCandidate(key:String,candidate:Pending)=lock.withLock {
+        // An old generation's callback must not remove a newer coalesced replacement.
+        if(social[key]===candidate)invalidate(key)
     }
     fun acknowledgeEphemeralRecovery():Boolean=lock.withLock {
         if(!stale || social.isNotEmpty() || inFlight || life!=Life.OPEN)false else {stale=false;true}
@@ -139,7 +161,7 @@ class ConnectionOutbound(private val session:WebSocketSession,
             closeWhen(1013,"critical_age") {critical.peekFirst()?.let{System.nanoTime()-it.at>=limits.criticalAgeMillis*1_000_000}==true}
         },left.coerceAtLeast(0),TimeUnit.NANOSECONDS)
     }
-    private fun clearSocial(){metrics?.queue(OutboundClass.SOCIAL_EPHEMERAL,-social.size,-bytes[2]);social.clear();bytes[2]=0}
+    private fun clearSocial(){metrics?.queue(OutboundClass.SOCIAL_EPHEMERAL,-social.size,-bytes[2]);social.values.forEach{it.release()};social.clear();bytes[2]=0}
     private fun clearQueues(){metrics?.queue(OutboundClass.CRITICAL,-critical.size,-bytes[0]);metrics?.queue(OutboundClass.CONTROL,-control.size,-bytes[1]);critical.clear();control.clear();bytes[0]=0;bytes[1]=0;clearSocial()}
     private fun run() {
         try {
@@ -159,7 +181,18 @@ class ConnectionOutbound(private val session:WebSocketSession,
                 }?:break
                 // Sequence is allocated only for selected frames; unsent coalesced states consume none.
                 val frame="{\"type\":\"${pending.type}\",\"version\":1,\"sequence\":${sent+1},\"timestamp\":\"${Instant.now()}\",\"payload\":${pending.json}}"
-                transport.send(frame)
+                try {
+                    pending.authorization?.let {
+                        beforeEphemeralCommit()
+                        // Successful return is the authorization transmission commit point.
+                        // It linearizes under A.3's monitor; the monitor is released before send.
+                        if(!it.tryCommit()) {
+                            lock.withLock {inFlight=false;sendDeadline?.cancel(false);sendDeadline=null;changed.signalAll()}
+                            continue
+                        }
+                    }
+                    transport.send(frame)
+                } finally {pending.release()}
                 lock.withLock {
                     sent++;if(pending.type=="AUTHENTICATED")authSent=true
                     inFlight=false;sendDeadline?.cancel(false);sendDeadline=null;changed.signalAll()

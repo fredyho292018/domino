@@ -34,6 +34,7 @@ class ConnectionOutboundTests {
             doAnswer {closes.incrementAndGet();gate?.countDown();null}.`when`(socket).close(any())
             writer=ConnectionOutbound(socket,limits,{cleanups.incrementAndGet()})
         }
+        fun ephemeral(key:String,type:String,payload:Map<String,Any>)=writer.offerEphemeral(key,type,payload,EphemeralAuthorization({true},{AutoCloseable{}}))
         fun auth(){writer.offerControl("AUTHENTICATED",emptyMap());assertTrue(writer.awaitIdle())}
         fun block(){gate=CountDownLatch(1);entered=CountDownLatch(1);writer.offerControl("PONG",emptyMap());assertTrue(entered.await(2,TimeUnit.SECONDS))}
         fun release(){gate?.countDown();assertTrue(writer.awaitIdle())}
@@ -45,7 +46,7 @@ class ConnectionOutboundTests {
     @Test fun `unauthenticated traffic denied control auth preserves wire and contiguous sequence`() {
         val f=fixture()
         assertEquals(OfferResult.UNAUTHENTICATED,f.writer.offerCritical("MATCH_UPDATE",emptyMap()))
-        assertEquals(OfferResult.UNAUTHENTICATED,f.writer.offerEphemeral("a","TEST_STATE",emptyMap()))
+        assertEquals(OfferResult.UNAUTHENTICATED,f.ephemeral("a","TEST_STATE",emptyMap()))
         f.auth();f.writer.offerCritical("MATCH_UPDATE",mapOf("sequence" to 123,"text" to "ñá"));assertTrue(f.writer.awaitIdle())
         f.frames.forEachIndexed {i,frame->val n=json.readTree(frame);assertEquals(5,n.size());assertEquals(i+1L,n["sequence"].asLong());assertEquals(1,n["version"].asInt());java.time.Instant.parse(n["timestamp"].asString())}
         assertEquals(123,json.readTree(f.frames.last())["payload"]["sequence"].asInt())
@@ -68,8 +69,8 @@ class ConnectionOutboundTests {
     }
     @Test fun `latest ephemeral only invalidate before selection and reliable cleanup control`() {
         val f=fixture();f.auth();f.block()
-        repeat(100){f.writer.offerEphemeral("a","TEST_STATE",mapOf("n" to it))}
-        f.writer.offerEphemeral("b","TEST_STATE",mapOf("remove" to true));f.writer.invalidate("b")
+        repeat(100){f.ephemeral("a","TEST_STATE",mapOf("n" to it))}
+        f.ephemeral("b","TEST_STATE",mapOf("remove" to true));f.writer.invalidate("b")
         f.writer.offerControl("TEST_CLEANUP",emptyMap());f.writer.offerCritical("MATCH_UPDATE",emptyMap())
         assertEquals(99L,f.writer.snapshot().coalesced)
         f.release()
@@ -79,13 +80,13 @@ class ConnectionOutboundTests {
     }
     @Test fun `invalidation after transmission commit cannot recall in flight frame`() {
         val f=fixture();f.auth();f.gate=CountDownLatch(1);f.entered=CountDownLatch(1)
-        f.writer.offerEphemeral("a","TEST_STATE",mapOf("n" to 1));assertTrue(f.entered.await(2,TimeUnit.SECONDS))
+        f.ephemeral("a","TEST_STATE",mapOf("n" to 1));assertTrue(f.entered.await(2,TimeUnit.SECONDS))
         f.writer.invalidate("a");f.release();assertEquals(1,f.types().count{it=="TEST_STATE"})
     }
     @Test fun `social target exhaustion reports stale and explicit recovery without harming critical`() {
         val f=fixture(OutboundLimits(socialTargets=2));f.auth();f.block()
-        for(k in listOf("a","b"))assertEquals(OfferResult.ENQUEUED,f.writer.offerEphemeral(k,"TEST_STATE",emptyMap()))
-        assertEquals(OfferResult.REJECTED_STALE,f.writer.offerEphemeral("c","TEST_STATE",emptyMap()))
+        for(k in listOf("a","b"))assertEquals(OfferResult.ENQUEUED,f.ephemeral(k,"TEST_STATE",emptyMap()))
+        assertEquals(OfferResult.REJECTED_STALE,f.ephemeral("c","TEST_STATE",emptyMap()))
         assertFalse(f.writer.acknowledgeEphemeralRecovery())
         assertEquals(OfferResult.ENQUEUED,f.writer.offerCritical("MATCH_UPDATE",emptyMap()))
         assertEquals(OfferResult.ENQUEUED,f.writer.offerControl("PONG",emptyMap()))
@@ -94,9 +95,9 @@ class ConnectionOutboundTests {
     @Test fun `social UTF8 byte and per frame limits remove rejected replacement`() {
         val f=fixture(OutboundLimits(socialBytes=20,socialFrameBytes=16));f.auth();f.block()
         val exact=mapOf<String,Any>("s" to "é".repeat(4)) // 16 UTF-8 bytes, not 12 chars
-        assertEquals(OfferResult.ENQUEUED,f.writer.offerEphemeral("a","TEST_STATE",exact))
-        assertEquals(16L,f.writer.snapshot().bytes[2]);assertEquals(OfferResult.REJECTED_STALE,f.writer.offerEphemeral("b","TEST_STATE",mapOf("s" to "x")))
-        assertEquals(OfferResult.REJECTED_STALE,f.writer.offerEphemeral("a","TEST_STATE",mapOf("s" to "é".repeat(5))))
+        assertEquals(OfferResult.ENQUEUED,f.ephemeral("a","TEST_STATE",exact))
+        assertEquals(16L,f.writer.snapshot().bytes[2]);assertEquals(OfferResult.REJECTED_STALE,f.ephemeral("b","TEST_STATE",mapOf("s" to "x")))
+        assertEquals(OfferResult.REJECTED_STALE,f.ephemeral("a","TEST_STATE",mapOf("s" to "é".repeat(5))))
         assertEquals(0L,f.writer.snapshot().bytes[2]);f.release();assertFalse(f.types().contains("TEST_STATE"))
     }
     @Test fun `critical count exhaustion closes exactly once rather than silently dropping`() {
@@ -160,7 +161,7 @@ class ConnectionOutboundTests {
         val workers=(0..7).map {n->Thread.ofVirtual().start { try {
             repeat(4){i->assertEquals(OfferResult.ENQUEUED,f.writer.offerCritical("MATCH_UPDATE",mapOf("id" to "$n-$i")))}
             f.writer.offerControl("PONG",mapOf("n" to n))
-            repeat(100){f.writer.offerEphemeral("$n","TEST_STATE",mapOf("n" to it))}
+            repeat(100){f.ephemeral("$n","TEST_STATE",mapOf("n" to it))}
         } catch(t:Throwable){failures.add(t)} };};workers.forEach{it.join()}
         assertTrue(failures.isEmpty(),failures.toString())
         val s=f.writer.snapshot();assertEquals(listOf(32,8,8),s.counts);assertTrue(s.bytes[0]<=256*1024);assertTrue(s.bytes[1]<=32*1024);assertTrue(s.bytes[2]<=16*1024)
@@ -183,7 +184,7 @@ class ConnectionOutboundTests {
         val critical=measured {repeat(4){repeat(25){f.writer.offerCritical("MATCH_UPDATE",payload)};assertTrue(f.writer.awaitIdle())}}
         val mixed=measured {repeat(10){repeat(8){f.writer.offerCritical("MATCH_UPDATE",payload)};f.writer.offerControl("PONG",emptyMap());assertTrue(f.writer.awaitIdle())}}
         f.block()
-        val coalescing=measured {repeat(10){n->repeat(50){f.writer.offerEphemeral("$it","TEST_STATE",mapOf("n" to n))}}}
+        val coalescing=measured {repeat(10){n->repeat(50){f.ephemeral("$it","TEST_STATE",mapOf("n" to n))}}}
         assertEquals(50,f.writer.snapshot().counts[2]);assertEquals(450L,f.writer.snapshot().coalesced)
         val drain=measured {f.release()}
         println("LOCAL_PERF_MICROS baseline_sync_100=$baseline single_enqueue_send=$single critical_100=$critical mixed_90=$mixed coalescing_500_to_50=$coalescing drain_50=$drain")

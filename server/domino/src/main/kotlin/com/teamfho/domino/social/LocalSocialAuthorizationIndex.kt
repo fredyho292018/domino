@@ -3,6 +3,8 @@ package com.teamfho.domino.social
 import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ConcurrentHashMap
+import com.teamfho.domino.realtime.EphemeralAuthorization
 
 data class SocialAuthorizationSnapshot(val allowed:Boolean,val pairRevision:Long,val privacyRevision:Long)
 fun interface SocialAuthorizationReader {
@@ -30,9 +32,31 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
         internal var valid=false
         internal var allowed=false
         internal var expires=Long.MIN_VALUE
+        private val revocations=ConcurrentHashMap<Any,()->Unit>()
         fun canDeliver():Boolean=synchronized(this@LocalSocialAuthorizationIndex) {
             handles[id]===this && valid && allowed && nanoTime()<expires && nanoTime()<recoveredUntil
         }
+        /** Capture a generation, not a mutable permission. Reauthorization never revives it. */
+        fun capability():EphemeralAuthorization?=synchronized(this@LocalSocialAuthorizationIndex) {
+            if(!canDeliver())return@synchronized null
+            val issued=generation
+            EphemeralAuthorization(
+                {synchronized(this@LocalSocialAuthorizationIndex){generation==issued && canDeliver()}},
+                {action->
+                    val key=Any()
+                    synchronized(this@LocalSocialAuthorizationIndex) {
+                        if(generation==issued && canDeliver())revocations[key]=action else action()
+                    }
+                    // Removal never acquires the authority monitor: writer -> authority lock inversion is forbidden.
+                    AutoCloseable{revocations.remove(key)}
+                })
+        }
+        internal fun revoke() {
+            valid=false;allowed=false;generation++
+            val callbacks=revocations.values.toList();revocations.clear()
+            callbacks.forEach{it()}
+        }
+        internal fun capabilitySubscriptions()=revocations.size
         override fun close()=remove(id)
     }
     @Synchronized fun register(connection:String,viewer:String,target:String,reader:SocialAuthorizationReader):Handle {
@@ -59,17 +83,17 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
                 false
             } else {
                 if(event.pairId!=null)h.pairRevision=event.revision else h.privacyRevision=event.revision
-                h.valid=false;h.allowed=false;h.generation++;true
+                h.revoke();true
             }
         }
         schedule(changed)
     }
     /** Global failure is different from targeted normal invalidation. Never preserve optimistic delivery. */
-    @Synchronized fun recoveryFailed(){recoveredUntil=Long.MIN_VALUE;handles.values.forEach{it.valid=false;it.allowed=false;it.generation++}}
+    @Synchronized fun recoveryFailed(){recoveredUntil=Long.MIN_VALUE;handles.values.forEach{it.revoke()}}
     @Synchronized fun recovered(){recoveredUntil=nanoTime()+leaseNanos;refreshExpired()}
     @Synchronized fun refreshExpired() {
         val stale=handles.values.filter{!it.valid || nanoTime()>=it.expires}
-        stale.forEach{it.valid=false;it.allowed=false;it.generation++}
+        stale.forEach{it.revoke()}
         schedule(stale)
     }
     private fun schedule(values:List<Handle>) {
@@ -94,7 +118,7 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
     }
     @Synchronized private fun remove(id:String) {
         val h=handles.remove(id)?:return
-        h.valid=false;h.allowed=false;h.generation++
+        h.revoke()
         for((index,key) in listOf(connections to h.connection,targets to h.target,viewers to h.viewer,pairs to h.pair)) {
             index[key]?.let{it.remove(id);if(it.isEmpty())index.remove(key)}
         }
