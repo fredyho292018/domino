@@ -43,6 +43,14 @@ static class SocialClientTests
         await Reject(()=>client.Privacy("sourceUid","victim",4,token),typeof(SocialException));
         await Reject(()=>client.Privacy("follow","FRIENDS",4,token),typeof(SocialException));
         await Reject(()=>api.SendAsync("GET","players/"+id+"/followers",null,token),typeof(ArgumentException));
+        transport.Status=503;transport.Body="{\"code\":\"SOCIAL_SERVICE_UNAVAILABLE\"}";
+        foreach(Func<Task> operation in new Func<Task>[]{()=>client.Search("Alice",null,token),()=>client.Follow(id,true,token),()=>client.Privacy("follow","EVERYONE",4,token)}) {
+            int requests=transport.Calls,auth=tokens.Calls;
+            try {await operation();throw new Exception("503 must not report success");}
+            catch(SocialException e){Check(e.Code=="SOCIAL_SERVICE_UNAVAILABLE","Typed unavailable");}
+            Check(transport.Calls==requests+1&&tokens.Calls==auth+1,"503 has no retry or auth refresh");
+            Check(client.SessionValid&&uid=="a","503 preserves identity/session");
+        }
         transport.Status=404;transport.Body="{\"code\":\"PLAYER_NOT_FOUND\"}";await Reject(()=>client.Profile(id,token),typeof(SocialException));
         transport.Status=401;transport.Body="{}";int before=tokens.Calls;await Reject(()=>client.Summary(token),typeof(SocialException));Check(tokens.Calls-before==2,"One auth refresh");
         var d=new Deferred();var scoped=new SocialClient(d,()=>uid);var pending=scoped.Summary(token);uid="b";d.Result.SetResult(new JObject());await Reject(()=>pending,typeof(OperationCanceledException));Check(!scoped.SessionValid,"Session invalidated");

@@ -17,22 +17,22 @@ class FriendshipConfiguration {
     }
 }
 @RestController
-class FriendshipController(private val services:FriendshipServices,private val social:SocialServices,private val rate:SocialRateLimiter) {
-    private fun ready(i:FirebaseIdentity,action:String):FriendshipService {
+class FriendshipController(private val services:FriendshipServices,private val social:SocialServices,private val rate:SocialRateGate) {
+    private fun ready(i:FirebaseIdentity,action:SocialOperation):FriendshipService {
         rate.check(i.uid,action);social.ready().identity.ensure(i.uid);return services.ready()
     }
     @PostMapping("/api/v1/players/{id}/friend-request")
-    fun send(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,"friendSend").send(i.uid,id)
+    fun send(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,SocialOperation.SEND).send(i.uid,id)
     @GetMapping("/api/v1/player/friend-requests")
-    fun requests(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam direction:String,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,"requests").requests(i.uid,direction,cursor,limit)
+    fun requests(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam direction:String,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,SocialOperation.REQUESTS).requests(i.uid,direction,cursor,limit)
     @PostMapping("/api/v1/friend-requests/{id}/accept")
-    fun accept(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,"accept").resolve(i.uid,id,FriendRequestStatus.ACCEPTED)
+    fun accept(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,SocialOperation.ACCEPT).resolve(i.uid,id,FriendRequestStatus.ACCEPTED)
     @PostMapping("/api/v1/friend-requests/{id}/decline")
-    fun decline(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,"decline").resolve(i.uid,id,FriendRequestStatus.DECLINED)
+    fun decline(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,SocialOperation.DECLINE).resolve(i.uid,id,FriendRequestStatus.DECLINED)
     @DeleteMapping("/api/v1/friend-requests/{id}")
-    fun cancel(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,"cancel").resolve(i.uid,id,FriendRequestStatus.CANCELED)
+    fun cancel(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String)=ready(i,SocialOperation.CANCEL).resolve(i.uid,id,FriendRequestStatus.CANCELED)
     @GetMapping("/api/v1/player/friends")
-    fun friends(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,"friends").friends(i.uid,cursor,limit)
+    fun friends(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,SocialOperation.FRIENDS).friends(i.uid,cursor,limit)
     @DeleteMapping("/api/v1/player/friends/{id}")
-    fun remove(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,"unfriend").remove(i.uid,id);return mapOf("success" to true)}
+    fun remove(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,SocialOperation.UNFRIEND).remove(i.uid,id);return mapOf("success" to true)}
 }

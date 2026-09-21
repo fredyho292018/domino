@@ -16,16 +16,16 @@ class FollowConfiguration {
     }
 }
 @RestController
-class FollowController(private val services:FollowServices,private val social:SocialServices,private val rate:SocialRateLimiter) {
-    private fun ready(i:FirebaseIdentity,action:String):FollowService {
+class FollowController(private val services:FollowServices,private val social:SocialServices,private val rate:SocialRateGate) {
+    private fun ready(i:FirebaseIdentity,action:SocialOperation):FollowService {
         rate.check(i.uid,action);social.ready().identity.ensure(i.uid);return services.ready()
     }
     @PostMapping("/api/v1/players/{id}/follow")
-    fun follow(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,"follow").set(i.uid,id,true);return mapOf("success" to true)}
+    fun follow(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,SocialOperation.FOLLOW).set(i.uid,id,true);return mapOf("success" to true)}
     @DeleteMapping("/api/v1/players/{id}/follow")
-    fun unfollow(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,"follow").set(i.uid,id,false);return mapOf("success" to true)}
+    fun unfollow(@AuthenticationPrincipal i:FirebaseIdentity,@PathVariable id:String):Map<String,Boolean> {ready(i,SocialOperation.UNFOLLOW).set(i.uid,id,false);return mapOf("success" to true)}
     @GetMapping("/api/v1/player/followers")
-    fun followers(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,"followList").list(i.uid,false,cursor,limit)
+    fun followers(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,SocialOperation.FOLLOW_LIST).list(i.uid,false,cursor,limit)
     @GetMapping("/api/v1/player/following")
-    fun following(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,"followList").list(i.uid,true,cursor,limit)
+    fun following(@AuthenticationPrincipal i:FirebaseIdentity,@RequestParam(required=false) cursor:String?,@RequestParam(defaultValue="20") limit:Int)=ready(i,SocialOperation.FOLLOW_LIST).list(i.uid,true,cursor,limit)
 }

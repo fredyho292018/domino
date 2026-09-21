@@ -40,6 +40,6 @@ object SocialValidationServer {
         }
         @Bean @Primary fun friendValidationServices()=FriendshipServices{FriendshipService(db,relationCursor)}
         @Bean @Primary fun followTestServices()=FollowServices{FollowService(db,relationCursor)}
-        @Bean @Primary fun socialValidationRate()=SocialRateLimiter{_,_->}
+        @Bean @Primary fun socialValidationRate()=SocialRateGate{_,_->RateDecision.ALLOW}
     }
 }

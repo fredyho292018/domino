@@ -47,6 +47,18 @@ class SocialAccess(private val profiles: PublicIdentityRepository, private val b
 }
 class SocialPrivacyService(private val identities: PublicPlayerIdentityService,private val repository: SocialPrivacyRepository) {
     fun getEffectiveSocialPrivacy(uid: String): SocialPrivacySettings { identities.ensure(uid);return repository.privacy(uid) }
+    fun updateGated(uid:String,patch:PrivacyPatch,gate:SocialRateGate):SocialPrivacySettings {
+        // Bound the prerequisite durable read separately; no Redis dependency for classification.
+        gate.check(uid,SocialOperation.PRIVACY_INSPECT)
+        identities.ensure(uid)
+        val current=repository.privacy(uid)
+        socialCheck(current.revision==patch.revision,"REVISION_MISMATCH",409)
+        val operation=PrivacyDirection.classify(current,patch)
+        gate.check(uid,operation)
+        // Repository checks the SAME revision inside its transaction: a concurrent update
+        // cannot turn an admitted tightening into a loosening. No-op remains write-free.
+        return repository.patchPrivacy(uid,patch)
+    }
     fun update(uid: String,patch: PrivacyPatch): SocialPrivacySettings {identities.ensure(uid);return repository.patchPrivacy(uid,patch)}
 }
 class PublicPlayerProfileService(private val identities: PublicPlayerIdentityService,private val profiles: PublicIdentityRepository,

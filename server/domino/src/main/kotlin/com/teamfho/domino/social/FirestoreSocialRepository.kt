@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 /** No background work, no client Firestore access, and no relation writes outside transactions. */
 class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepository, SocialPrivacyRepository, BlockRepository {
     private fun doc(path: String) = db.document(path)
-    private fun <T> transaction(body: (Transaction) -> T): T = db.runTransaction(body).get(15, TimeUnit.SECONDS)
+    private fun <T> transaction(body: (Transaction) -> T): T = db.runTransaction {tx->socialTransactionCallback {body(tx)}}.get(15, TimeUnit.SECONDS)
     private fun get(path: String) = doc(path).get().get(5, TimeUnit.SECONDS)
     private fun active(p: DocumentSnapshot, marker: DocumentSnapshot) = p.exists() && p.getString("status") == "ACTIVE" && marker.getBoolean("isTestAccount") != true
     private fun identity(uid: String, d: DocumentSnapshot) = PublicPlayerIdentity(uid, d.getString("publicPlayerId")!!, d.getString("friendCode")!!)

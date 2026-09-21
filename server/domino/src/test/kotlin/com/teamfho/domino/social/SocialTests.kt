@@ -123,8 +123,8 @@ class SocialTests {
         assertEquals("SELF_RELATION_NOT_ALLOWED",assertFailsWith<SocialFailure>{b.set("u2",id,true)}.code)
     }
     @Test fun `redis unavailable cannot prevent safety block`() {
-        val rate=RedisSocialRateLimiter{null};rate.check("a","block")
-        assertEquals("SOCIAL_SERVICE_UNAVAILABLE",assertFailsWith<SocialFailure>{rate.check("a","NAME")}.code)
+        val rate=ResilientSocialRateGate(RedisSocialRateLimiter{null});rate.check("a",SocialOperation.BLOCK)
+        assertEquals("SOCIAL_SERVICE_UNAVAILABLE",assertFailsWith<SocialFailure>{rate.check("a",SocialOperation.SEARCH)}.code)
     }
     @Test fun `unblock hidden target and paginated own list`() {
         val r=fixture();val b=BlockService(r,SocialAccess(r,r),SocialCursor())

@@ -25,7 +25,7 @@ class SocialHttpTests {
         @Bean @Primary fun socialTestServices():SocialServices=memoryServices(db)
         @Bean @Primary fun friendTestServices()=FriendshipServices{FriendshipService(db,relationCursor)}
         @Bean @Primary fun followTestServices()=FollowServices{FollowService(db,relationCursor)}
-        @Bean @Primary fun socialTestRate()=SocialRateLimiter{_,_->}
+        @Bean @Primary fun socialTestRate()=SocialRateGate{_,_->RateDecision.ALLOW}
     }
     @Test fun `all social routes require identity`() {
         for(path in listOf("player/social-summary","player/social-settings","player/blocks","players/search?mode=NAME&q=ali","players/aaaaaaaaaaaaaaaaaaaaaa/profile"))

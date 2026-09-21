@@ -2,6 +2,17 @@ package com.teamfho.domino.social
 
 import com.google.cloud.firestore.*
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ExecutionException
+
+/** Future.get() wraps read failures. Firestore's transaction runner only classifies
+ * a direct ApiException for its bounded retry policy; preserve that original error.
+ * No outer retry loop, custom backoff or retry of domain/application failures. */
+internal fun <T> socialTransactionCallback(body:()->T):T = try {body()} catch(e:ExecutionException) {
+    var cause:Throwable=e
+    while(cause is ExecutionException && cause.cause!=null)cause=cause.cause!!
+    if(cause is com.google.api.gax.rpc.ApiException)throw cause
+    throw e
+}
 
 class FirestoreSocialTransaction(private val db:Firestore,private val tx:Transaction):SocialTransaction {
     override fun read(path:String)=tx.get(db.document(path)).get().data
@@ -9,7 +20,7 @@ class FirestoreSocialTransaction(private val db:Firestore,private val tx:Transac
     override fun delete(path:String) {tx.delete(db.document(path))}
 }
 class FirestoreFriendships(private val db:Firestore):FriendshipRepository {
-    override fun <T> atomic(body:(SocialTransaction)->T):T=db.runTransaction {tx->body(FirestoreSocialTransaction(db,tx))}.get(20,TimeUnit.SECONDS)
+    override fun <T> atomic(body:(SocialTransaction)->T):T=db.runTransaction {tx->socialTransactionCallback {body(FirestoreSocialTransaction(db,tx))}}.get(20,TimeUnit.SECONDS)
     override fun read(path:String)=db.document(path).get().get(5,TimeUnit.SECONDS).data
     override fun readAll(paths:List<String>):Map<String,Map<String,Any>?> {
         if(paths.isEmpty())return emptyMap()
