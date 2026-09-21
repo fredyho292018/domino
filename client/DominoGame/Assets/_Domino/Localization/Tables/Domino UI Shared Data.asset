@@ -1287,6 +1287,22 @@ MonoBehaviour:
     m_Key: social.privacy_error
     m_Metadata:
       m_Items: []
+  - m_Id: 5479184049401856
+    m_Key: social.presence.online
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5479184120705024
+    m_Key: social.presence.offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5479184120705025
+    m_Key: social.presence.inMatch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5479184120705026
+    m_Key: social.presence.unknown
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

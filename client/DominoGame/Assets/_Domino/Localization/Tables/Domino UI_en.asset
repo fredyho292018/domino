@@ -1612,6 +1612,26 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7246862583952572445
+  - m_Id: 5479184049401856
+    m_Localized: Online
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5479184120705024
+    m_Localized: Offline
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5479184120705025
+    m_Localized: In match
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
+  - m_Id: 5479184120705026
+    m_Localized: Status unavailable
+    m_Metadata:
+      m_Items:
+      - rid: 7246862583952572445
   references:
     version: 2
     RefIds:
@@ -1929,3 +1949,7 @@ MonoBehaviour:
         - id: 5380160000651279
         - id: 5380160000651280
         - id: 5380160000651281
+        - id: 5479184049401856
+        - id: 5479184120705024
+        - id: 5479184120705025
+        - id: 5479184120705026

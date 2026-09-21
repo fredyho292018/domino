@@ -73,9 +73,18 @@ object SocialChaosValidationServer {
     }
     @RestController
     @Profile("a4-local")
-    class Diagnostics(private val db:Firestore,private val runtime:SocialInvalidationRuntime,private val metrics:MeterRegistry,private val probes:Probes) {
+    class Diagnostics(private val db:Firestore,private val runtime:SocialInvalidationRuntime,private val metrics:MeterRegistry,private val probes:Probes,
+        private val presenceRuntime:SocialPresenceRuntime,private val online:com.teamfho.domino.online.OnlineMatchService) {
         private val handles=ConcurrentHashMap<String,LocalSocialAuthorizationIndex.Handle>()
         private var savedFeed:FirestoreSocialInvalidationFeed?=null
+        @PostMapping("/api/a4/partners") fun partners(@RequestBody body:Map<String,List<String>>):Map<String,Any> {
+            val players=body.getValue("players");require(players.size==4 && players.distinct().size==4 && players.all{it.startsWith("a4-")})
+            val catalog=com.teamfho.domino.catalog.GameCatalogValidator.resolve(com.teamfho.domino.catalog.GameCatalogV4Publisher.canonical())
+            val mode=catalog.modes.single{it.key==com.teamfho.domino.catalog.GameCatalogV4Publisher.KEY}
+            val rules=com.teamfho.domino.match.MatchRuleSnapshot.freeze(catalog,mode)
+            val state=online.createPaired(java.util.UUID.randomUUID().toString(),players,rules)
+            return mapOf("matchId" to state.match.matchId,"seats" to state.match.participants.sortedBy{it.seatIndex}.map{it.playerUid!!})
+        }
         @Volatile private var readFailure=false
         private val reader=SocialAuthorizationReader {viewer,target->
             check(!readFailure)
@@ -150,6 +159,12 @@ object SocialChaosValidationServer {
                     val f=SocialInvalidationRuntime::class.java.getDeclaredField("bus").also{it.isAccessible=true}
                     (f.get(runtime) as? SocialInvalidationPubSub)?.close()
                     if(!body.getValue("enabled").toBoolean())f.set(runtime,null)
+                }
+                "presencePubsub"->{
+                    val bus=SocialPresenceRuntime::class.java.getDeclaredField("bus").also{it.isAccessible=true}
+                    (bus.get(presenceRuntime) as? SocialPresencePubSub)?.close();bus.set(presenceRuntime,null)
+                    SocialPresenceRuntime::class.java.getDeclaredField("nextBus").also{it.isAccessible=true}
+                        .setLong(presenceRuntime,if(body.getValue("enabled").toBoolean())Long.MAX_VALUE else 0)
                 }
                 "dispatcher"->SocialInvalidationRuntime::class.java.getDeclaredField("nextDispatch").also{it.isAccessible=true}.setLong(runtime,if(body.getValue("enabled").toBoolean())Long.MAX_VALUE else 0)
                 "dispatchFailure"->{

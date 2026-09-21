@@ -13,6 +13,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
     private val log=LoggerFactory.getLogger(javaClass)
     // Injected transport callback runs only after Firestore acknowledges the transaction.
     var committed: (OnlineWrite)->Unit = {}
+    var pairedStateObserved: (OnlineState)->Unit = {}
     fun createPaired(id:String,uidA:String,uidB:String,rules:MatchRuleSnapshot)=createPaired(id,listOf(uidA,uidB),rules)
     fun createPaired(id:String,players:List<String>,rules:MatchRuleSnapshot):OnlineState {
         checkOnline(players.distinct().size==players.size,OnlineError.SAME_PLAYER);validId(id);rules.verify()
@@ -27,7 +28,9 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER)
         val write=engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)
         OnlineWrites.validate(before,write,"sys_pair_$id")
-        return repository.createPaired(write)
+        val persisted=repository.createPaired(write)
+        try{pairedStateObserved(persisted)}catch(_:Exception){log.warn("ONLINE_PRESENCE_UNAVAILABLE")}
+        return persisted
     }
     fun settleFailedCreation(id:String)=repository.settleFailedCreation(id)
     fun active(uid:String):OnlineSnapshot? = repository.activeFor(uid).asSequence().mapNotNull{repository.read(it)}

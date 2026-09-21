@@ -1,5 +1,9 @@
 {
   "entries": [
+    {"key":"social.presence.online","en":"Online","es":"En línea"},
+    {"key":"social.presence.offline","en":"Offline","es":"Desconectado"},
+    {"key":"social.presence.inMatch","en":"In match","es":"En partida"},
+    {"key":"social.presence.unknown","en":"Status unavailable","es":"Estado no disponible"},
     {"key":"social.follow","en":"Follow","es":"Seguir"},
     {"key":"social.following","en":"Following","es":"Siguiendo"},
     {"key":"social.followers","en":"Followers","es":"Seguidores"},

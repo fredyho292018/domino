@@ -27,6 +27,7 @@ class RealtimeHandler(
     private val matchmaking: com.teamfho.domino.matchmaking.MatchmakingService? = null,
     private val outboundMetrics: OutboundMetrics? = null,
     private val socialInvalidation: com.teamfho.domino.social.SocialInvalidationRuntime? = null,
+    private val socialPresence: com.teamfho.domino.social.SocialPresenceRuntime? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -57,7 +58,9 @@ class RealtimeHandler(
                 if(c.socket.isOpen)try{send(c,type,MatchCodec.map(state))}catch(_:Exception){close(c,1011)}
             }}
         }
+        online?.pairedStateObserved = { state -> socialPresence?.observeMatch(state) }
         online?.committed = { write ->
+            socialPresence?.observeMatch(write.state)
             connections.values.forEach { c ->
                 val uid=c.uid
                 val participant=write.state.match.participants.singleOrNull {it.playerUid==uid}
@@ -113,16 +116,16 @@ class RealtimeHandler(
                         val identity = verifier.verify(token)
                         // Timeout task may have closed the socket during Firebase verification.
                         if (!c.outbound.isAccepting() || !session.isOpen || expired(c.opened, properties.authTimeoutSeconds)) { close(c, 1008); return }
-                        presence.touch(identity.uid, c.id, serverId)
+                        val presenceReady=runCatching {presence.touch(identity.uid, c.id, serverId)}.isSuccess
                         val ownsLease = synchronized(c.leaseLock) {
                             if (c.cleaned) false else { c.uid = identity.uid; true }
                         }
-                        if (!ownsLease) { presence.remove(identity.uid, c.id); return }
+                        if (!ownsLease) { runCatching{presence.remove(identity.uid, c.id)}; return }
                         if (!c.outbound.isAccepting()) return
                         c.lastHeartbeat = System.nanoTime(); c.lastLease = c.lastHeartbeat
                         send(c, "AUTHENTICATED", mapOf("heartbeatIntervalSeconds" to properties.heartbeatIntervalSeconds,
                             "heartbeatTimeoutSeconds" to properties.heartbeatTimeoutSeconds))
-                        send(c, "PRESENCE_READY", mapOf("state" to "ONLINE"))
+                        send(c, "PRESENCE_READY", mapOf("state" to if(presenceReady)"ONLINE" else "UNKNOWN"))
                         turnWorker?.connectionChanged(identity.uid)
                     }
                     "PING", "GLOBAL_ACTIVITY_SUBSCRIBE", "GLOBAL_ACTIVITY_UNSUBSCRIBE" -> {
@@ -133,16 +136,27 @@ class RealtimeHandler(
                                 if (expired(c.lastLease, properties.heartbeatIntervalSeconds)) {
                                     synchronized(c.leaseLock) {
                                         if(c.cleaned) return
-                                        presence.touch(c.uid!!, c.id, serverId); c.lastLease = now
+                                        runCatching{presence.touch(c.uid!!, c.id, serverId)}; c.lastLease = now
                                     }
                                 }
                                 send(c, "PONG", emptyMap())
                             }
                             "GLOBAL_ACTIVITY_SUBSCRIBE" -> {
-                                c.subscribed = true; send(c, "GLOBAL_ACTIVITY_SNAPSHOT", activity(presence.onlinePlayers()))
+                                c.subscribed = true; runCatching{send(c, "GLOBAL_ACTIVITY_SNAPSHOT", activity(presence.onlinePlayers()))}
                             }
                             else -> c.subscribed = false
                         }
+                    }
+                    "SOCIAL_PRESENCE_SUBSCRIBE" -> {
+                        if(c.uid==null){fail(c,"PROTOCOL");return}
+                        val ids=payload.path("publicPlayerIds")
+                        val generation=payload.path("generation")
+                        if(socialPresence==null || payload.size()!=2 || !ids.isArray || ids.size()>100 ||
+                            ids.any{!it.isString || !it.asString().matches(Regex("[A-Za-z0-9_-]{22}"))} ||
+                            ids.asSequence().map{it.asString()}.toList().distinct().size>50 || !generation.isIntegralNumber || generation.asLong()<=0) {
+                            send(c,"SOCIAL_PRESENCE_ERROR",mapOf("code" to "INVALID_PRESENCE_REQUEST"));return
+                        }
+                        socialPresence.subscribe(c.id,c.uid!!,c.outbound,ids.asSequence().map{it.asString()}.toList(),generation.asLong())
                     }
                     "MATCH_COMMAND" -> {
                         if(c.uid==null || online==null) { fail(c,"PROTOCOL");return }
@@ -201,6 +215,7 @@ class RealtimeHandler(
                 matchmaking?.connectionLost(it)
             }
         } finally {
+            socialPresence?.close(c.id)
             socialInvalidation?.index?.closeConnection(c.id)
             connections.remove(c.socket.id,c)
         }
@@ -241,7 +256,7 @@ class RealtimeHandler(
             } }
         } catch (_: Exception) {
             lastCount = -1
-            connections.values.forEach { c -> synchronized(c) { try { fail(c, "UNAVAILABLE", retryable = true) } catch (_: Exception) { close(c, 1013) } } }
+            // Presence is optional. Redis loss must not terminate an authenticated gameplay transport.
         }
     }
 }

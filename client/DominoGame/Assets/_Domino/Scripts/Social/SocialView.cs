@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Domino.UI;
@@ -14,11 +15,14 @@ namespace Domino.Social
         SocialClient client;Action closed;CancellationTokenSource lifetime=new CancellationTokenSource();
         RectTransform safe,panel,rows,viewport;Text status,code;InputField input;Button more;JObject summary;
         readonly List<JObject> items=new List<JObject>();string cursor,query,section="search";bool busy,confirming;
+        readonly List<Action> presenceLabels=new List<Action>();
+        bool presenceList;string visiblePresenceKey;
         public InputField SearchInput=>input;
         public bool Busy=>busy;
         public int ResultCount=>items.Count;
         public void Initialize(SocialClient source,Action onClose) {
             client=source;closed=onClose;
+            client.Presence.Changed+=RefreshPresence;
             gameObject.AddComponent<SocialAccessibility>();
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=55;
             BoardView.ConfigureCanvas(gameObject);gameObject.AddComponent<GraphicRaycaster>();
@@ -45,6 +49,7 @@ namespace Domino.Social
             viewport=UiKit.Rect("Social viewport",panel,new Vector2(670,480),new Vector2(0,-385));viewport.gameObject.AddComponent<RectMask2D>();viewport.gameObject.AddComponent<Image>().color=Color.clear;
             rows=UiKit.Rect("Social rows",viewport,new Vector2(650,0),Vector2.zero);rows.anchorMin=rows.anchorMax=new Vector2(.5f,1);rows.pivot=new Vector2(.5f,1);
             var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=rows;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;
+            scroll.onValueChanged.AddListener(_=>ObserveVisiblePresence());
             more=Button("More","history.more",panel,300,new Vector2(0,-690),()=>Run(()=>Load(false)));more.gameObject.SetActive(false);
             status=Label("Status","social.hint",panel,670,new Vector2(0,-65));status.rectTransform.sizeDelta=new Vector2(670,120);
             Run(LoadSummary);
@@ -56,7 +61,20 @@ namespace Domino.Social
         }
         void Message(string key){if(status)DominoLocalization.Set(status,key);}
         async Task LoadSummary(){summary=await client.Summary(lifetime.Token);DominoLocalization.Bind(code,()=>DominoLocalization.Get("social.code")+"\n"+(string)summary?["profile"]?["friendCode"]);Message("social.hint");}
-        void ClearRows(){foreach(Transform child in rows){child.gameObject.SetActive(false);Destroy(child.gameObject);}rows.sizeDelta=new Vector2(650,0);confirming=false;}
+        void RefreshPresence(){foreach(var refresh in presenceLabels)refresh();}
+        void PresenceLabel(Text label,string id,Func<string> content) {
+            Func<string> value=()=>content()+"\n"+DominoLocalization.Get(SocialPresenceStore.LocalizationKey(client.Presence.Get(id)));
+            DominoLocalization.Bind(label,value);presenceLabels.Add(()=>{if(label)label.text=value();});
+        }
+        void ClearRows(){presenceList=false;visiblePresenceKey=null;presenceLabels.Clear();client.ObservePresence(Array.Empty<string>());foreach(Transform child in rows){child.gameObject.SetActive(false);Destroy(child.gameObject);}rows.sizeDelta=new Vector2(650,0);confirming=false;}
+        void ObserveVisiblePresence() {
+            if(!presenceList)return;
+            int first=Mathf.Max(0,Mathf.FloorToInt(rows.anchoredPosition.y/385)-1);
+            int count=Mathf.Min(50,Mathf.CeilToInt(viewport.rect.height/385)+3);
+            var ids=items.Skip(first).Take(count).Select(p=>(string)p["profile"]["publicPlayerId"]).ToArray();
+            string key=string.Join(",",ids);if(key==visiblePresenceKey)return;
+            visiblePresenceKey=key;client.ObservePresence(ids);
+        }
         void Navigate(string next) {
             if(busy)return;section=next;items.Clear();cursor=null;ClearRows();more.gameObject.SetActive(false);
             input.transform.gameObject.SetActive(next=="search");panel.Find("Clear search").gameObject.SetActive(next=="search");panel.Find("Search submit").gameObject.SetActive(next=="search");
@@ -87,6 +105,9 @@ namespace Domino.Social
         void ShowProfile(JObject item) {
             ClearRows();more.gameObject.SetActive(false);Message("social.profile");rows.sizeDelta=new Vector2(650,980);
             var label=UiKit.Label("Public profile",rows,(string)item["displayName"]+"\n"+(string)item["friendCode"],new Vector2(640,120),new Vector2(0,-90),32,UiKit.Cream);label.rectTransform.anchorMin=label.rectTransform.anchorMax=new Vector2(.5f,1);
+            label.resizeTextForBestFit=true;label.resizeTextMinSize=24;label.resizeTextMaxSize=32;
+            PresenceLabel(label,(string)item["publicPlayerId"],()=>(string)item["displayName"]+"\n"+(string)item["friendCode"]);
+            client.ObservePresence(new[]{(string)item["publicPlayerId"]});
             var button=Button("Block player","social.block",rows,480,new Vector2(0,-250),()=>{
                 if(busy||confirming)return;confirming=true;Message("social.block_confirm");
                 var yes=Button("Confirm block","system.confirm",rows,260,new Vector2(-145,-410),()=>Run(async()=>{await client.Block((string)item["publicPlayerId"],true,lifetime.Token);await LoadSummary();items.Clear();cursor=null;ClearRows();Message("social.blocked_success");}));
@@ -120,6 +141,8 @@ namespace Domino.Social
                 UiKit.Disc("Default avatar",row,65,new Vector2(-275,95),UiKit.Gold);
                 var label=UiKit.Label("Friend name code date",row,"",new Vector2(500,140),new Vector2(40,95),26,UiKit.Cream);label.resizeTextForBestFit=true;
                 DominoLocalization.Bind(label,()=>{DateTimeOffset.TryParse((string)(item["friendsSince"]??item["createdAt"]??item["followedSince"]),out var date);return (string)p["displayName"]+"\n"+(string)p["friendCode"]+"\n"+date.ToLocalTime().ToString("g",System.Globalization.CultureInfo.GetCultureInfo(DominoLocalization.Language));});
+                if(section=="friends"||section=="following"||section=="followers")
+                    PresenceLabel(label,id,()=>(string)p["displayName"]+"\n"+(string)p["friendCode"]);
                 Button("View profile","social.profile",row,590,new Vector2(0,-25),()=>Run(async()=>ShowProfile(await client.Profile(id,lifetime.Token))));
                 if(section=="friends")Button("Remove friend","social.remove_friend",row,590,new Vector2(0,-140),()=>ConfirmRemove(id));
                 else if(section=="following")Button("Unfollow","social.unfollow",row,590,new Vector2(0,-140),()=>Mutate(()=>client.Follow(id,false,lifetime.Token)));
@@ -127,20 +150,26 @@ namespace Domino.Social
                 else if(section=="outgoing")Button("Cancel request","social.cancel_request",row,590,new Vector2(0,-140),()=>Mutate(()=>client.ResolveRequest(request,"cancel",lifetime.Token)));
                 else {Button("Accept request","social.accept",row,285,new Vector2(-150,-140),()=>Mutate(()=>client.ResolveRequest(request,"accept",lifetime.Token)));Button("Decline request","social.decline",row,285,new Vector2(150,-140),()=>Mutate(()=>client.ResolveRequest(request,"decline",lifetime.Token)));}
             }rows.sizeDelta=new Vector2(650,offset+items.Count*385);
+            if(section=="friends"||section=="following"||section=="followers")
+                {presenceList=true;ObserveVisiblePresence();}
         }
         void DrawPrivacy() {
-            ClearRows();Message("social.privacy");rows.sizeDelta=new Vector2(650,800);
+            ClearRows();Message("social.privacy");rows.sizeDelta=new Vector2(650,1050);
             bool enabled=(bool)summary["privacy"]["discoverableByName"];
             var label=Label("Privacy explanation","social.discovery_help",rows,640,new Vector2(0,-100));label.rectTransform.anchorMin=label.rectTransform.anchorMax=new Vector2(.5f,1);label.rectTransform.sizeDelta=new Vector2(640,190);
             var b=Button("Discoverable toggle",enabled?"social.discoverable_on":"social.discoverable_off",rows,620,new Vector2(0,-270),()=>Run(async()=>{
                 summary["privacy"]=await client.Privacy(!enabled,(long)summary["privacy"]["revision"],lifetime.Token);DrawPrivacy();}));b.GetComponent<RectTransform>().anchorMin=b.GetComponent<RectTransform>().anchorMax=new Vector2(.5f,1);
             PrivacyChoice("Friend privacy","friendRequests","social.who_requests",-420);
             PrivacyChoice("Follow privacy","follow","social.who_follows",-570);
+            PrivacyChoice("Presence privacy","presenceVisibility","social.who_presence",-720);
+            PrivacyChoice("Activity privacy","matchActivityVisibility","social.who_activity",-870);
         }
         void PrivacyChoice(string name,string field,string key,float y) {
             string value=(string)summary["privacy"][field];
-            var b=RelationButton(name,key,y,()=>Run(async()=>{summary["privacy"]=await client.Privacy(field,value=="EVERYONE"?"NO_ONE":"EVERYONE",(long)summary["privacy"]["revision"],lifetime.Token);DrawPrivacy();Message("social.privacy_updated");}));
-            DominoLocalization.Bind(b.GetComponentInChildren<Text>(),()=>DominoLocalization.Get(key)+"\n"+DominoLocalization.Get(value=="EVERYONE"?"social.everyone":"social.no_one"));
+            bool visibility=field=="presenceVisibility"||field=="matchActivityVisibility";
+            string next=value=="EVERYONE"?(visibility?"FRIENDS":"NO_ONE"):value=="FRIENDS"?"NO_ONE":"EVERYONE";
+            var b=RelationButton(name,key,y,()=>Run(async()=>{summary["privacy"]=await client.Privacy(field,next,(long)summary["privacy"]["revision"],lifetime.Token);DrawPrivacy();Message("social.privacy_updated");}));
+            DominoLocalization.Bind(b.GetComponentInChildren<Text>(),()=>DominoLocalization.Get(key)+"\n"+DominoLocalization.Get(value=="EVERYONE"?"social.everyone":value=="FRIENDS"?"social.friends":"social.no_one"));
         }
         async void Run(Func<Task> operation) {
             if(busy)return;busy=true;foreach(var b in GetComponentsInChildren<Button>())b.interactable=false;Message("system.loading");
@@ -152,6 +181,6 @@ namespace Domino.Social
         }
         void LateUpdate(){if(client==null)return;if(!client.SessionValid){Close();return;}panel.localScale=Vector3.one*Mathf.Max(.01f,Mathf.Min(safe.rect.width/750,safe.rect.height/1500));}
         public void Close(){lifetime.Cancel();items.Clear();summary=null;closed?.Invoke();closed=null;Destroy(gameObject);}
-        void OnDestroy(){lifetime.Cancel();lifetime.Dispose();items.Clear();summary=null;}
+        void OnDestroy(){lifetime.Cancel();lifetime.Dispose();items.Clear();summary=null;if(client!=null){client.Presence.Changed-=RefreshPresence;client.Dispose();}presenceLabels.Clear();}
     }
 }

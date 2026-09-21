@@ -6,7 +6,8 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ConcurrentHashMap
 import com.teamfho.domino.realtime.EphemeralAuthorization
 
-data class SocialAuthorizationSnapshot(val allowed:Boolean,val pairRevision:Long,val privacyRevision:Long)
+data class SocialAuthorizationSnapshot(val allowed:Boolean,val pairRevision:Long,val privacyRevision:Long,
+    val matchActivityAllowed:Boolean=false)
 fun interface SocialAuthorizationReader {
     /** Consumer-specific permission, read from a consistent durable transaction; never from Pub/Sub. */
     fun read(viewer:String,target:String):SocialAuthorizationSnapshot
@@ -24,15 +25,20 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
     private var recoveredUntil=Long.MIN_VALUE
     private val leaseNanos=30_000_000_000L
     inner class Handle internal constructor(val id:String,val connection:String,val viewer:String,val target:String,
-        internal val reader:SocialAuthorizationReader) : AutoCloseable {
+        internal val reader:SocialAuthorizationReader, internal val changed:(Handle)->Unit) : AutoCloseable {
         val pair=SocialPairIdentity.id(viewer,target)
         internal var pairRevision=0L
         internal var privacyRevision=0L
         internal var generation=0L
         internal var valid=false
         internal var allowed=false
+        internal var matchActivityAllowed=false
         internal var expires=Long.MIN_VALUE
         private val revocations=ConcurrentHashMap<Any,()->Unit>()
+        fun delivery():Pair<EphemeralAuthorization,Boolean>?=synchronized(this@LocalSocialAuthorizationIndex) {
+            capability()?.let{it to matchActivityAllowed}
+        }
+        fun revision():Long=synchronized(this@LocalSocialAuthorizationIndex){generation}
         fun canDeliver():Boolean=synchronized(this@LocalSocialAuthorizationIndex) {
             handles[id]===this && valid && allowed && nanoTime()<expires && nanoTime()<recoveredUntil
         }
@@ -55,18 +61,22 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
             valid=false;allowed=false;generation++
             val callbacks=revocations.values.toList();revocations.clear()
             callbacks.forEach{it()}
+            changed(this)
         }
         internal fun capabilitySubscriptions()=revocations.size
         override fun close()=remove(id)
     }
-    @Synchronized fun register(connection:String,viewer:String,target:String,reader:SocialAuthorizationReader):Handle {
+    fun register(connection:String,viewer:String,target:String,reader:SocialAuthorizationReader):Handle =
+        register(connection,viewer,target,reader,{})
+    @Synchronized fun register(connection:String,viewer:String,target:String,reader:SocialAuthorizationReader,
+        changed:(Handle)->Unit):Handle {
         require(connection.isNotBlank() && viewer.isNotBlank() && target.isNotBlank())
         require(connections.containsKey(connection) || connections.size<maxConnections)
         val owned=connections[connection]
         // An identity switch cannot reuse permissions from the preceding account.
         if(owned?.firstOrNull()?.let{handles[it]?.viewer!=viewer}==true)closeConnection(connection)
         require(connections[connection].orEmpty().size<maxPerConnection)
-        val h=Handle(UUID.randomUUID().toString(),connection,viewer,target,reader)
+        val h=Handle(UUID.randomUUID().toString(),connection,viewer,target,reader,changed)
         handles[h.id]=h
         fun add(index:MutableMap<String,MutableSet<String>>,key:String){index.getOrPut(key){mutableSetOf()}.add(h.id)}
         add(connections,connection);add(targets,target);add(viewers,viewer);add(pairs,h.pair)
@@ -90,7 +100,13 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
     }
     /** Global failure is different from targeted normal invalidation. Never preserve optimistic delivery. */
     @Synchronized fun recoveryFailed(){recoveredUntil=Long.MIN_VALUE;handles.values.forEach{it.revoke()}}
-    @Synchronized fun recovered(){recoveredUntil=nanoTime()+leaseNanos;refreshExpired()}
+    @Synchronized fun recovered(){
+        // A caught-up durable feed fences unchanged permissions. Renew their local lease
+        // without periodically rereading the social graph. Revoked/failed handles still read.
+        val now=nanoTime()
+        if(now<recoveredUntil)handles.values.filter{it.valid && now<it.expires}.forEach{it.expires=now+leaseNanos}
+        recoveredUntil=now+leaseNanos;refreshExpired()
+    }
     @Synchronized fun refreshExpired() {
         val stale=handles.values.filter{!it.valid || nanoTime()>=it.expires}
         stale.forEach{it.revoke()}
@@ -109,6 +125,8 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
                             snapshot.pairRevision>=h.pairRevision && snapshot.privacyRevision>=h.privacyRevision) {
                             h.pairRevision=snapshot.pairRevision;h.privacyRevision=snapshot.privacyRevision
                             h.allowed=snapshot.allowed;h.valid=true;h.expires=nanoTime()+leaseNanos
+                            h.matchActivityAllowed=snapshot.matchActivityAllowed
+                            h.changed(h)
                             if(!snapshot.allowed)metrics?.counter("social_invalidation_revoked")?.increment()
                         }
                     }
@@ -126,5 +144,7 @@ class LocalSocialAuthorizationIndex(private val executor:Executor,private val na
     @Synchronized fun closeConnection(connection:String){connections[connection]?.toList()?.forEach(::remove)}
     @Synchronized fun closeAccount(viewer:String){viewers[viewer]?.toList()?.forEach(::remove)}
     @Synchronized fun size()=handles.size
+    @Synchronized fun forTarget(target:String):List<Handle> = targets[target].orEmpty().mapNotNull{handles[it]}
+    @Synchronized fun targetIds():List<String> = targets.keys.toList()
     @Synchronized fun indexSizes()=listOf(connections.size,targets.size,viewers.size,pairs.size)
 }

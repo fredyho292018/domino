@@ -11,7 +11,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Firestore revision/deadline in one transaction. Restart and competing workers use the same path. */
 @Component
 class OnlineTurnWorker(private val repository: OnlineRepository, private val service: OnlineMatchService,
-    private val presence: PresenceStore,private val index:TurnDueIndex,private val bridge:TurnIndexBridge) {
+    private val presence: PresenceStore,private val index:TurnDueIndex,private val bridge:TurnIndexBridge,
+    private val socialPresence:com.teamfho.domino.social.SocialPresenceRuntime?=null) {
     private val dirty=ConcurrentHashMap.newKeySet<String>()
     private val log=LoggerFactory.getLogger(javaClass)
     fun connectionChanged(uid: String){dirty.add(uid)} // Never do Firestore/fan-out under a socket lock.
@@ -26,6 +27,7 @@ class OnlineTurnWorker(private val repository: OnlineRepository, private val ser
             }
             for(id in ids)try {
                 val state=service.state(id)
+                socialPresence?.observeMatch(state)
                 if(state.match.status in setOf(com.teamfho.domino.match.MatchStatus.FINISHED,com.teamfho.domino.match.MatchStatus.CANCELLED)){index.forget(id);continue}
                 state.match.participants.mapNotNull {it.playerUid}.forEach {uid->
                     service.connection(id,uid){try {presence.connectionCount(uid)?.let {it>0}}catch(_:Exception){null}}

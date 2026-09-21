@@ -45,10 +45,39 @@ namespace Domino.Social
         }
     }
     // No persistent or cross-account cache. In-flight results are discarded after identity changes.
-    public sealed class SocialClient
+    public sealed class SocialClient : IDisposable
     {
         readonly IOnlineMatchApi api; readonly Func<string> currentUid; readonly string owner;
-        public SocialClient(IOnlineMatchApi api,Func<string> currentUid){this.api=api;this.currentUid=currentUid;owner=currentUid();}
+        readonly Domino.Realtime.IRealtimeConnectionService realtime;
+        readonly Domino.Realtime.IRealtimePresenceChannel presenceChannel;
+        Domino.Realtime.RealtimeConnectionState lastRealtime;
+        bool disposed;
+        CancellationTokenSource presencePending;
+        public SocialPresenceStore Presence { get; } = new SocialPresenceStore();
+        public SocialClient(IOnlineMatchApi api,Func<string> currentUid,Domino.Realtime.IRealtimeConnectionService realtime=null){
+            this.api=api;this.currentUid=currentUid;owner=currentUid();this.realtime=realtime;
+            presenceChannel=realtime as Domino.Realtime.IRealtimePresenceChannel;
+            if(presenceChannel!=null){presenceChannel.PresenceMessage+=PresenceMessage;realtime.Changed+=RealtimeChanged;lastRealtime=realtime.State;}
+        }
+        void PresenceMessage(string type,JObject payload) {
+            if(!SessionValid||disposed){Presence.Clear();return;}
+            if(type=="SOCIAL_PRESENCE_ERROR") {if((long?)payload?["generation"]==Presence.Generation)Presence.Clear();}else Presence.Apply(type,payload);
+        }
+        void RealtimeChanged() {
+            var state=realtime.State;
+            if(state!=lastRealtime){lastRealtime=state;if(state==Domino.Realtime.RealtimeConnectionState.CONNECTED)SendPresence(Presence.Reconnect());else Presence.Clear();}
+        }
+        public void ObservePresence(System.Collections.Generic.IEnumerable<string> ids)=>SendPresence(Presence.Replace(ids));
+        async void SendPresence(JObject request) {
+            presencePending?.Cancel();presencePending?.Dispose();presencePending=new CancellationTokenSource();
+            var pending=presencePending;
+            if(presenceChannel==null||realtime.State!=Domino.Realtime.RealtimeConnectionState.CONNECTED||!SessionValid)return;
+            try{if(((JArray)request["publicPlayerIds"]).Count>0)await Task.Delay(300,pending.Token);
+                if(!pending.IsCancellationRequested)await presenceChannel.SubscribePresenceAsync(request);
+            }catch(OperationCanceledException){}catch{Presence.Clear();}
+        }
+        public void Dispose(){if(disposed)return;ObservePresence(Array.Empty<string>());disposed=true;
+            if(presenceChannel!=null){presenceChannel.PresenceMessage-=PresenceMessage;realtime.Changed-=RealtimeChanged;}Presence.Clear();}
         public bool SessionValid=>!string.IsNullOrEmpty(owner)&&owner==currentUid();
         async Task<JObject> Send(string method,string path,JObject body,CancellationToken token) {
             if(!SessionValid||api==null)throw new OperationCanceledException();

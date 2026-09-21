@@ -54,6 +54,25 @@ static class SocialClientTests
         transport.Status=404;transport.Body="{\"code\":\"PLAYER_NOT_FOUND\"}";await Reject(()=>client.Profile(id,token),typeof(SocialException));
         transport.Status=401;transport.Body="{}";int before=tokens.Calls;await Reject(()=>client.Summary(token),typeof(SocialException));Check(tokens.Calls-before==2,"One auth refresh");
         var d=new Deferred();var scoped=new SocialClient(d,()=>uid);var pending=scoped.Summary(token);uid="b";d.Result.SetResult(new JObject());await Reject(()=>pending,typeof(OperationCanceledException));Check(!scoped.SessionValid,"Session invalidated");
-        Console.WriteLine("S1_1_CLIENT_TESTS="+checks+" PASS");
+        var presence=new SocialPresenceStore();
+        var requestPresence=presence.Replace(new[]{id,id});long generation=presence.Generation;
+        Check(((JArray)requestPresence["publicPlayerIds"]).Count==1,"Presence deduplicates desired targets");
+        Check(presence.Get(id)==SocialPresenceState.UNKNOWN,"Presence begins unknown");
+        presence.Apply("SOCIAL_PRESENCE_INVALIDATED",new JObject{["generation"]=generation,["revision"]=1});
+        foreach(var state in new[]{"ONLINE","OFFLINE","IN_MATCH","UNKNOWN"}) {
+            presence.Apply("SOCIAL_PRESENCE_SNAPSHOT",new JObject{["generation"]=generation,["revision"]=1,["publicPlayerId"]=id,["state"]=state});
+            Check(presence.Get(id).ToString()==state,"Typed presence "+state);
+        }
+        presence.Apply("SOCIAL_PRESENCE_UPDATED",new JObject{["generation"]=generation,["revision"]=1,["publicPlayerId"]=id,["state"]="IN_MATCH"});
+        presence.Apply("SOCIAL_PRESENCE_INVALIDATED",new JObject{["generation"]=generation,["revision"]=2});
+        Check(presence.Get(id)==SocialPresenceState.UNKNOWN,"Revocation clears IN_MATCH");
+        presence.Apply("SOCIAL_PRESENCE_UPDATED",new JObject{["generation"]=generation,["revision"]=1,["publicPlayerId"]=id,["state"]="ONLINE"});
+        Check(presence.Get(id)==SocialPresenceState.UNKNOWN,"Prior revision cannot restore state");
+        presence.Replace(Array.Empty<string>());
+        presence.Apply("SOCIAL_PRESENCE_SNAPSHOT",new JObject{["generation"]=generation,["revision"]=2,["publicPlayerId"]=id,["state"]="ONLINE"});
+        Check(presence.Get(id)==SocialPresenceState.UNKNOWN,"Old subscription cannot restore state");
+        Check(presence.Reconnect().Value<long>("generation")>generation,"Reconnect acquires new generation");
+        Check(SocialPresenceStore.LocalizationKey(SocialPresenceState.UNKNOWN)!=SocialPresenceStore.LocalizationKey(SocialPresenceState.OFFLINE),"Unknown presentation differs from offline");
+        Console.WriteLine("SOCIAL_CLIENT_TESTS="+checks+" PASS");
     }
 }

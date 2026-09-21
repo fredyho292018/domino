@@ -46,7 +46,7 @@ namespace Domino.Client
             startMenu.SocialRequested += () => {
                 startMenu.Show(StartScreen.Match);
                 var social=new GameObject("Social",typeof(RectTransform)).AddComponent<Domino.Social.SocialView>();
-                social.Initialize(new Domino.Social.SocialClient(ApplicationServices.SocialApi,()=>ApplicationServices.Identity?.Current?.Uid),()=>{if(startMenu)startMenu.Show(StartScreen.MainMenu);});
+                social.Initialize(new Domino.Social.SocialClient(ApplicationServices.SocialApi,()=>ApplicationServices.Identity?.Current?.Uid,ApplicationServices.Realtime),()=>{if(startMenu)startMenu.Show(StartScreen.MainMenu);});
             };
             startMenu.HistoryRequested += () => {
                 startMenu.Show(StartScreen.Match);

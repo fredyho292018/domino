@@ -7,6 +7,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Domino.Realtime
 {
+    public interface IRealtimePresenceChannel
+    {
+        event Action<string, JObject> PresenceMessage;
+        Task SubscribePresenceAsync(JObject desired);
+    }
     public interface IRealtimeMatchChannel
     {
         event Action<string, JObject> MatchMessage;
@@ -22,7 +27,7 @@ namespace Domino.Realtime
     }
     // Owned by the application, not by menus. All continuations/events use the captured
     // Unity context. Background cancellation fully drains before another socket is created.
-    public sealed class RealtimeConnectionService : IRealtimeConnectionService, IRealtimeMatchChannel
+    public sealed class RealtimeConnectionService : IRealtimeConnectionService, IRealtimeMatchChannel, IRealtimePresenceChannel
     {
         readonly RealtimeConfiguration config;
         readonly IPlayerIdentityService identity;
@@ -39,6 +44,12 @@ namespace Domino.Realtime
         public GlobalActivitySnapshot Activity { get; private set; }
         public event Action Changed;
         public event Action<string, JObject> MatchMessage;
+        public event Action<string, JObject> PresenceMessage;
+        public Task SubscribePresenceAsync(JObject desired)
+        {
+            if(State != RealtimeConnectionState.CONNECTED || matchSender == null) throw new InvalidOperationException("Realtime unavailable");
+            return matchSender("SOCIAL_PRESENCE_SUBSCRIBE", (JObject)desired.DeepClone());
+        }
         Func<string, JObject, Task> matchSender;
         public Task SendMatchCommandAsync(JObject command)
         {
@@ -134,8 +145,8 @@ namespace Domino.Realtime
                 timeout = (int?)response["payload"]["heartbeatTimeoutSeconds"] ?? 0;
                 if (interval < 5 || interval > 60 || timeout <= interval || timeout > 300) throw new RealtimeFailure("PROTOCOL");
             }
-            Set(RealtimeConnectionState.CONNECTED);
             matchSender = Send;
+            Set(RealtimeConnectionState.CONNECTED);
             await Send("GLOBAL_ACTIVITY_SUBSCRIBE", new JObject());
             // .NET's Unity-compatible ClientWebSocket does not expose native pong callbacks.
             // Application PING/PONG gives both peers a verifiable timeout, at 20s (not polling).
@@ -155,6 +166,11 @@ namespace Domino.Realtime
                     if (identity.Current?.Uid != uid) throw new RealtimeFailure("IDENTITY");
                     Reject(response);
                     switch ((string)response["type"]) {
+                        case "SOCIAL_PRESENCE_SUBSCRIBED": case "SOCIAL_PRESENCE_SNAPSHOT": case "SOCIAL_PRESENCE_UPDATED":
+                        case "SOCIAL_PRESENCE_INVALIDATED": case "SOCIAL_PRESENCE_ERROR":
+                            foreach(Action<string,JObject> listener in PresenceMessage?.GetInvocationList() ?? Array.Empty<Delegate>())
+                                try {listener((string)response["type"],(JObject)response["payload"]);} catch { }
+                            break;
                         case "MATCH_UPDATE": case "COMMAND_ACCEPTED": case "COMMAND_REJECTED": case "MATCH_FOUND": case "MATCHMAKING_STATUS":
                             foreach(Action<string,JObject> listener in MatchMessage?.GetInvocationList() ?? Array.Empty<Delegate>())
                                 try {listener((string)response["type"],(JObject)response["payload"]);} catch { }

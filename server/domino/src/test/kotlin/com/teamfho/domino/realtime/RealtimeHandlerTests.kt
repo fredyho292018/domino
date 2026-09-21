@@ -93,12 +93,16 @@ class RealtimeHandlerTests {
         send(p,"GLOBAL_ACTIVITY_UNSUBSCRIBE"); val after = p.messages.size
         handler.afterConnectionClosed(second.socket,CloseStatus.NORMAL); assertTrue(handler.awaitOutboundIdle()); handler.publishActivity(); assertTrue(handler.awaitOutboundIdle()); assertEquals(after,p.messages.size)
     }
-    @Test fun `redis failure closes realtime and subsequent connections recover`() {
+    @Test fun `presence redis failure preserves authenticated socket and lease recovers on heartbeat`() {
         store.unavailable = true
-        val p = peer(); send(p,"AUTH",mapOf("idToken" to "one")); assertFalse(p.socket.isOpen)
-        assertTrue(p.messages.last().contains("UNAVAILABLE"))
+        val p = peer(); send(p,"AUTH",mapOf("idToken" to "one")); assertTrue(p.socket.isOpen)
+        assertTrue(p.messages.last().contains("UNKNOWN"))
+        send(p,"GLOBAL_ACTIVITY_SUBSCRIBE");handler.publishActivity();assertTrue(handler.awaitOutboundIdle())
+        age(p,"lastLease",21);send(p,"PING");assertTrue(p.messages.last().contains("PONG"))
+        assertTrue(p.socket.isOpen)
         store.unavailable = false
-        val next = peer(); send(next,"AUTH",mapOf("idToken" to "one")); assertTrue(next.socket.isOpen)
+        age(p,"lastLease",21);send(p,"PING");assertTrue(p.socket.isOpen)
+        assertEquals(1,store.onlinePlayers())
     }
     @Test fun `flood closes and heartbeat does not rewrite every ping`() {
         val p = peer(); send(p,"AUTH",mapOf("idToken" to "one"))
