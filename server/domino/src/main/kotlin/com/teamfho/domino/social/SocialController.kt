@@ -16,8 +16,8 @@ class SocialConfiguration {
     @Bean fun socialCursor():SocialCursor = System.getenv("DOMINO_SOCIAL_CURSOR_KEY")?.let {SocialCursor(Base64.getDecoder().decode(it))} ?: SocialCursor()
     @Bean(destroyMethod="close") fun socialRateGate(redis:ObjectProvider<StringRedisTemplate>,metrics:io.micrometer.core.instrument.MeterRegistry):SocialRateGate =
         ResilientSocialRateGate(BoundedSocialRedis(RedisSocialRateLimiter {redis.ifAvailable}),metrics=metrics)
-    @Bean fun socialControllerServices(db:ObjectProvider<Firestore>,cursor:SocialCursor):SocialServices = SocialServices({
-        FirestoreSocialRepository(db.ifAvailable?:throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE"))
+    @Bean fun socialControllerServices(db:ObjectProvider<Firestore>,cursor:SocialCursor,invalidation:SocialInvalidationRuntime):SocialServices = SocialServices({
+        FirestoreSocialRepository(db.ifAvailable?:throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE"),invalidation)
     },cursor)
 }
 open class SocialServices(private val repository:()->FirestoreSocialRepository,private val cursor:SocialCursor) {

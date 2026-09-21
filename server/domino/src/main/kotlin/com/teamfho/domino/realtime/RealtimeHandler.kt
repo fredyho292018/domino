@@ -26,6 +26,7 @@ class RealtimeHandler(
     private val turnWorker: OnlineTurnWorker? = null,
     private val matchmaking: com.teamfho.domino.matchmaking.MatchmakingService? = null,
     private val outboundMetrics: OutboundMetrics? = null,
+    private val socialInvalidation: com.teamfho.domino.social.SocialInvalidationRuntime? = null,
 ) : TextWebSocketHandler() {
     private class Connection(val socket: WebSocketSession) {
         val id = UUID.randomUUID().toString()
@@ -199,7 +200,10 @@ class RealtimeHandler(
                 turnWorker?.connectionChanged(it)
                 matchmaking?.connectionLost(it)
             }
-        } finally { connections.remove(c.socket.id,c) }
+        } finally {
+            socialInvalidation?.index?.closeConnection(c.id)
+            connections.remove(c.socket.id,c)
+        }
     }
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         connections[session.id]?.outbound?.close(remote=true)

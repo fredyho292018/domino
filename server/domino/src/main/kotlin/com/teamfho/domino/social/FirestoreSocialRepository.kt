@@ -4,9 +4,13 @@ import com.google.cloud.firestore.*
 import java.util.concurrent.TimeUnit
 
 /** No background work, no client Firestore access, and no relation writes outside transactions. */
-class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepository, SocialPrivacyRepository, BlockRepository {
+class FirestoreSocialRepository(private val db: Firestore,private val invalidation:SocialInvalidationSink=SocialInvalidationSink {}) : PublicIdentityRepository, SocialPrivacyRepository, BlockRepository {
     private fun doc(path: String) = db.document(path)
-    private fun <T> transaction(body: (Transaction) -> T): T = db.runTransaction {tx->socialTransactionCallback {body(tx)}}.get(15, TimeUnit.SECONDS)
+    private fun <T> transaction(afterCommit:(T)->Unit={},body: (Transaction) -> T): T {
+        val future=db.runTransaction {tx->socialTransactionCallback {body(tx)}}
+        return com.google.api.core.ApiFutures.transform(future,{result->afterCommit(result);result},
+            java.util.concurrent.Executor{it.run()}).get(15,TimeUnit.SECONDS)
+    }
     private fun get(path: String) = doc(path).get().get(5, TimeUnit.SECONDS)
     private fun active(p: DocumentSnapshot, marker: DocumentSnapshot) = p.exists() && p.getString("status") == "ACTIVE" && marker.getBoolean("isTestAccount") != true
     private fun identity(uid: String, d: DocumentSnapshot) = PublicPlayerIdentity(uid, d.getString("publicPlayerId")!!, d.getString("friendCode")!!)
@@ -57,7 +61,8 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
             PublicPlayerProfile(it.id,it.getString("friendCode")!!,it.getString("displayName")!!),it.getString("normalizedDisplayName")!!) }, rows.size == budget)
     }
     override fun privacy(uid: String) = settings(get("players/$uid/socialSettings/current"))
-    override fun patchPrivacy(uid: String, patch: PrivacyPatch): SocialPrivacySettings = transaction { tx ->
+    override fun patchPrivacy(uid: String, patch: PrivacyPatch): SocialPrivacySettings {
+      val result=transaction(afterCommit={r:Pair<SocialPrivacySettings,SocialInvalidation?>->invalidation.committed(listOfNotNull(r.second))}) { tx ->
         val ref = doc("players/$uid/socialSettings/current")
         val current = settings(tx.get(ref).get())
         val owner = tx.get(doc("players/$uid/publicIdentity/current")).get()
@@ -70,7 +75,12 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
             tx.set(ref,com.teamfho.domino.match.MatchCodec.map(next))
             if(next.discoverableByName!=current.discoverableByName)tx.update(doc("publicPlayerProfiles/${owner.getString("publicPlayerId")}"),mapOf("searchEligible" to next.discoverableByName,"updatedAt" to FieldValue.serverTimestamp()))
         }
-        next
+        val event=if(next.presenceVisibility!=current.presenceVisibility || next.matchActivityVisibility!=current.matchActivityVisibility)
+            SocialInvalidation.privacy(uid,next.revision) else null
+        if(event!=null)tx.set(doc("${SocialInvalidation.COLLECTION}/${event.eventId}"),event.durableData())
+        next to event
+      }
+      return result.first
     }
     override fun hasBlockEitherDirection(a: String,b: String): Boolean = db.getAll(doc("players/$a/blocks/$b"),doc("players/$b/blocks/$a"))
         .get(5,TimeUnit.SECONDS).any { it.exists() }
@@ -78,16 +88,26 @@ class FirestoreSocialRepository(private val db: Firestore) : PublicIdentityRepos
         val stored=db.collection("players/$a/blocks").whereEqualTo("publicPlayerId",publicId).limit(1).get().get(5,TimeUnit.SECONDS).documents.firstOrNull()?:return null
         return SocialCandidate(stored.id,PublicPlayerProfile(publicId,stored.getString("friendCode")!!,stored.getString("displayName")!!),"")
     }
-    override fun block(a: String,target: SocialCandidate,enabled: Boolean) = transaction { tx ->
+    override fun block(a: String,target: SocialCandidate,enabled: Boolean) {
+      transaction(afterCommit={events:List<SocialInvalidation>->invalidation.committed(events)}) { tx ->
         val forward = doc("players/$a/blocks/${target.uid}"); val inverse = doc("players/${target.uid}/blockedBy/$a")
         val existing = tx.get(forward).get(); val reverse = tx.get(inverse).get()
-        if(enabled) FriendshipService(FirestoreFriendships(db),SocialCursor()).removeInTransaction(FirestoreSocialTransaction(db,tx),a,target.uid,true)
+        val social=FirestoreSocialTransaction(db,tx)
+        if(enabled) FriendshipService(FirestoreFriendships(db),SocialCursor()).removeInTransaction(social,a,target.uid,true,!existing.exists())
+        else if(existing.exists()) {
+            val id=SocialPairIdentity.id(a,target.uid)
+            val pair=social.read("socialPairs/$id")?:mapOf("lowerUid" to minOf(a,target.uid),"upperUid" to maxOf(a,target.uid))
+            val revision=Math.addExact((pair["authorizationRevision"] as? Number)?.toLong()?:0,1)
+            social.put("socialPairs/$id",pair+("authorizationRevision" to revision))
+            social.invalidate(SocialInvalidation.pair(id,revision))
+        }
         if (enabled && !existing.exists()) {
             tx.create(forward,mapOf("publicPlayerId" to target.profile.publicPlayerId,"displayName" to target.profile.displayName,
                 "friendCode" to target.profile.friendCode,"createdAt" to FieldValue.serverTimestamp()))
             tx.set(inverse,mapOf("ownerUid" to a))
         } else if (!enabled) { if (existing.exists()) tx.delete(forward); if (reverse.exists()) tx.delete(inverse) }
-        Unit
+        social.invalidations.toList()
+      }
     }
     override fun blocks(a: String,afterId: String?,limit: Int): List<BlockRelationship> {
         var q: Query = db.collection("players/$a/blocks").orderBy("publicPlayerId")

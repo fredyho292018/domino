@@ -15,12 +15,27 @@ internal fun <T> socialTransactionCallback(body:()->T):T = try {body()} catch(e:
 }
 
 class FirestoreSocialTransaction(private val db:Firestore,private val tx:Transaction):SocialTransaction {
+    val invalidations=mutableListOf<SocialInvalidation>()
     override fun read(path:String)=tx.get(db.document(path)).get().data
-    override fun put(path:String,data:Map<String,Any>) {tx.set(db.document(path),data)}
+    override fun put(path:String,data:Map<String,Any>) {
+        tx.set(db.document(path),data)
+        if(path.startsWith("${SocialInvalidation.COLLECTION}/"))invalidations.add(SocialInvalidation.decode(data))
+    }
     override fun delete(path:String) {tx.delete(db.document(path))}
 }
-class FirestoreFriendships(private val db:Firestore):FriendshipRepository {
-    override fun <T> atomic(body:(SocialTransaction)->T):T=db.runTransaction {tx->socialTransactionCallback {body(FirestoreSocialTransaction(db,tx))}}.get(20,TimeUnit.SECONDS)
+class FirestoreFriendships(private val db:Firestore,private val invalidation:SocialInvalidationSink=SocialInvalidationSink {}):FriendshipRepository {
+    override fun <T> atomic(body:(SocialTransaction)->T):T {
+        val future=db.runTransaction {tx->socialTransactionCallback {
+            val social=FirestoreSocialTransaction(db,tx)
+            body(social) to social.invalidations.toList()
+        }}
+        // Attach to SDK completion, not the caller's timeout: a late successful commit must
+        // still invalidate locally even if the HTTP request stopped waiting.
+        return com.google.api.core.ApiFutures.transform(future,{result->
+            invalidation.committed(result.second)
+            result.first
+        },java.util.concurrent.Executor{it.run()}).get(20,TimeUnit.SECONDS)
+    }
     override fun read(path:String)=db.document(path).get().get(5,TimeUnit.SECONDS).data
     override fun readAll(paths:List<String>):Map<String,Map<String,Any>?> {
         if(paths.isEmpty())return emptyMap()

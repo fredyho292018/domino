@@ -13,7 +13,7 @@ data class FriendRequest(val requestId:String, val pairId:String, val generation
 data class Friendship(val pairId:String,val lowerUid:String,val upperUid:String,val createdAt:Instant,val sourceRequestId:String,val generation:Long)
 data class SocialCounters(val friendCount:Int=0,val pendingIncomingCount:Int=0,val pendingOutgoingCount:Int=0,val followerCount:Int=0,val followingCount:Int=0)
 data class SocialPair(val lowerUid:String,val upperUid:String,val generation:Long=0,val pendingRequestId:String?=null,
-    val declinedUntil:Instant?=null)
+    val declinedUntil:Instant?=null,val authorizationRevision:Long=0)
 data class FriendRelationship(val friendship:String="NONE",val incomingRequestId:String?=null,val outgoingRequestId:String?=null,val following:Boolean=false,val followedBy:Boolean=false)
 data class FriendItem(val profile:PublicPlayerProfile,val friendsSince:Instant)
 data class FriendRequestItem(val requestId:String,val profile:PublicPlayerProfile,val direction:String,val createdAt:Instant)
@@ -123,12 +123,14 @@ class FriendshipService(private val repository:FriendshipRepository,private val 
         writeCounter(tx,req.senderUid,a.copy(friendCount=a.friendCount+added,pendingOutgoingCount=a.pendingOutgoingCount-1))
         writeCounter(tx,req.recipientUid,b.copy(friendCount=b.friendCount+added,pendingIncomingCount=b.pendingIncomingCount-1))
         tx.put("friendRequests/$requestId",MatchCodec.map(req.copy(status=action,resolvedAt=now))+("sortTime" to req.createdAt.toEpochMilli()))
-        tx.put("socialPairs/${req.pairId}",MatchCodec.map(pair.copy(pendingRequestId=null,declinedUntil=if(action==FriendRequestStatus.DECLINED)now.plusSeconds(604800)else pair.declinedUntil)))
+        val revision=if(added==1)Math.addExact(pair.authorizationRevision,1)else pair.authorizationRevision
+        tx.put("socialPairs/${req.pairId}",MatchCodec.map(pair.copy(pendingRequestId=null,declinedUntil=if(action==FriendRequestStatus.DECLINED)now.plusSeconds(604800)else pair.declinedUntil,authorizationRevision=revision)))
+        if(added==1)tx.invalidate(SocialInvalidation.pair(req.pairId,revision))
         relation(actor,null,added==1)
     }
 
     /** Called by S1.1 block inside its transaction before any writes, to serialize with acceptance. */
-    fun removeInTransaction(tx:SocialTransaction,actor:String,other:String,blocking:Boolean) {
+    fun removeInTransaction(tx:SocialTransaction,actor:String,other:String,blocking:Boolean,blockChanged:Boolean=false) {
         val id=SocialPairIdentity.id(actor,other);val pair=decode<SocialPair>(tx.read("socialPairs/$id"))
         val f=tx.read("friendships/$id")
         val req=pair?.pendingRequestId?.let{decode<FriendRequest>(tx.read("friendRequests/$it"))}
@@ -141,7 +143,13 @@ class FriendshipService(private val repository:FriendshipRepository,private val 
         if(f!=null) {tx.delete("friendships/$id");tx.delete("players/$actor/friends/$other");tx.delete("players/$other/friends/$actor")}
         if(pending) {
             tx.put("friendRequests/${req!!.requestId}",MatchCodec.map(req.copy(status=FriendRequestStatus.CANCELED,resolvedAt=clock.instant()))+("sortTime" to req.createdAt.toEpochMilli()))
-            tx.put("socialPairs/$id",MatchCodec.map(pair!!.copy(pendingRequestId=null)))
+        }
+        val changed=blockChanged || f!=null
+        if(pending || changed) {
+            val previous=pair?:SocialPair(minOf(actor,other),maxOf(actor,other))
+            val revision=if(changed)Math.addExact(previous.authorizationRevision,1)else previous.authorizationRevision
+            tx.put("socialPairs/$id",MatchCodec.map(previous.copy(pendingRequestId=if(pending)null else previous.pendingRequestId,authorizationRevision=revision)))
+            if(changed)tx.invalidate(SocialInvalidation.pair(id,revision))
         }
         if(f!=null || pending || ab!=null || ba!=null) {
             fun next(uid:String,c:SocialCounters)=c.copy(friendCount=c.friendCount-if(f!=null)1 else 0,

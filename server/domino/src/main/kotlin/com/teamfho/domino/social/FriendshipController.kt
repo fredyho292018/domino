@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.*
 open class FriendshipServices(private val factory:()->FriendshipService) { open fun ready()=factory() }
 @Configuration(proxyBeanMethods=false)
 class FriendshipConfiguration {
-    @Bean fun friendshipServices(db:ObjectProvider<Firestore>,cursor:SocialCursor,policy:SubscriptionPolicy)=FriendshipServices {
-        FriendshipService(FirestoreFriendships(db.ifAvailable?:throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE")),cursor,policy)
+    @Bean fun friendshipServices(db:ObjectProvider<Firestore>,cursor:SocialCursor,policy:SubscriptionPolicy,invalidation:SocialInvalidationRuntime)=FriendshipServices {
+        FriendshipService(FirestoreFriendships(db.ifAvailable?:throw SocialFailure("SOCIAL_SERVICE_UNAVAILABLE"),invalidation),cursor,policy)
     }
 }
 @RestController
