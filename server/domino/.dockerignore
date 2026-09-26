@@ -1,0 +1,9 @@
+# Allow only the prebuilt bootJar and build instructions into the context.
+**
+!Dockerfile
+!.dockerignore
+!build/
+build/**
+!build/libs/
+build/libs/**
+!build/libs/domino-0.0.1-SNAPSHOT.jar

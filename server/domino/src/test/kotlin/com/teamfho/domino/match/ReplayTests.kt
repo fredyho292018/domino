@@ -7,10 +7,11 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.*
 
-class ReplayFixture(partners:Boolean=false, beforeCommand:(Int)->Unit={}):ReplaySource {
+class ReplayFixture(partners:Boolean=false, matchId:String="replay-test", beforeCommand:(Int)->Unit={}):ReplaySource {
     var reads=0;var eventPages=0
     val events=mutableListOf<MatchEvent>()
     val rounds=mutableMapOf<Int,MatchRound>()
+    val history=mutableMapOf<String,PlayerMatchHistory>()
     val random=java.util.Random(9)
     val engine=OnlineEngine(OnlineRandom{random.nextInt(it)})
     var state:OnlineState
@@ -18,7 +19,7 @@ class ReplayFixture(partners:Boolean=false, beforeCommand:(Int)->Unit={}):Replay
         val catalog=GameCatalogValidator.resolve(GameCatalogV4Publisher.canonical())
         val mode=catalog.modes.single{it.key==if(partners)"PARTNERS_2V2_ONLINE" else "DUEL_1V1"}
         val participants=(0 until mode.playerCount).map{MatchParticipant(it,"p$it","Name $it",if(partners)it%2 else null,ControlType.REMOTE_HUMAN,ConnectionState.CONNECTED,Instant.EPOCH)}
-        val m=Match("replay-test",MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,4,mode.topologyVersion,mode.ruleSet.id,1,1,
+        val m=Match(matchId,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,4,mode.topologyVersion,mode.ruleSet.id,1,1,
             MatchRuleSnapshot.freeze(catalog,mode),participants.dropLast(1),0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false),Instant.EPOCH,Instant.EPOCH)
         state=OnlineState(m,OnlinePhase.WAITING_FOR_PLAYER)
         apply(engine.join(state,participants.last(),"join",Instant.EPOCH))
@@ -42,12 +43,27 @@ class ReplayFixture(partners:Boolean=false, beforeCommand:(Int)->Unit={}):Replay
             }else apply(engine.command(state,"p${command.first}",c,Instant.EPOCH))
         }
     }
-    private fun apply(w:OnlineWrite){state=w.state;events+=w.events;w.rounds.forEach{rounds[it.roundNumber]=it}}
+    private fun apply(w:OnlineWrite){state=w.state;events+=w.events;history.putAll(w.histories);w.rounds.forEach{rounds[it.roundNumber]=it}}
     override fun match(id:String)=state.match.also{reads++}
     override fun events(id:String,after:Long,limit:Int)=events.filter{it.sequence>after}.take(limit).also{eventPages++}
     override fun round(id:String,number:Int)=rounds[number].also{reads++}
 }
 class ReplayTests {
+    @Test fun `canonical fixtures are deterministic without retained runtime archives`() {
+        for(partners in listOf(false,true)) {
+            val first=ReplayFixture(partners)
+            val second=ReplayFixture(partners)
+            assertEquals(first.state,second.state)
+            assertEquals(first.events,second.events)
+            assertEquals(first.rounds,second.rounds)
+            assertEquals(first.history,second.history)
+            assertTrue(first.events.size>250)
+            assertEquals((1L..first.state.match.lastSequence).toList(),first.events.map{it.sequence})
+            assertEquals(MatchStatus.FINISHED,first.state.match.status)
+            assertEquals(if(partners)4 else 2,first.history.size)
+        }
+    }
+
     @Test fun `both completed modes reconstruct persisted public and private state with bounded pages`() {
         for(partners in listOf(false,true)) {
             val f=ReplayFixture(partners);val service=ReplayService(f);val m=service.manifest("p0","replay-test")

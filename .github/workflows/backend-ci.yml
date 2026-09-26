@@ -1,0 +1,81 @@
+name: Backend CI
+on:
+  pull_request:
+    paths: ['server/domino/**', 'infrastructure/**', '.github/workflows/backend-ci.yml']
+  push:
+    branches: [main]
+    paths: ['server/domino/**', 'infrastructure/**', '.github/workflows/backend-ci.yml']
+permissions:
+  contents: read
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DOMINO_REAL_FIRESTORE_TESTS: 'false'
+      GOOGLE_APPLICATION_CREDENTIALS: /nonexistent/infra1-no-credentials.json
+      GOOGLE_CLOUD_PROJECT: demo-domino-unit
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:1
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:1
+      DOMINO_REDIS_TESTS: 'true'
+      DOMINO_S13_REDIS_TESTS: 'true'
+      DOMINO_A2_REDIS_TESTS: 'true'
+      DOMINO_A3_REDIS_TESTS: 'true'
+      DOMINO_S14B_REDIS_TESTS: 'true'
+      DOMINO_M5_PARITY: 'false'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Infrastructure and secret checks
+        run: |
+          python3 infrastructure/scripts/secret-scan.py
+          for script in infrastructure/scripts/*.sh; do bash -n "$script"; done
+          bash infrastructure/scripts/verify-compose.sh
+      - name: Compile
+        working-directory: server/domino
+        run: bash gradlew :testClasses :bot-swarm:testClasses --no-daemon --console=plain
+      - name: Disposable Redis (existing OS-worker test requires this container name)
+        run: |
+          docker run -d --name domino-redis --label "domino.infra1.run=$GITHUB_RUN_ID" \
+            -p 127.0.0.1:6379:6379 -p 127.0.0.1:16379:6379 \
+            --health-cmd 'redis-cli ping' --health-interval 2s --health-timeout 2s --health-retries 15 \
+            redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499 \
+            redis-server --save '' --appendonly no
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' domino-redis)" = healthy ]; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Unit, in-memory and isolated Redis tests
+        working-directory: server/domino
+        run: bash gradlew :test :bot-swarm:test --no-daemon --console=plain --rerun-tasks
+      - name: Existing Firestore Emulator suite
+        run: bash infrastructure/scripts/run-emulator-tests.sh
+      - name: BootJar
+        working-directory: server/domino
+        run: |
+          bash gradlew :bootJar --no-daemon --console=plain
+          test -s build/libs/domino-0.0.1-SNAPSHOT.jar
+          sha256sum build/libs/domino-0.0.1-SNAPSHOT.jar
+      - name: Build and inspect local image (no publish, no API startup)
+        env:
+          IMAGE: cuban-domino-api:${{ github.sha }}
+        run: |
+          docker build --platform linux/amd64 --tag "$IMAGE" server/domino
+          bash infrastructure/scripts/verify-image.sh "$IMAGE"
+      - name: Remove only the disposable CI Redis
+        if: always()
+        run: |
+          owned=$(docker ps -aq --filter "label=domino.infra1.run=$GITHUB_RUN_ID")
+          if [ -n "$owned" ]; then docker rm -f "$owned"; fi

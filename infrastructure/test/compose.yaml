@@ -1,0 +1,64 @@
+name: cuban-domino-server
+services:
+  redis:
+    image: redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    container_name: cuban-domino-redis
+    restart: unless-stopped
+    mem_limit: 1g
+    command: [redis-server, --maxmemory, 512mb, --maxmemory-policy, noeviction, --appendonly, 'no', --save, '']
+    networks: [backend]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging: &logging
+      driver: json-file
+      options: {max-size: 10m, max-file: '5'}
+  api:
+    image: cuban-domino-api:${API_IMAGE_SHA:?Full Git SHA required}
+    container_name: cuban-domino-api
+    restart: unless-stopped
+    user: '10001:10001'
+    group_add: ['${DOMINO_SECRETS_GID:?Read the server secret group GID}']
+    cpus: 4
+    mem_limit: 4g
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file:
+      - ${SOCIAL_CURSOR_ENV_FILE:-/etc/cuban-domino-club/social-cursor.env}
+    environment:
+      FIREBASE_PROJECT_ID: teamfho-domino
+      GOOGLE_CLOUD_PROJECT: teamfho-domino
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-test-service-account.json
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      PORT: '8080'
+      JAVA_TOOL_OPTIONS: -Xms512m -Xmx2g
+    volumes:
+      - type: bind
+        source: ${FIREBASE_CREDENTIAL_FILE:-/etc/cuban-domino-club/firebase-test-service-account.json}
+        target: /run/secrets/firebase-test-service-account.json
+        read_only: true
+        bind: {create_host_path: false}
+    ports: ['127.0.0.1:38080:8080']
+    networks: [backend, egress]
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --max-time, '5', 'http://127.0.0.1:8080/actuator/health']
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 60s
+    stop_grace_period: 30s
+    logging: *logging
+networks:
+  backend:
+    external: true
+    name: cuban-domino-backend-network
+  egress:
+    external: true
+    name: cuban-domino-api-egress
