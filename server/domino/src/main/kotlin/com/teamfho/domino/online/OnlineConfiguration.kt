@@ -45,8 +45,14 @@ class OnlineConfiguration {
             override fun transact(matchId: String,expectedSequence: Long,commandId: String,fingerprint: String,transition:(OnlineState)->OnlineWrite)=ready().transact(matchId,expectedSequence,commandId,fingerprint,transition)
         }
     }
-    @Bean fun onlineMatchService(catalog: GameCatalogService,repository: OnlineRepository,profiles:OnlineParticipantProfiles)=
-        OnlineMatchService(catalog,repository,profiles=profiles::get)
+    @Bean fun abandonedMatchReconciliationGate(
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.file:}") file:String,
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.run-id:}") runId:String,
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.registry-sha256:}") hash:String
+    ):AbandonedMatchReconciliationGate=FileAbandonedMatchReconciliationGate(file.takeIf{it.isNotBlank()}?.let{runCatching{java.nio.file.Path.of(it)}.getOrNull()},runId,hash)
+    @Bean fun onlineMatchService(catalog: GameCatalogService,repository: OnlineRepository,profiles:OnlineParticipantProfiles,
+        gate:AbandonedMatchReconciliationGate)=
+        OnlineMatchService(catalog,repository,engine=OnlineEngine(reconciliationGate=gate),profiles=profiles::get)
     @Bean fun onlineParticipantProfiles(db:ObjectProvider<Firestore>)=OnlineParticipantProfiles {uid ->
             try {
                 val database=db.ifAvailable?:throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)

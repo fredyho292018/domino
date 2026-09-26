@@ -25,7 +25,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         val match=Match(id,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,rules.catalogVersion,
             mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,(0 until uids.lastIndex).map(::member),
             0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,resolved.any{it.validationData})
-        val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER)
+        val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER,abandonmentLifecycleVersion=1)
         val write=engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)
         OnlineWrites.validate(before,write,"sys_pair_$id")
         val persisted=repository.createPaired(write)
@@ -46,7 +46,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         val match=Match(UUID.randomUUID().toString(),MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,catalog.catalogVersion,
             mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,snapshot,listOf(participant(uid,0)),
             0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,validationData)
-        val state=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER);repository.create(state)
+        val state=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER,abandonmentLifecycleVersion=1);repository.create(state)
         log.info("ONLINE_MATCH_CREATED");return snapshot(state,uid)
     }
     private fun participant(uid: String,seat: Int,profile:OnlineParticipantProfile=profiles(uid))=MatchParticipant(seat,MatchIds.document(uid),profile.displayName?:"Player ${seat+1}",null,ControlType.REMOTE_HUMAN,ConnectionState.CONNECTED,clock.instant())
@@ -70,6 +70,8 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         publish(result);log.info("ONLINE_COMMAND_ACCEPTED");return result
     }
     private fun publish(result: OnlineCommit) {result.write?.let {
+        if(it.state.abandonmentLifecycleVersion==0 && it.state.match.status==MatchStatus.CANCELLED &&
+            it.events.any{e->e.payload is MatchFinished})LegacyReconciliationAudit.completed()
         for(event in it.events) {
             val label=when(event.payload) {
                 is TurnStarted->"TURN_DEADLINE_CREATED";is TurnTimeout->"TURN_TIMEOUT_CLAIMED";is AutoPlayed->"AUTO_PLAY_APPLIED"
@@ -103,6 +105,15 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         };publish(result);return result
     }
     fun state(id: String)=read(id) // Server-only worker entry; never exposed by a controller.
+    fun abandon(id:String):OnlineCommit? {
+        val before=read(id)
+        val key="sys_abandon_${before.match.lastSequence}"
+        if(engine.abandon(before,key,clock.instant())==null)return null
+        val result=repository.transact(id,before.match.lastSequence,key,fingerprint("SERVER",key)) {
+            engine.abandon(it,key,clock.instant())?:throw OnlineFailure(OnlineError.STALE_COMMAND)
+        }
+        publish(result);return result
+    }
     fun events(uid: String,id: String,after: Long): OnlineEventPage {
         checkOnline(after>=0,OnlineError.INVALID_COMMAND)
         val state=read(id);val seat=OnlineEngine.seat(state,uid)

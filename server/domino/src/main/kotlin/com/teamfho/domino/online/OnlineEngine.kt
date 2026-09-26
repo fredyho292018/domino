@@ -9,7 +9,8 @@ fun interface OnlineRandom { fun next(bound: Int): Int }
 class SecureOnlineRandom: OnlineRandom { private val random=SecureRandom(); override fun next(bound: Int)=random.nextInt(bound) }
 
 /** Pure transition builder. Randomness and server time are injected; nothing is published before commit. */
-class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
+class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom(),
+    private val reconciliationGate:AbandonedMatchReconciliationGate=AbandonedMatchReconciliationGate.CLOSED) {
     fun join(before: OnlineState, participant: MatchParticipant, commandId: String, now: Instant): OnlineWrite {
         checkOnline(before.match.participants.none {it.playerUid==participant.playerUid},OnlineError.SAME_PLAYER)
         val mode=before.match.ruleSnapshot.mode()
@@ -77,7 +78,12 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
             ConnectionState.DISCONNECTED->PlayerDisconnected(seat,now,next.reconnectDeadlineAt)
             else->PlayerReconnected(seat,now)
         },seat)
+        if(b.cancelIfAllAbandoned()==AbandonDecision.BLOCKED)return null
         return b.build()
+    }
+    fun abandon(before:OnlineState,id:String,now:Instant):OnlineWrite? {
+        val b=Builder(before,id,now)
+        return if(b.cancelIfAllAbandoned()==AbandonDecision.CANCELLED)b.build() else null
     }
     private fun starter(attempt: Int, method: StarterMethod?=null): OnlineStarter {
         val deck=deck();val selected=method?:StarterMethod.entries[random.next(2)]
@@ -85,8 +91,23 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom()) {
         return OnlineStarter(selected,if(selected==StarterMethod.HIGH_TILE_SELECTION)listOf(first,second)else listOf(first),guessingSeat=random.next(2),attempt=attempt)
     }
     private fun deck()=(0..9).flatMap {a->(a..9).map {b->DominoPips(a,b)}}.toMutableList()
+    private enum class AbandonDecision { NOT_ELIGIBLE, BLOCKED, CANCELLED }
     private inner class Builder(var s: OnlineState,val id: String,val now: Instant) {
         val events=mutableListOf<MatchEvent>();val rounds=mutableListOf<MatchRound>()
+        fun cancelIfAllAbandoned():AbandonDecision {
+            if(s.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED) ||
+                s.match.participants.isEmpty() || s.match.participants.any{it.connectionState!=ConnectionState.ABANDONED})return AbandonDecision.NOT_ELIGIBLE
+            if(s.abandonmentLifecycleVersion!=1) {
+                val allowed=s.abandonmentLifecycleVersion==0 && reconciliationGate.allowsLegacy(s.match.matchId)
+                LegacyReconciliationAudit.decision(allowed)
+                if(!allowed)return AbandonDecision.BLOCKED
+            }
+            val result=MatchResult(null,MatchFinishReason.CANCELLED,s.match.score)
+            s=s.copy(phase=OnlinePhase.MATCH_FINISHED,turnStartedAt=null,turnDeadlineAt=null,
+                match=s.match.copy(status=MatchStatus.CANCELLED,currentSeat=null,finishedAt=now,result=result))
+            emit(MatchFinished(result))
+            return AbandonDecision.CANCELLED
+        }
         fun emit(payload: MatchPayload, actor: Int?=null, target: Int?=null) {
             val seq=s.match.lastSequence+1
             events+=MatchEvent(MatchIds.event(seq),s.match.matchId,seq,1,s.match.currentRoundNumber,s.match.currentTurnNumber,

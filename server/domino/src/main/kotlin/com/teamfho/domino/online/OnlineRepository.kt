@@ -23,6 +23,7 @@ interface OnlineRepository {
 object OnlineWrites {
     fun validate(before: OnlineState, write: OnlineWrite, commandId: String) {
         val a=before.match;val b=write.state.match
+        require(before.abandonmentLifecycleVersion==write.state.abandonmentLifecycleVersion)
         require(a.matchId==b.matchId && a.ruleSnapshot==b.ruleSnapshot && a.createdAt==b.createdAt && a.validationData==b.validationData)
         require(a.executionMode==MatchExecutionMode.ONLINE && b.executionMode==a.executionMode)
         require(a.modeKey==b.modeKey && a.catalogVersion==b.catalogVersion && a.ruleSetId==b.ruleSetId && a.ruleSetVersion==b.ruleSetVersion)
@@ -98,8 +99,17 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         return mapOf("dueAt" to timestamp(dates.min()),"presenceCheckAt" to timestamp(checkAt),"uids" to s.match.participants.mapNotNull {it.playerUid})
     }
     private fun root(id: String)=db.document("matches/${MatchIds.document(id)}")
-    private fun stateMap(s: OnlineState)=mapOf("stateJson" to GameCatalogCodec.mapper.writeValueAsString(s))
-    private fun decode(data: Map<String,Any>)=GameCatalogCodec.mapper.readValue(data.getValue("stateJson") as String,OnlineState::class.java)
+    // Keep the lifecycle marker outside the legacy JSON: older rollback images reject
+    // unknown JSON fields, but already ignore sibling document metadata.
+    private fun stateMap(s: OnlineState)=mapOf(
+        "stateJson" to GameCatalogCodec.mapper.writeValueAsString(GameCatalogCodec.map(s).filterKeys{it!="abandonmentLifecycleVersion"}),
+        "abandonmentLifecycleVersion" to s.abandonmentLifecycleVersion)
+    private fun decode(data: Map<String,Any>):OnlineState {
+        val marker=data["abandonmentLifecycleVersion"]
+        val version=when(marker){null->0;0L,0->0;1L,1->1;else->-1}
+        return GameCatalogCodec.mapper.readValue(data.getValue("stateJson") as String,OnlineState::class.java)
+            .copy(abandonmentLifecycleVersion=version)
+    }
     override fun create(state: OnlineState) {
         state.match.ruleSnapshot.verify();val ref=root(state.match.matchId);val batch=db.batch()
         batch.create(ref,MatchCodec.map(state.match));batch.create(ref.collection("runtime").document("authoritative"),stateMap(state))

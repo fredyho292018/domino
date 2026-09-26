@@ -10,12 +10,20 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
     @Volatile var matchId:String?=null;private set
     @Volatile var seat:Int?=null;private set
     private val random=Random(config.seed+identity.slot*7919)
-    private val api=Api(http,config.baseUrl){identity.currentToken()}
+    private val api=Api(http,config.baseUrl,metrics){identity.currentToken()}
     private val tracker=SequenceTracker()
+    private val correctness=CapacityCorrectness()
+    private var correctnessCounts=correctness.counters()
+    private fun reportCorrectness() {
+        val next=correctness.counters()
+        next.forEach{(key,value)->metrics.add(key,value-(correctnessCounts[key]?:0))}
+        correctnessCounts=next
+    }
     private var socket:Socket?=null
     private var queuedAt=0L
     private var pending:LogicalCommand?=null
     private var pendingAt=0L
+    private var firstPendingAt=0L
     private var commandRetries=0
     private var planned:Map<String,Any>?=null
     private var plannedAt=Long.MAX_VALUE
@@ -24,6 +32,8 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
     private var lastStuckLog=now()
     private var failures=0
     private var authenticatedOnce=false
+    private var countedSocket=false
+    private val holdFile=System.getenv("DOMINO_SWARM_HOLD_UNTIL_FILE")?.let{java.nio.file.Path.of(it)}
     private var sentCommands=0
     private var emulatorDropDone=false
     private val authRetry=ExpiredAuthRetry()
@@ -43,8 +53,10 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
                     status(if(authenticatedOnce)ClientState.RECONNECTING else ClientState.CONNECTING)
                     val wire=Socket(http,config.baseUrl);socket=wire;wire.connect();wire.send("AUTH",mapOf("idToken" to identity.token))
                     val auth=withTimeout(15000){wire.messages.receive()}
+                    wire.receivedAt(auth)
                     if(auth.text("type")!="AUTHENTICATED")throw authFailure(auth)
                     metrics.add(if(authenticatedOnce)"reconnects" else "clientsConnected");authenticatedOnce=true
+                    metrics.add("activeAuthenticatedSockets");countedSocket=true
                     println("SWARM_CLIENT_CONNECTED alias=$alias")
                     val heartbeat=auth.path("payload").path("heartbeatIntervalSeconds").asLong()*1000
                     require(heartbeat in 5000..60000){"INVALID_HEARTBEAT"}
@@ -73,9 +85,9 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
             identity.close();if(state!=ClientState.FAILED)status(ClientState.STOPPED)
         }
     }
-    private suspend fun closeSocket(){try{socket?.close()}catch(_:Exception){};socket=null}
+    private suspend fun closeSocket(){try{socket?.close()}catch(_:Exception){};socket=null;if(countedSocket){metrics.add("activeAuthenticatedSockets",-1);countedSocket=false}}
     private suspend fun recover(){applyQueue(api.call("GET","matchmaking/queue"));if(state==ClientState.IDLE)join()}
-    private suspend fun join(){status(ClientState.JOINING_QUEUE);queuedAt=now();metrics.add("queueJoins");applyQueue(api.call("POST","matchmaking/queue",mapOf("modeKey" to config.mode)))}
+    private suspend fun join(){status(ClientState.JOINING_QUEUE);queuedAt=0;metrics.add("queueJoins");val accepted=api.call("POST","matchmaking/queue",mapOf("modeKey" to config.mode));queuedAt=now();applyQueue(accepted)}
     private suspend fun applyQueue(n:JsonNode) {
         when(n.text("state")) {
             "MATCHED" -> enter(n.path("match").text("matchId"))
@@ -100,13 +112,38 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
         val s=tracker.current?:return
         lastProgress=now();planned=s.intent();plannedAt=if(planned==null)Long.MAX_VALUE else now()+jitter(config.thinkMinMs,config.thinkMaxMs)
         if(s.phase=="MATCH_FINISHED") {
-            if(state!=ClientState.MATCH_FINISHED&&state!=ClientState.REQUEUE_DELAY){metrics.finished(s.id);println("SWARM_MATCH_FINISHED alias=$alias matchId=${s.id}");requeueAt=now()+jitter(config.requeueMinMs,config.requeueMaxMs)}
+            if(state!=ClientState.MATCH_FINISHED&&state!=ClientState.REQUEUE_DELAY){
+                val cancelled=s.public.text("status")=="CANCELLED"
+                require(cancelled||s.public.text("status")=="FINISHED")
+                if(cancelled)metrics.cancelled(s.id) else metrics.finished(s.id)
+                println((if(cancelled)"SWARM_MATCH_CANCELLED" else "SWARM_MATCH_FINISHED")+" alias=$alias matchId=${s.id}")
+                requeueAt=now()+jitter(config.requeueMinMs,config.requeueMaxMs)
+            }
             if(state!=ClientState.REQUEUE_DELAY)status(ClientState.MATCH_FINISHED)
             planned=null
         } else {status(ClientState.PLAYING);if(s.phase=="ROUND_FINISHED")metrics.round(s.id,s.public.number("currentRound"))}
     }
     private suspend fun message(n:JsonNode) {
         val p=n.path("payload")
+        if(n.text("type")=="MATCH_UPDATE"&&matchId!=p.text("matchId")) {
+            metrics.add("unauthorizedDeliveries");throw SafeFailure("CROSS_MATCH_DELIVERY",true)
+        }
+        if(n.text("type")=="MATCH_UPDATE") {
+            for(e in p.path("events")) {
+                val body=e.path("event")
+                if(!body.isMissingNode&&!body.isNull)correctness.authorize(matchId?:"",body.text("matchId"),seat?:-1,body.text("visibility"),if(body.path("targetSeat").isNumber)body.number("targetSeat")else null)
+            }
+            val before=tracker.current?.sequence
+            val after=p.path("snapshot").path("lastSequence").asLong()
+            if(before!=null&&after<before)metrics.add("sequenceRegressions")
+            if(before!=null&&after==before)metrics.add("duplicateEvents")
+            reportCorrectness()
+            if((correctnessCounts["unauthorizedDeliveries"]?:0)>0)throw SafeFailure("UNAUTHORIZED_DELIVERY",true)
+        }
+        if(n.text("type") in setOf("COMMAND_ACCEPTED","COMMAND_REJECTED")) {
+            correctness.receipt(p.text("commandId"),p.path("resultingSequence").asLong(),n.text("type")=="COMMAND_ACCEPTED")
+            reportCorrectness()
+        }
         when(n.text("type")) {
             "MATCH_FOUND","MATCHMAKING_STATUS" -> applyQueue(p)
             "MATCH_UPDATE" -> if(matchId==p.text("matchId")) {
@@ -116,6 +153,7 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
             }
             "COMMAND_ACCEPTED","COMMAND_REJECTED" -> if(p.text("commandId")==pending?.id) {
                 val rejected=n.text("type")=="COMMAND_REJECTED"
+                if(!rejected)metrics.recordAck(now()-firstPendingAt)
                 pending=null;commandRetries=0
                 if(rejected){metrics.add("commandsRejected");resync()}
                 else if(p.path("resultingSequence").asLong()>(tracker.current?.sequence?:0))resync()
@@ -139,12 +177,20 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
             if(current-lastProgress>90000&&current-lastStuckLog>60000&&state==ClientState.PLAYING){println("STUCK_MATCH_SUSPECTED matchId=$matchId sequence=${tracker.current?.sequence}");lastStuckLog=current}
             if(state==ClientState.MATCH_FINISHED) {
                 // Authorized normal history endpoint; no Firestore scan.
-                val history=api.call("GET","players/me/matches")
-                if(history.path("items").any{it.text("matchId")==matchId})metrics.add("historyConfirmed")else throw SafeFailure("HISTORY_NOT_FOUND")
+                if(tracker.current?.public?.text("status")=="FINISHED") {
+                    val history=api.call("GET","players/me/matches")
+                    if(history.path("items").any{it.text("matchId")==matchId})metrics.add("historyConfirmed")else throw SafeFailure("HISTORY_NOT_FOUND")
+                }
                 status(ClientState.REQUEUE_DELAY)
             }
             if(state==ClientState.REQUEUE_DELAY&&current>=requeueAt) {
-                if(!config.requeue||!shouldRequeue())return
+                if(!config.requeue||!shouldRequeue()) {
+                    // Capacity validation only: retain normal heartbeat after completion,
+                    // without requeueing or issuing commands. Coordinator writes epoch deadline.
+                    if(holdFile==null || (java.nio.file.Files.exists(holdFile) && System.currentTimeMillis()>=java.nio.file.Files.readString(holdFile).trim().toLong()))return
+                    requeueAt=current+1000
+                    continue
+                }
                 matchId=null;seat=null;tracker.clear();pending=null;planned=null;requeueAt=Long.MAX_VALUE;status(ClientState.IDLE);recover()
             }
             if(pending!=null&&current-pendingAt>=15000) {
@@ -154,11 +200,11 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
             }
             if(pending==null&&planned!=null&&current>=plannedAt) {
                 pending=LogicalCommand.create(tracker.current!!,planned!!);planned=null;plannedAt=Long.MAX_VALUE
-                wire.send("MATCH_COMMAND",pending!!.body);pendingAt=current;metrics.add("commandsSent");sentCommands++
+                firstPendingAt=now();wire.send("MATCH_COMMAND",pending!!.body);pendingAt=current;metrics.add("commandsSent");sentCommands++
             }
             val wake=minOf(pingAt,if(pending!=null)pendingAt+15000 else plannedAt,requeueAt)
             val next=withTimeoutOrNull((wake-now()).coerceIn(1,heartbeat)){wire.messages.receive()}
-            if(next!=null){lastReceived=now();message(next)}
+            if(next!=null){lastReceived=now();val began=wire.receivedAt(next);try{message(next)}finally{if(next.text("type")=="MATCH_UPDATE"&&began!=null)metrics.recordEventHandler((System.nanoTime()-began)/1_000_000)}}
         }
     }
 }

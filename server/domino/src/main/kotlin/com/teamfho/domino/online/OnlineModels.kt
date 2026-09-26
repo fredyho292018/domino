@@ -23,7 +23,8 @@ data class OnlineState(val match: Match, val phase: OnlinePhase, val starter: On
     val hands: Map<String,List<DominoPips>> = emptyMap(), val reserve: List<DominoPips> = emptyList(),
     val board: List<BoardPlacement> = emptyList(), val consecutivePasses: Int = 0, val round: MatchRound? = null,
     val turnStartedAt: java.time.Instant? = null, val turnDeadlineAt: java.time.Instant? = null,
-    val nextRoundMultiplier: Int = 1)
+    val nextRoundMultiplier: Int = 1,
+    val abandonmentLifecycleVersion: Int = 0)
 data class OnlineWrite(val state: OnlineState, val events: List<MatchEvent>, val rounds: List<MatchRound> = emptyList(),
     val histories: Map<String,PlayerMatchHistory> = emptyMap())
 data class OnlineReceipt(val fingerprint: String, val firstSequence: Long, val resultingSequence: Long)

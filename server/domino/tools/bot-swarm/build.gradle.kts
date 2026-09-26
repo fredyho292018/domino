@@ -36,3 +36,9 @@ tasks.register<JavaExec>("inspectMatch") {
     classpath = provision.runtimeClasspath
     mainClass.set("com.teamfho.swarm.InspectMatchKt")
 }
+
+tasks.register<JavaExec>("capacityOutcome") {
+    dependsOn(tasks.named(provision.classesTaskName))
+    classpath = provision.runtimeClasspath
+    mainClass.set("com.teamfho.swarm.CapacityOutcomeKt")
+}

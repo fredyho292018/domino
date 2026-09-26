@@ -27,11 +27,14 @@ class OnlineTurnWorker(private val repository: OnlineRepository, private val ser
             }
             for(id in ids)try {
                 val state=service.state(id)
-                socialPresence?.observeMatch(state)
                 if(state.match.status in setOf(com.teamfho.domino.match.MatchStatus.FINISHED,com.teamfho.domino.match.MatchStatus.CANCELLED)){index.forget(id);continue}
                 state.match.participants.mapNotNull {it.playerUid}.forEach {uid->
                     service.connection(id,uid){try {presence.connectionCount(uid)?.let {it>0}}catch(_:Exception){null}}
                 }
+                service.abandon(id)
+                val current=service.state(id)
+                socialPresence?.observeMatch(current)
+                if(current.match.status in setOf(com.teamfho.domino.match.MatchStatus.FINISHED,com.teamfho.domino.match.MatchStatus.CANCELLED)){index.forget(id);continue}
                 service.timeout(id)
                 repository.refreshDiscovery(id,now)
             } catch(e:OnlineFailure) {

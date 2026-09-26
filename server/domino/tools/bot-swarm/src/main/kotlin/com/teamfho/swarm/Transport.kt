@@ -19,15 +19,18 @@ class ExpiredAuthRetry {
 }
 fun authFailure(message:JsonNode)=SafeFailure(
     if(message.path("payload").text("code")=="AUTH_TOKEN_EXPIRED")"AUTH_TOKEN_EXPIRED" else "WS_AUTH_REJECTED",true)
-class Api(private val http:HttpClient,private val base:String,private val token:suspend ()->String) {
+class Api(private val http:HttpClient,private val base:String,private val metrics:Metrics?=null,private val token:suspend ()->String) {
     suspend fun call(method:String,path:String,body:Any?=null):JsonNode {
         // Explicit allowlist excludes monetization and direct match creation by construction.
         require(path=="game-modes"||path=="player/bootstrap"||path=="player/display-name"||path=="matchmaking/queue"||path=="players/me/matches"||path.matches(Regex("matches/[A-Za-z0-9_-]{1,128}/(snapshot|events\\?afterSequence=[0-9]+)"))){"API_PATH_NOT_ALLOWED"}
         val request=HttpRequest.newBuilder(URI(base.trimEnd('/')+"/api/v1/"+path)).timeout(Duration.ofSeconds(30))
             .header("Authorization","Bearer "+token()).header("Content-Type","application/json")
             .method(method,if(body==null)HttpRequest.BodyPublishers.noBody()else HttpRequest.BodyPublishers.ofString(Json.write(body))).build()
-        val response=http.sendAsync(request,HttpResponse.BodyHandlers.ofString()).await()
+        val began=System.nanoTime()
+        val response=try{http.sendAsync(request,HttpResponse.BodyHandlers.ofString()).await()}
+            finally{metrics?.recordRest((System.nanoTime()-began)/1_000_000)}
         if(response.statusCode()!=200) {
+            if(response.statusCode() in 500..599) metrics?.add("http5xx")
             val expired=response.statusCode()==401&&response.body().length<8192&&
                 runCatching{Json.read(response.body()).text("code")=="AUTH_TOKEN_EXPIRED"}.getOrDefault(false)
             throw SafeFailure(if(expired)"AUTH_TOKEN_EXPIRED"else"HTTP_${response.statusCode()}",response.statusCode() in setOf(401,403))
@@ -38,6 +41,8 @@ class Api(private val http:HttpClient,private val base:String,private val token:
 }
 
 class Socket(private val http:HttpClient,base:String):WebSocket.Listener {
+    private val arrivals=java.util.Collections.synchronizedMap(java.util.IdentityHashMap<JsonNode,Long>())
+    fun receivedAt(n:JsonNode):Long?=arrivals.remove(n)
     val messages=Channel<JsonNode>(128)
     private val uri=URI(base.replaceFirst("https://","wss://").replaceFirst("http://","ws://").trimEnd('/')+"/ws/v1/realtime")
     private var socket:WebSocket?=null
@@ -51,7 +56,8 @@ class Socket(private val http:HttpClient,base:String):WebSocket.Listener {
         if(last)try {
             val n=Json.read(text.toString());text.setLength(0)
             require(n.number("version")==1&&n.path("payload").isObject)
-            if(!messages.trySend(n).isSuccess){messages.close(SafeFailure("WS_BACKPRESSURE"));webSocket.abort()}
+            arrivals[n]=System.nanoTime()
+            if(!messages.trySend(n).isSuccess){arrivals.remove(n);messages.close(SafeFailure("WS_BACKPRESSURE"));webSocket.abort()}
         }catch(_:Exception){messages.close(SafeFailure("WS_PROTOCOL",true));webSocket.abort()}
         webSocket.request(1);return null
     }
@@ -60,5 +66,5 @@ class Socket(private val http:HttpClient,base:String):WebSocket.Listener {
     suspend fun send(type:String,payload:Any=emptyMap<String,Any>()) {
         socket!!.sendText(Json.write(mapOf("type" to type,"version" to 1,"sequence" to ++outgoing,"timestamp" to Instant.now().toString(),"payload" to payload)),true).await()
     }
-    suspend fun close(){try{socket?.sendClose(1000,"Swarm stopped")?.await()}finally{socket?.abort();messages.close()}}
+    suspend fun close(){try{socket?.sendClose(1000,"Swarm stopped")?.await()}finally{socket?.abort();messages.close();arrivals.clear()}}
 }
