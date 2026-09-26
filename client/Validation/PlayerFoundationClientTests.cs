@@ -90,6 +90,8 @@ static partial class PlayerFoundationClientTests
     }
     public static async Task Main()
     {
+        await Server6CorrelationChecks();
+        Console.WriteLine("S601_CODEC_CASES=" + await Domino.Editor.S601CodecValidation.Checks() + " PASS");
         await TokenTests();
         await LocalHttpTests();
         await RetryTests();

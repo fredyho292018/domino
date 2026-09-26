@@ -21,7 +21,10 @@ namespace Domino.Infrastructure.Api
                 player = new PlayerResponseDto {
                     uid = Text(player, "uid"), accountType = Text(player, "accountType"), displayName = Text(player, "displayName"),
                     language = Text(player, "language"), status = Text(player, "status") },
-                wallet = new WalletResponseDto { coins = coins.Value<long>() }
+                wallet = new WalletResponseDto { coins = coins.Value<long>() },
+                // Unlimited limits carry maximum:null; retain the DTO default for that unused value.
+                entitlements = root["entitlements"]?.ToObject<EntitlementSummaryDto>(
+                    JsonSerializer.Create(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }))
             };
         }
         public ApiErrorDto ReadError(string json)

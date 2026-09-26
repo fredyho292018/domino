@@ -17,6 +17,11 @@ class IdentitySettings(env:Map<String,String> = System.getenv()) {
         require(generateSequence(directory){it.parent}.none{Files.exists(it.resolve(".git"))}){"CREDENTIALS_MUST_BE_OUTSIDE_REPOSITORY"}
     }
     fun file(slot:Int)=directory.resolve("slot-%02d.json".format(slot+1))
+    fun validateSavedScope(config:Config,slot:Int) {
+        val saved=Json.read(Files.readString(file(slot)))
+        require(saved.text("projectId")==project&&saved.text("environment")==config.environment&&
+            saved.path("isTestAccount").asBoolean()&&saved.text("testSource")=="BOT_SWARM"&&saved.text("uid").isNotBlank())
+    }
 }
 
 // Refresh tokens remain in a local, unversioned directory. A slot lease prevents simultaneous reuse.
@@ -28,7 +33,7 @@ class Identity(private val settings:IdentitySettings,private val config:Config,v
     var token:String="";private set
     private var expiresAt=0L
     suspend fun currentToken():String {if(System.currentTimeMillis()+60000>=expiresAt)refresh();return token}
-    suspend fun refresh() {
+    suspend fun refresh(persistRotation:Boolean=true) {
         val file=settings.file(slot);val saved=Json.read(Files.readString(file))
         require(saved.text("projectId")==settings.project&&saved.text("environment")==config.environment&&saved.path("isTestAccount").asBoolean()&&saved.text("testSource")=="BOT_SWARM"){"IDENTITY_SCOPE_MISMATCH"}
         val body="grant_type=refresh_token&refresh_token="+URLEncoder.encode(saved.text("refreshToken"),Charsets.UTF_8)
@@ -44,7 +49,7 @@ class Identity(private val settings:IdentitySettings,private val config:Config,v
         require(claims.text("aud")==settings.project){"FIREBASE_PROJECT_MISMATCH"}
         expiresAt=claims.path("exp").asLong()*1000
         val refreshed=value.text("refresh_token")
-        if(refreshed.isNotBlank()&&refreshed!=saved.text("refreshToken"))saveIdentity(file,settings.project,config.environment,uid,refreshed)
+        if(persistRotation&&refreshed.isNotBlank()&&refreshed!=saved.text("refreshToken"))saveIdentity(file,settings.project,config.environment,uid,refreshed)
     }
     override fun close(){try{if(lease.isValid)lease.release()}finally{lockFile.close();token=""}}
 }

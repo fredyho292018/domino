@@ -13,6 +13,11 @@ dependencies {
 }
 application { mainClass.set("com.teamfho.swarm.MainKt") }
 tasks.test { useJUnitPlatform() }
+tasks.register<JavaExec>("coordinateIdentities") {
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.swarm.IdentityCoordinatorKt")
+}
 // Administrative provisioning is not on the simulated client's runtime classpath.
 val provision by sourceSets.creating
 configurations[provision.implementationConfigurationName].extendsFrom(configurations.implementation.get())

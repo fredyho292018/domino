@@ -19,6 +19,7 @@ namespace Domino.Replay
         Button more,play,perspectiveButton,speedButton;Slider slider;BoardView board;
         JObject manifest;ReplayTimeline timeline;string cursor;bool loading,playing,rendering;int sequence,perspective=-1;
         readonly List<JObject> history=new List<JObject>();float speed=1,elapsed;
+        ScrollRect historyScroll;VerticalLayoutGroup historyLayout;ContentSizeFitter historySize;
         public ReplayTimeline Timeline=>timeline;
         public BoardView Board=>board;
         public int Sequence=>sequence;
@@ -37,10 +38,19 @@ namespace Domino.Replay
             back.GetComponent<RectTransform>().anchoredPosition=new Vector2(90,-48);
             panel=UiKit.Rect("History panel",safe,new Vector2(900,1240),Vector2.zero);
             message=UiKit.Label("Message",panel,"",new Vector2(850,100),new Vector2(0,520),26,UiKit.Cream);
-            var viewport=UiKit.Rect("History viewport",panel,new Vector2(900,900),new Vector2(0,-10));
+            var scrollRoot=UiKit.Rect("History scroll",panel,new Vector2(900,900),new Vector2(0,-10));
+            var viewport=UiKit.Rect("History viewport",scrollRoot,Vector2.zero,Vector2.zero);
+            viewport.anchorMin=Vector2.zero;viewport.anchorMax=Vector2.one;viewport.sizeDelta=Vector2.zero;
             viewport.gameObject.AddComponent<RectMask2D>();viewport.gameObject.AddComponent<Image>().color=Color.clear;
             list=UiKit.Rect("History rows",viewport,new Vector2(900,0),Vector2.zero);list.anchorMin=list.anchorMax=new Vector2(.5f,1);list.pivot=new Vector2(.5f,1);
-            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=list;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;
+            historyLayout=list.gameObject.AddComponent<VerticalLayoutGroup>();
+            historyLayout.padding=new RectOffset(15,15,5,15);historyLayout.spacing=20;
+            historyLayout.childAlignment=TextAnchor.UpperCenter;historyLayout.childControlWidth=true;historyLayout.childControlHeight=true;
+            historyLayout.childForceExpandWidth=true;historyLayout.childForceExpandHeight=false;
+            historySize=list.gameObject.AddComponent<ContentSizeFitter>();historySize.verticalFit=ContentSizeFitter.FitMode.PreferredSize;
+            historyScroll=scrollRoot.gameObject.AddComponent<ScrollRect>();historyScroll.viewport=viewport;historyScroll.content=list;
+            historyScroll.horizontal=false;historyScroll.vertical=true;historyScroll.movementType=ScrollRect.MovementType.Clamped;
+            historyScroll.scrollSensitivity=40;
             more=UiKit.LButton("Load more",panel,"history.more",new Vector2(380,70),new Vector2(0,-550),UiKit.Hex("397566"),()=>LoadHistory(false));
             LoadHistory(true);StyleControls();
         }
@@ -60,10 +70,11 @@ namespace Domino.Replay
         }
         void DrawHistory()
         {
-            foreach(Transform child in list)Destroy(child.gameObject);
+            foreach(Transform child in list){child.gameObject.SetActive(false);Destroy(child.gameObject);}
+            historyLayout.enabled=true;historySize.enabled=true;
             for(int i=0;i<history.Count;i++) {
-                var item=history[i];var h=item["history"];var row=UiKit.Panel("Match "+(string)h["matchId"],list,new Vector2(870,240),new Vector2(0,-125-i*260),UiKit.Hex("1D403E")).rectTransform;
-                row.anchorMin=row.anchorMax=new Vector2(.5f,1);
+                var item=history[i];var h=item["history"];var row=UiKit.Panel("Match "+(string)h["matchId"],list,new Vector2(870,240),Vector2.zero,UiKit.Hex("1D403E")).rectTransform;
+                var cardLayout=row.gameObject.AddComponent<LayoutElement>();cardLayout.minHeight=240;cardLayout.preferredHeight=240;
                 string names=Names(item["participants"] as JArray,item["teams"] as JArray);
                 var label=UiKit.Label("Summary",row,"",new Vector2(810,150),new Vector2(0,30),24,UiKit.Cream);
                 DominoLocalization.Bind(label,()=>DominoLocalization.Get((string)h["modeKey"]=="DUEL_1V1"?"mode.duel.title":"mode.partners_online.title")+"\n"+names+"\n"+string.Join(" — ",h["score"].Values<int>())+" · "+DominoLocalization.Get((string)h["result"]=="WIN"?"result.victory":"result.defeat")+"\n"+ReadTimestamp(h["finishedAt"]).ToLocalTime().ToString("g",System.Globalization.CultureInfo.GetCultureInfo(DominoLocalization.Language)));
@@ -73,7 +84,8 @@ namespace Domino.Replay
                     if(locked)DominoLocalization.Set(message,"premium.replay_limited");else Open((string)h["matchId"]);
                 });
             }
-            list.sizeDelta=new Vector2(900,history.Count*260);StyleControls();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(list);
+            historyScroll.StopMovement();historyScroll.verticalNormalizedPosition=1;StyleControls();
         }
         static DateTimeOffset ReadTimestamp(JToken token) {
             if(token is JValue value && value.Value is DateTime date)return new DateTimeOffset(date);
@@ -97,6 +109,8 @@ namespace Domino.Replay
         }
         void ShowDetail()
         {
+            historyLayout.enabled=false;historySize.enabled=false;
+            historyScroll.StopMovement();list.anchoredPosition=Vector2.zero;
             foreach(Transform child in list)Destroy(child.gameObject);more.gameObject.SetActive(false);
             var text=UiKit.Label("Match detail",list,"",new Vector2(860,660),new Vector2(0,-340),26,UiKit.Cream);text.rectTransform.anchorMin=text.rectTransform.anchorMax=new Vector2(.5f,1);
             DominoLocalization.Bind(text,()=>Names((JArray)manifest["participants"],(JArray)manifest["teams"])+"\n\n"+string.Join(" — ",manifest["finalScore"].Values<int>())+"\n"+DominoLocalization.Get("replay.rounds",((JArray)manifest["rounds"]).Count)+"\n"+DominoLocalization.Get("rules.target_score",(int)JObject.Parse((string)manifest["ruleSnapshot"]["effectiveModeJson"])["ruleSet"]["targetScore"]));

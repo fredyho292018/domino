@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d0b474f8bd1420daaec786249af5fbe, type: 3}
   m_Name: ApiSettings
   m_EditorClassIdentifier: 
-  enabled: 0
-  environment: LOCAL
-  baseUrl: http://127.0.0.1:8080
+  enabled: 1
+  environment: TEST
+  baseUrl: https://domino-api-test.teamfho.com
   timeoutSeconds: 15
