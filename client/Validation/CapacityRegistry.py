@@ -31,6 +31,30 @@ class Registry:
         ids=sorted(k for k,v in self.matches.items() if v['terminalState']=='COMPLETED' and v.get('source')=='AUTHORITATIVE_READ')
         if len(ids)<5:raise ValueError('FIVE_COMPLETED_REQUIRED')
         return ids[:5]
+    def reconcile_discovery(self, discovery):
+        """Union authoritative IDs, including assignments never logged by a client.
+
+        Consumers must call discovery before baseline, at stages and after STOP;
+        a client-only snapshot cannot establish registry completeness.
+        """
+        if discovery.get('runId')!=self.run_id or discovery.get('source')!='AUTHORITATIVE_TEST_DISCOVERY':raise ValueError('UNTRUSTED_DISCOVERY')
+        summary=discovery['summary'];rows=discovery['matches']
+        if summary.get('runId')!=self.run_id or summary['unclassifiedLoadMatches']!=0:raise ValueError('UNCLASSIFIED_LOAD_MATCHES')
+        ids=[r['matchId'] for r in rows]
+        if len(set(ids))!=len(ids) or set(ids)!=set(summary['matchIds']) or len(ids)>25:raise ValueError('DISCOVERY_SCOPE_MISMATCH')
+        if not set(self.matches)<=set(ids):raise ValueError('DISCOVERY_LOST_REGISTERED_MATCH')
+        # Work on a copy so a bad late row cannot partially update the registry.
+        import copy
+        staged=copy.deepcopy(self)
+        for row in rows:
+            slots=row['participantSlots']
+            group=min(int(s.split('/')[0].split('-')[1]) for s in slots)
+            if row['matchId'] in staged.matches:
+                group=staged.matches[row['matchId']]['group']
+            staged.register(row['matchId'],group,slots,row['startedAt'])
+            staged.authoritative(row['matchId'],row['rootStatus'],row['runtimeStatus'],row.get('completedAt'))
+        self.matches=staged.matches
+        return dict(summary)
 
 def classify(root,runtime):
     if root!=runtime:return 'UNKNOWN'

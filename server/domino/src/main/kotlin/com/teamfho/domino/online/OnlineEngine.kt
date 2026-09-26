@@ -85,6 +85,12 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom(),
         val b=Builder(before,id,now)
         return if(b.cancelIfAllAbandoned()==AbandonDecision.CANCELLED)b.build() else null
     }
+    /** Administrative singleton intent still uses the same builder and transaction as the worker. */
+    fun reconcileSingleton(before:OnlineState,id:String,now:Instant):OnlineWrite? {
+        if(!reconciliationGate.singleton() || before.abandonmentLifecycleVersion!=0 || before.match.status!=MatchStatus.IN_PROGRESS)return null
+        return abandon(before,id,now)
+    }
+    fun auditLegacyCompleted(state:OnlineState)=LegacyReconciliationAudit.completed(reconciliationGate.operationId(),state.match.matchId)
     private fun starter(attempt: Int, method: StarterMethod?=null): OnlineStarter {
         val deck=deck();val selected=method?:StarterMethod.entries[random.next(2)]
         val first=deck.removeAt(random.next(deck.size));val second=deck.removeAt(random.next(deck.size))
@@ -98,8 +104,8 @@ class OnlineEngine(private val random: OnlineRandom=SecureOnlineRandom(),
             if(s.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED) ||
                 s.match.participants.isEmpty() || s.match.participants.any{it.connectionState!=ConnectionState.ABANDONED})return AbandonDecision.NOT_ELIGIBLE
             if(s.abandonmentLifecycleVersion!=1) {
-                val allowed=s.abandonmentLifecycleVersion==0 && reconciliationGate.allowsLegacy(s.match.matchId)
-                LegacyReconciliationAudit.decision(allowed)
+                val allowed=s.abandonmentLifecycleVersion==0 && reconciliationGate.allowsLegacy(s)
+                LegacyReconciliationAudit.decision(allowed,reconciliationGate.operationId(),s.match.matchId)
                 if(!allowed)return AbandonDecision.BLOCKED
             }
             val result=MatchResult(null,MatchFinishReason.CANCELLED,s.match.score)

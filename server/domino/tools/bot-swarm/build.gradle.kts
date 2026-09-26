@@ -37,8 +37,27 @@ tasks.register<JavaExec>("inspectMatch") {
     mainClass.set("com.teamfho.swarm.InspectMatchKt")
 }
 
+
 tasks.register<JavaExec>("capacityOutcome") {
     dependsOn(tasks.named(provision.classesTaskName))
     classpath = provision.runtimeClasspath
     mainClass.set("com.teamfho.swarm.CapacityOutcomeKt")
+}
+
+tasks.register<JavaExec>("capacityDiscover") {
+    dependsOn(tasks.named(provision.classesTaskName))
+    classpath = provision.runtimeClasspath
+    mainClass.set("com.teamfho.swarm.CapacityDiscoverKt")
+}
+
+dependencies {
+    testImplementation(provision.output)
+    testImplementation("com.google.firebase:firebase-admin:9.10.0")
+}
+tasks.test { useJUnitPlatform { excludeTags("EMULATOR") } }
+tasks.register<Test>("capacityDiscoveryEmulatorTest") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("EMULATOR") }
+    environment("FIRESTORE_EMULATOR_HOST", "127.0.0.1:18085")
 }

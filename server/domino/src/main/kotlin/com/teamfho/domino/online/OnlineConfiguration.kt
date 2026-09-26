@@ -48,8 +48,10 @@ class OnlineConfiguration {
     @Bean fun abandonedMatchReconciliationGate(
         @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.file:}") file:String,
         @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.run-id:}") runId:String,
-        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.registry-sha256:}") hash:String
-    ):AbandonedMatchReconciliationGate=FileAbandonedMatchReconciliationGate(file.takeIf{it.isNotBlank()}?.let{runCatching{java.nio.file.Path.of(it)}.getOrNull()},runId,hash)
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.registry-sha256:}") hash:String,
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.mode:EXACT_22}") mode:String,
+        @org.springframework.beans.factory.annotation.Value("\${domino.online.legacy-reconciliation.match-id:}") matchId:String
+    ):AbandonedMatchReconciliationGate=FileAbandonedMatchReconciliationGate(file.takeIf{it.isNotBlank()}?.let{runCatching{java.nio.file.Path.of(it)}.getOrNull()},runId,hash,mode,matchId)
     @Bean fun onlineMatchService(catalog: GameCatalogService,repository: OnlineRepository,profiles:OnlineParticipantProfiles,
         gate:AbandonedMatchReconciliationGate)=
         OnlineMatchService(catalog,repository,engine=OnlineEngine(reconciliationGate=gate),profiles=profiles::get)

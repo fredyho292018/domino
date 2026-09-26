@@ -10,6 +10,25 @@ import kotlin.test.*
 
 @Tag("EMULATOR")
 class AllAbandonedEmulatorTests {
+    @Test fun `singleton shared gate concurrent transactions cancel once preserving marker`() {
+        val directory=java.nio.file.Files.createTempDirectory("s705r-gate-");val file=directory.resolve("gate.json")
+        try {connect().use{db->
+            val id=java.util.UUID.randomUUID().toString();val run=java.util.UUID.randomUUID().toString()
+            java.nio.file.Files.writeString(file,com.teamfho.domino.catalog.GameCatalogCodec.json(LegacyReconciliationFile(1,run,true,listOf(id),"SINGLE_MATCH")))
+            fun gate()=FileAbandonedMatchReconciliationGate(file,run,FileAbandonedMatchReconciliationGate.registryHash(listOf(id)),"SINGLE_MATCH",id)
+            val initial=PartnersOnlineTests.started().let{s->s.copy(abandonmentLifecycleVersion=0,match=s.match.copy(matchId=id,participants=s.match.participants.map{it.copy(connectionState=ConnectionState.ABANDONED)}))}
+            val repo=FirestoreOnlineRepository(db);repo.create(initial)
+            val clock=OnlineTurnTests.Time(Instant.EPOCH.plusSeconds(180));val catalog=com.teamfho.domino.catalog.GameCatalogService(com.teamfho.domino.catalog.GameCatalogRepository{com.teamfho.domino.catalog.GameCatalogV4Publisher.canonical()})
+            val barrier=CyclicBarrier(2)
+            val fenced=object:OnlineRepository by repo {override fun transact(matchId:String,expectedSequence:Long,commandId:String,fingerprint:String,transition:(OnlineState)->OnlineWrite):OnlineCommit {barrier.await(10,TimeUnit.SECONDS);return repo.transact(matchId,expectedSequence,commandId,fingerprint,transition)}}
+            val pool=Executors.newFixedThreadPool(2)
+            try {val results=pool.invokeAll((0..1).map{Callable{OnlineMatchService(catalog,fenced,OnlineEngine(reconciliationGate=gate()),clock).reconcileLegacySingleton(id)}}).map{it.get(30,TimeUnit.SECONDS)};assertEquals(1,results.count{it?.write!=null})}finally{pool.shutdownNow()}
+            assertEquals(MatchStatus.CANCELLED,repo.read(id)!!.match.status);assertEquals(0,repo.read(id)!!.abandonmentLifecycleVersion)
+            assertEquals(1,repo.events(id,0).count{it.payload is MatchFinished});assertFalse(db.document("onlineTurnWork/$id").get().get().exists())
+            assertNull(OnlineMatchService(catalog,repo,OnlineEngine(reconciliationGate=gate()),clock).reconcileLegacySingleton(id))
+            for(i in 0..3)assertFalse(db.document("players/m5-p$i/matchHistory/$id").get().get().exists())
+        }}finally{java.nio.file.Files.deleteIfExists(file);java.nio.file.Files.deleteIfExists(directory)}
+    }
     @Test fun `legacy gate persists marker and two authorized instances cancel once`() {
         val directory=java.nio.file.Files.createTempDirectory("s704a-gate-")
         val file=directory.resolve("gate.json")

@@ -71,7 +71,7 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
     }
     private fun publish(result: OnlineCommit) {result.write?.let {
         if(it.state.abandonmentLifecycleVersion==0 && it.state.match.status==MatchStatus.CANCELLED &&
-            it.events.any{e->e.payload is MatchFinished})LegacyReconciliationAudit.completed()
+            it.events.any{e->e.payload is MatchFinished})engine.auditLegacyCompleted(it.state)
         for(event in it.events) {
             val label=when(event.payload) {
                 is TurnStarted->"TURN_DEADLINE_CREATED";is TurnTimeout->"TURN_TIMEOUT_CLAIMED";is AutoPlayed->"AUTO_PLAY_APPLIED"
@@ -105,12 +105,16 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
         };publish(result);return result
     }
     fun state(id: String)=read(id) // Server-only worker entry; never exposed by a controller.
-    fun abandon(id:String):OnlineCommit? {
+    fun abandon(id:String):OnlineCommit? = abandon(id,false)
+    // Server-side tooling entry only; no controller exposes this operation.
+    fun reconcileLegacySingleton(id:String):OnlineCommit? = abandon(id,true)
+    private fun abandon(id:String,singleton:Boolean):OnlineCommit? {
         val before=read(id)
         val key="sys_abandon_${before.match.lastSequence}"
-        if(engine.abandon(before,key,clock.instant())==null)return null
+        fun transition(state:OnlineState)=if(singleton)engine.reconcileSingleton(state,key,clock.instant()) else engine.abandon(state,key,clock.instant())
+        if(transition(before)==null)return null
         val result=repository.transact(id,before.match.lastSequence,key,fingerprint("SERVER",key)) {
-            engine.abandon(it,key,clock.instant())?:throw OnlineFailure(OnlineError.STALE_COMMAND)
+            transition(it)?:throw OnlineFailure(OnlineError.STALE_COMMAND)
         }
         publish(result);return result
     }
