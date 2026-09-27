@@ -117,18 +117,33 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         batch.create(work(state.match.matchId),workMap(state,state.match.createdAt))
         batch.commit().get(30,TimeUnit.SECONDS)
     }
-    override fun read(matchId: String)=root(matchId).collection("runtime").document("authoritative").get().get(15,TimeUnit.SECONDS).data?.let(::decode)
+    override fun read(matchId: String):OnlineState? {
+        val reference=root(matchId).collection("runtime").document("authoritative")
+        val timing=com.teamfho.domino.realtime.AckPhaseTiming.current.get()?.firestore
+        val doc=if(timing==null)reference.get().get(15,TimeUnit.SECONDS) else timing.preRead {reference.get().get(15,TimeUnit.SECONDS)}
+        return doc.data?.let(::decode)
+    }
     override fun events(matchId: String,after: Long)=FirestoreMatchRepository(db).readTrustedEvents(matchId,after,500)
     override fun transact(matchId: String,expectedSequence: Long,commandId: String,fingerprint: String,transition:(OnlineState)->OnlineWrite): OnlineCommit {
         val root=root(matchId);MatchIds.document(commandId)
-        return FirestoreMatchRepository.transactionRead(db.runTransaction({tx->
+        val timing=com.teamfho.domino.realtime.AckPhaseTiming.current.get()
+        val fs=timing?.firestore
+        fun execute():OnlineCommit=FirestoreMatchRepository.transactionRead(db.runTransaction({tx->
+            timing?.attempt()
+            fun callback():OnlineCommit {
+            fun get(ref:com.google.cloud.firestore.DocumentReference)=if(fs==null)FirestoreMatchRepository.transactionRead(tx.get(ref)) else fs.read {FirestoreMatchRepository.transactionRead(tx.get(ref))}
             val receipt=root.collection("commands").document(commandId)
-            val prior=FirestoreMatchRepository.transactionRead(tx.get(receipt)).data
-            if(prior!=null)return@runTransaction OnlineWrites.prior(MatchCodec.read(prior,OnlineReceipt::class.java),fingerprint)
+            val prior=get(receipt).data
+            if(prior!=null)return OnlineWrites.prior(MatchCodec.read(prior,OnlineReceipt::class.java),fingerprint)
             val stateRef=root.collection("runtime").document("authoritative")
-            val before=FirestoreMatchRepository.transactionRead(tx.get(stateRef)).data?.let(::decode)?:throw OnlineFailure(OnlineError.MATCH_NOT_FOUND)
             val workRef=work(matchId)
-            val priorCheck=FirestoreMatchRepository.transactionRead(tx.get(workRef)).getTimestamp("presenceCheckAt")?.let {Instant.ofEpochSecond(it.seconds,it.nanos.toLong())}
+            // Receipt remains the short circuit. Both authoritative reads belong to this attempt.
+            val snapshots=if(fs==null)FirestoreMatchRepository.transactionRead(tx.getAll(stateRef,workRef))
+                else fs.read(2) {FirestoreMatchRepository.transactionRead(tx.getAll(stateRef,workRef))}
+            val documents=snapshots.associateBy {it.reference}
+            check(snapshots.size==2 && documents.keys==setOf(stateRef,workRef)) {"INCOMPLETE_TRANSACTION_READ"}
+            val before=documents.getValue(stateRef).data?.let(::decode)?:throw OnlineFailure(OnlineError.MATCH_NOT_FOUND)
+            val priorCheck=documents.getValue(workRef).getTimestamp("presenceCheckAt")?.let {Instant.ofEpochSecond(it.seconds,it.nanos.toLong())}
             checkOnline(before.match.lastSequence==expectedSequence,OnlineError.STALE_COMMAND)
             val write=transition(before);OnlineWrites.validate(before,write,commandId)
             val r=OnlineReceipt(fingerprint,expectedSequence+1,write.state.match.lastSequence)
@@ -146,8 +161,11 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
             write.histories.forEach {(uid,h)->tx.create(db.document("players/${MatchIds.document(uid)}/matchHistory/$matchId"),MatchCodec.map(h))}
             if(write.state.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED))tx.delete(workRef)
             else tx.set(workRef,workMap(write.state,write.state.match.updatedAt,priorCheck?:write.state.match.updatedAt.plusSeconds(30)))
-            tx.create(receipt,MatchCodec.map(r));OnlineCommit(write,r)
+            tx.create(receipt,MatchCodec.map(r));return OnlineCommit(write,r)
+            }
+            if(fs==null)callback() else fs.attempt {callback()}
         },TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(8).build()))
+        return if(fs==null)execute() else fs.transaction {execute()}
     }
     override fun due(now: Instant)=db.collection("onlineTurnWork").whereLessThanOrEqualTo("dueAt",timestamp(now)).orderBy("dueAt").limit(100).get().get(15,TimeUnit.SECONDS).documents.map {it.id}
     override fun activeFor(uid: String)=db.collection("onlineTurnWork").whereArrayContains("uids",uid).get().get(15,TimeUnit.SECONDS).documents.map {it.id}

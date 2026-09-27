@@ -27,8 +27,10 @@ private class CountingFirestore(val real:Firestore, val legacyParticipantWrites:
             else->return value
         }
         return Mockito.mock(type,Answer {call->
-            val args=call.arguments.copyOf()
+            val args=call.rawArguments.copyOf()
             if(call.method.name=="get" && (value is DocumentReference || value is Transaction && args.firstOrNull() is DocumentReference))reads++
+            if(call.method.name=="getAll" && value is Transaction)
+                reads+=call.rawArguments.filterIsInstance<Array<*>>().single().size
             if(call.method.name in setOf("create","set","delete","update") && (value is Transaction || value is WriteBatch)) {
                 val path=(args[0] as DocumentReference).path;writes++
                 if(legacyParticipantWrites && value is Transaction && path.endsWith("/runtime/authoritative")) {

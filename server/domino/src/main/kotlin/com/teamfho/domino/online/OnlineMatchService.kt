@@ -63,10 +63,16 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
             OnlineCommandType.SUBMIT_EVEN_ODD_GUESS->c.even!=null&&c.tile==null&&c.chainEnd==null&&c.candidate==null
             else->c.tile==null&&c.chainEnd==null&&c.candidate==null&&c.even==null
         },OnlineError.INVALID_COMMAND)
-        val before=read(c.matchId);OnlineEngine.seat(before,uid)
+        val timing=com.teamfho.domino.realtime.AckPhaseTiming.current.get()
+        timing?.mark("lookup")
+        val before=read(c.matchId)
+        timing?.mark("authorization")
+        OnlineEngine.seat(before,uid)
+        timing?.mark("firestore")
         val result=repository.transact(c.matchId,before.match.lastSequence,c.commandId,fingerprint(uid,GameCatalogCodec.mapper.writeValueAsString(c))) {
-            engine.command(it,uid,c,clock.instant())
+            if(timing==null)engine.command(it,uid,c,clock.instant()) else timing.domain {engine.command(it,uid,c,clock.instant())}
         }
+        timing?.mark("postCommit")
         publish(result);log.info("ONLINE_COMMAND_ACCEPTED");return result
     }
     private fun publish(result: OnlineCommit) {result.write?.let {

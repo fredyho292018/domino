@@ -90,8 +90,10 @@ class RealtimeHandler(
         if (!admitted) session.close(CloseStatus.SERVICE_OVERLOAD)
     }
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+        val timingStart=System.nanoTime()
         val c = connections[session.id] ?: return
         var onlineCommand: OnlineCommand? = null
+        var timing:AckTrace?=null
         try {
             synchronized(c) {
                 if (!session.isOpen || !c.outbound.isAccepting()) return
@@ -159,6 +161,7 @@ class RealtimeHandler(
                         socialPresence.subscribe(c.id,c.uid!!,c.outbound,ids.asSequence().map{it.asString()}.toList(),generation.asLong())
                     }
                     "MATCH_COMMAND" -> {
+                        timing=AckPhaseTiming.begin(timingStart)
                         if(c.uid==null || online==null) { fail(c,"PROTOCOL");return }
                         try { onlineCommand=GameCatalogCodec.mapper.readValue(payload.toString(),OnlineCommand::class.java) }
                         catch(_: Exception) {
@@ -171,13 +174,18 @@ class RealtimeHandler(
             }
             onlineCommand?.let {command ->
                 try {
+                    timing?.identify(command.commandId,command.type.name)
+                    AckPhaseTiming.current.set(timing)
                     val result=online!!.command(c.uid!!,command)
-                    synchronized(c) {send(c,"COMMAND_ACCEPTED",mapOf("commandId" to command.commandId,"matchId" to command.matchId,"resultingSequence" to result.receipt.resultingSequence))}
+                    timing?.mark("ackEmission")
+                    synchronized(c) {c.outbound.offerCritical("COMMAND_ACCEPTED",mapOf("commandId" to command.commandId,"matchId" to command.matchId,"resultingSequence" to result.receipt.resultingSequence),timing)}
                 } catch(e: OnlineFailure) {
                     org.slf4j.LoggerFactory.getLogger(javaClass).info("ONLINE_COMMAND_REJECTED code={}",e.code.name)
                     synchronized(c) {send(c,"COMMAND_REJECTED",mapOf("commandId" to command.commandId,"code" to e.code.name))}
                 } catch(_: Exception) {
                     synchronized(c) {send(c,"COMMAND_REJECTED",mapOf("commandId" to command.commandId,"code" to "STORAGE_UNAVAILABLE"))}
+                } finally {
+                    AckPhaseTiming.current.remove()
                 }
             }
         } catch (failure: AuthFailure) {

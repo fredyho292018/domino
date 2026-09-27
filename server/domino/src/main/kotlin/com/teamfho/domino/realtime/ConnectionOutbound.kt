@@ -37,7 +37,7 @@ class ConnectionOutbound(private val session:WebSocketSession,
     private val metrics:OutboundMetrics?=null,
     internal val beforeEphemeralCommit:()->Unit={}) {
     private class Pending(val type:String,val json:String,val bytes:Int,val at:Long,
-        val authorization:EphemeralAuthorization?=null) {
+        val authorization:EphemeralAuthorization?=null,val timing:AckTrace?=null) {
         private val done=AtomicBoolean()
         private val subscription=AtomicReference<AutoCloseable?>()
         fun observe(revoked:()->Unit) {
@@ -74,14 +74,14 @@ class ConnectionOutbound(private val session:WebSocketSession,
     private val writer=Thread.ofVirtual().name("domino-outbound").unstarted(::run)
     init { writer.start() }
 
-    fun offerCritical(type:String,payload:Map<String,Any>)=offer(OutboundClass.CRITICAL,type,payload)
+    fun offerCritical(type:String,payload:Map<String,Any>,timing:AckTrace?=null)=offer(OutboundClass.CRITICAL,type,payload,timing=timing)
     fun offerControl(type:String,payload:Map<String,Any>)=offer(OutboundClass.CONTROL,type,payload)
     fun offerEphemeral(key:String,type:String,payload:Map<String,Any>,authorization:EphemeralAuthorization?=null):OfferResult {
         require(key.isNotEmpty() && key.length<=128)
         if(authorization==null)return OfferResult.UNAUTHENTICATED
         return offer(OutboundClass.SOCIAL_EPHEMERAL,type,payload,key,authorization)
     }
-    private fun offer(kind:OutboundClass,type:String,payload:Map<String,Any>,key:String="",authorization:EphemeralAuthorization?=null):OfferResult {
+    private fun offer(kind:OutboundClass,type:String,payload:Map<String,Any>,key:String="",authorization:EphemeralAuthorization?=null,timing:AckTrace?=null):OfferResult {
         require(type.matches(Regex("[A-Z_]{1,64}")))
         // Immutable encoded payload: later producer mutations cannot change size/content.
         val encoded=json.writeValueAsString(payload)
@@ -106,7 +106,8 @@ class ConnectionOutbound(private val session:WebSocketSession,
                 }
                 fatal=true;return@withLock OfferResult.CLOSED
             }
-            val p=Pending(type,encoded,size,System.nanoTime(),authorization)
+            val p=Pending(type,encoded,size,System.nanoTime(),authorization,timing)
+            timing?.enqueued()
             if(kind==OutboundClass.SOCIAL_EPHEMERAL){old?.release();admitted=p}
             when(kind){OutboundClass.CRITICAL->critical.addLast(p);OutboundClass.CONTROL->control.addLast(p);else->social[key]=p}
             bytes[i]+=size-(old?.bytes?:0)
@@ -179,6 +180,7 @@ class ConnectionOutbound(private val session:WebSocketSession,
                     sendDeadline=timers.schedule({closeWhen(1013,"send_deadline"){inFlight && sendGeneration==generation}},limits.sendMillis,TimeUnit.MILLISECONDS)
                     p
                 }?:break
+                pending.timing?.selected()
                 // Sequence is allocated only for selected frames; unsent coalesced states consume none.
                 val frame="{\"type\":\"${pending.type}\",\"version\":1,\"sequence\":${sent+1},\"timestamp\":\"${Instant.now()}\",\"payload\":${pending.json}}"
                 try {
@@ -192,6 +194,7 @@ class ConnectionOutbound(private val session:WebSocketSession,
                         }
                     }
                     transport.send(frame)
+                    pending.timing?.finish()
                 } finally {pending.release()}
                 lock.withLock {
                     sent++;if(pending.type=="AUTHENTICATED")authSent=true
