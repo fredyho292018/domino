@@ -16,17 +16,18 @@ class OnlineMatchService(private val catalog: GameCatalogService, private val re
     var pairedStateObserved: (OnlineState)->Unit = {}
     fun createPaired(id:String,uidA:String,uidB:String,rules:MatchRuleSnapshot)=createPaired(id,listOf(uidA,uidB),rules)
     fun createPaired(id:String,players:List<String>,rules:MatchRuleSnapshot):OnlineState {
+        com.teamfho.domino.matchmaking.CreationRecorder.current.get()?.mark("M3_CREATION_START")
         checkOnline(players.distinct().size==players.size,OnlineError.SAME_PLAYER);validId(id);rules.verify()
         val mode=rules.mode();checkOnline(mode.key in setOf("DUEL_1V1",GameCatalogV4Publisher.KEY)&&ExecutionMode.ONLINE in mode.executionModesSupported&&players.size==mode.playerCount,OnlineError.MODE_UNAVAILABLE)
         val uids=players.shuffled(java.security.SecureRandom())
-        val resolved=uids.map(profiles)
+        val resolved=com.teamfho.domino.matchmaking.CreationRecorder.phase("allProfiles"){uids.map(profiles)}
         fun member(seat:Int)=participant(uids[seat],seat,resolved[seat]).copy(teamId=mode.seatTeams.indexOfFirst{seat in it}.takeIf{it>=0})
         val now=clock.instant()
         val match=Match(id,MatchStatus.CREATED,mode.key,MatchExecutionMode.ONLINE,rules.catalogVersion,
             mode.topologyVersion,mode.ruleSet.id,mode.ruleSet.version,mode.ruleSet.ruleSchemaVersion,rules,(0 until uids.lastIndex).map(::member),
             0,0,null,listOf(0,0),null,null,null,0,MatchVisibility.PRIVATE,SpectatorPolicy(false,MatchVisibility.PRIVATE),now,now,resolved.any{it.validationData})
         val before=OnlineState(match,OnlinePhase.WAITING_FOR_PLAYER,abandonmentLifecycleVersion=1)
-        val write=engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)
+        val write=com.teamfho.domino.matchmaking.CreationRecorder.phase("creationEngine"){engine.join(before,member(uids.lastIndex),"sys_pair_$id",now)}
         OnlineWrites.validate(before,write,"sys_pair_$id")
         val persisted=repository.createPaired(write)
         try{pairedStateObserved(persisted)}catch(_:Exception){log.warn("ONLINE_PRESENCE_UNAVAILABLE")}

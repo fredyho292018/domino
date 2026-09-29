@@ -57,32 +57,46 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         val count=state.match.ruleSnapshot.mode().playerCount
         require(state.match.participants.size==count && state.match.participants.map{it.playerUid}.distinct().size==count)
         state.match.ruleSnapshot.verify()
-        return db.runTransaction {tx ->
-            val receipt=tx.get(creation(id)).get()
+        val trace=com.teamfho.domino.matchmaking.CreationRecorder.current.get()
+        fun <T> measured(name:String,block:()->T):T=if(trace==null)block()else trace.phase(name,block)
+        trace?.mark("M4_PERSISTENCE_START")
+        fun callback(tx:com.google.cloud.firestore.Transaction):OnlineState {
+            val receipt=measured("creationReceiptRead"){tx.get(creation(id)).get()}
             if(receipt.exists()) {
                 checkOnline(receipt.getString("status")=="COMMITTED",OnlineError.MATCH_NOT_ACTIVE)
-                val existing=decode(tx.get(root(id).collection("runtime").document("authoritative")).get().data!!)
+                val existing=decode(measured("existingRuntimeRead"){tx.get(root(id).collection("runtime").document("authoritative")).get()}.data!!)
                 require(existing.match.participants.map{it.playerUid}.toSet()==state.match.participants.map{it.playerUid}.toSet())
-                return@runTransaction existing
+                return existing
             }
             val refs=state.match.participants.map{assignment(requireNotNull(it.playerUid))}
-            val assignments=refs.map{tx.get(it).get().getString("matchId")}
+            val assignments=refs.map{measured("assignmentRead"){tx.get(it).get()}.getString("matchId")}
             assignments.filterNotNull().distinct().forEach {previous ->
-                val data=tx.get(root(previous).collection("runtime").document("authoritative")).get().data
+                val data=measured("previousRuntimeRead"){tx.get(root(previous).collection("runtime").document("authoritative")).get()}.data
                 val prior=data?.let(::decode)
                 checkOnline(prior==null || prior.match.status in setOf(MatchStatus.FINISHED,MatchStatus.CANCELLED) ||
                     prior.match.participants.filter{it.playerUid in state.match.participants.map{p->p.playerUid}}.all{it.connectionState==ConnectionState.ABANDONED},OnlineError.MATCH_FULL)
             }
+            measured("allBufferedWrites") {
             tx.create(root(id),MatchCodec.map(state.match))
             tx.create(root(id).collection("runtime").document("authoritative"),stateMap(state))
             state.match.participants.forEach{tx.create(root(id).collection("players").document(it.seatIndex.toString()),MatchCodec.map(it))}
             write.events.forEach{tx.create(root(id).collection("events").document(it.eventId),MatchCodec.map(it))}
             write.rounds.forEach{tx.create(root(id).collection("rounds").document(it.roundNumber.toString()),MatchCodec.map(it))}
             tx.create(work(id),workMap(state,state.match.updatedAt))
-            refs.forEach{tx.set(it,mapOf("matchId" to id))}
+            trace?.mark("M6_ASSIGNMENT_BUFFER_START")
+            measured("assignmentBufferedWrites"){refs.forEach{tx.set(it,mapOf("matchId" to id))}}
+            trace?.mark("M7_ASSIGNMENT_BUFFER_COMPLETE")
             tx.create(creation(id),mapOf("status" to "COMMITTED","matchId" to id))
-            state
-        }.get(30,TimeUnit.SECONDS)
+            }
+            return state
+        }
+        val stateResult=measured("creationTransaction") {db.runTransaction {tx ->
+            trace?.markFirst("FIRST_TRANSACTION_CALLBACK")
+            try{measured("transactionCallback"){callback(tx)}}finally{trace?.mark("LAST_TRANSACTION_CALLBACK_END")}
+        }.get(30,TimeUnit.SECONDS)}
+        com.teamfho.domino.matchmaking.CreationRecorder.firestoreActivity()
+        trace?.mark("M5_PERSISTENCE_COMPLETE")
+        return stateResult
     }
     override fun settleFailedCreation(id:String):OnlineState? = db.runTransaction {tx ->
         val receipt=tx.get(creation(id)).get()
@@ -121,6 +135,7 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         val reference=root(matchId).collection("runtime").document("authoritative")
         val timing=com.teamfho.domino.realtime.AckPhaseTiming.current.get()?.firestore
         val doc=if(timing==null)reference.get().get(15,TimeUnit.SECONDS) else timing.preRead {reference.get().get(15,TimeUnit.SECONDS)}
+        com.teamfho.domino.matchmaking.CreationRecorder.firestoreActivity()
         return doc.data?.let(::decode)
     }
     override fun events(matchId: String,after: Long)=FirestoreMatchRepository(db).readTrustedEvents(matchId,after,500)
@@ -131,15 +146,15 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         fun execute():OnlineCommit=FirestoreMatchRepository.transactionRead(db.runTransaction({tx->
             timing?.attempt()
             fun callback():OnlineCommit {
-            fun get(ref:com.google.cloud.firestore.DocumentReference)=if(fs==null)FirestoreMatchRepository.transactionRead(tx.get(ref)) else fs.read {FirestoreMatchRepository.transactionRead(tx.get(ref))}
             val receipt=root.collection("commands").document(commandId)
-            val prior=get(receipt).data
+            val prior=if(fs==null)FirestoreMatchRepository.transactionRead(tx.get(receipt)).data
+                else fs.receiptRead {FirestoreMatchRepository.transactionRead(tx.get(receipt)).data}
             if(prior!=null)return OnlineWrites.prior(MatchCodec.read(prior,OnlineReceipt::class.java),fingerprint)
             val stateRef=root.collection("runtime").document("authoritative")
             val workRef=work(matchId)
             // Receipt remains the short circuit. Both authoritative reads belong to this attempt.
             val snapshots=if(fs==null)FirestoreMatchRepository.transactionRead(tx.getAll(stateRef,workRef))
-                else fs.read(2) {FirestoreMatchRepository.transactionRead(tx.getAll(stateRef,workRef))}
+                else fs.groupedRead {FirestoreMatchRepository.transactionRead(tx.getAll(stateRef,workRef))}
             val documents=snapshots.associateBy {it.reference}
             check(snapshots.size==2 && documents.keys==setOf(stateRef,workRef)) {"INCOMPLETE_TRANSACTION_READ"}
             val before=documents.getValue(stateRef).data?.let(::decode)?:throw OnlineFailure(OnlineError.MATCH_NOT_FOUND)
@@ -168,7 +183,7 @@ class FirestoreOnlineRepository(private val db: Firestore): OnlineRepository {
         return if(fs==null)execute() else fs.transaction {execute()}
     }
     override fun due(now: Instant)=db.collection("onlineTurnWork").whereLessThanOrEqualTo("dueAt",timestamp(now)).orderBy("dueAt").limit(100).get().get(15,TimeUnit.SECONDS).documents.map {it.id}
-    override fun activeFor(uid: String)=db.collection("onlineTurnWork").whereArrayContains("uids",uid).get().get(15,TimeUnit.SECONDS).documents.map {it.id}
+    override fun activeFor(uid: String)=db.collection("onlineTurnWork").whereArrayContains("uids",uid).get().get(15,TimeUnit.SECONDS).also{com.teamfho.domino.matchmaking.CreationRecorder.firestoreActivity()}.documents.map {it.id}
     override fun refreshDiscovery(matchId: String,now: Instant) {
         db.runTransaction {tx->
             val data=tx.get(root(matchId).collection("runtime").document("authoritative")).get().data

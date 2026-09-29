@@ -10,6 +10,20 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 
 class ConnectionOutboundTests {
+    @Test fun `match creation delivery remains off wire and records actual transport boundary`() {
+        val recorder=com.teamfho.domino.matchmaking.CreationRecorder
+        recorder.start(10)
+        try {
+            listOf("u0","u1","u2","u3").forEach(recorder::joined)
+            val trace=requireNotNull(recorder.begin("diagnostic",listOf("u0","u1","u2","u3")))
+            val f=fixture();f.auth()
+            repeat(4){f.writer.offerCritical("MATCH_FOUND",mapOf("match" to mapOf("matchId" to "diagnostic","seat" to it)))}
+            assertTrue(f.writer.awaitIdle())
+            assertEquals(4,(trace.snapshot()["deliveries"] as Map<*,*>).size)
+            assertFalse(f.frames.joinToString().contains("handedMonoNanos"))
+            assertFalse(f.frames.joinToString().contains(recorder.hash("diagnostic")))
+        } finally {recorder.stop()}
+    }
     private val fixtures=mutableListOf<Fixture>()
     private val json=JsonMapper.builder().build()
     inner class Fixture(limits:OutboundLimits) {

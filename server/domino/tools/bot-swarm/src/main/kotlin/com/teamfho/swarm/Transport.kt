@@ -57,6 +57,11 @@ class Socket(private val http:HttpClient,base:String):WebSocket.Listener {
             val n=Json.read(text.toString());text.setLength(0)
             require(n.number("version")==1&&n.path("payload").isObject)
             arrivals[n]=System.nanoTime()
+            if(System.getenv("DOMINO_MATCH_CREATION_TIMING")=="true" && n.text("type")=="MATCH_FOUND") {
+                val at=System.nanoTime();val epoch=System.currentTimeMillis();val match=n.path("payload").path("match")
+                val hash=java.security.MessageDigest.getInstance("SHA-256").digest(match.text("matchId").toByteArray()).joinToString(""){"%02x".format(it)}
+                println("MATCH_CREATION_OBSERVED "+Json.write(mapOf("correlation" to hash,"seat" to match.path("seat").asInt(),"observedMonoNanos" to at,"observedEpochMillis" to epoch)))
+            }
             if(!messages.trySend(n).isSuccess){arrivals.remove(n);messages.close(SafeFailure("WS_BACKPRESSURE"));webSocket.abort()}
         }catch(_:Exception){messages.close(SafeFailure("WS_PROTOCOL",true));webSocket.abort()}
         webSocket.request(1);return null

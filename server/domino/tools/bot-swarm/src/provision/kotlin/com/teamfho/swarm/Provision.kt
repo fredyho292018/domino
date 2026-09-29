@@ -16,6 +16,11 @@ fun main(args:Array<String>)=runBlocking {
     var stage="CONFIGURATION"
     try {
         val c=Config.load(args);ValidationTarget.authorize(c);val settings=IdentitySettings()
+        val loadPopulation=System.getenv("DOMINO_SWARM_LOAD_POPULATION")
+        if(loadPopulation!=null) {
+            require(loadPopulation=="SERVER7" && settings.project=="teamfho-domino" && c.environment=="TEST" && !ValidationTarget.emulator())
+            require(c.clients<=10 && settings.directory.parent.fileName.toString()=="LOAD" && settings.directory.fileName.toString().matches(Regex("group-0[1-5]")))
+        }
         Files.createDirectories(settings.directory)
         stage="ADMIN_INITIALIZATION"
         val credentials=if(ValidationTarget.emulator())GoogleCredentials.create(com.google.auth.oauth2.AccessToken("emulator-only",java.util.Date(Long.MAX_VALUE)))else GoogleCredentials.getApplicationDefault()
@@ -24,7 +29,11 @@ fun main(args:Array<String>)=runBlocking {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build().use{http->
             for(slot in c.slotOffset until c.slotOffset+c.clients) {
                 val path=settings.file(slot)
+                val intent=path.resolveSibling(path.fileName.toString()+".creation-pending")
                 val data=if(Files.exists(path))Json.read(Files.readString(path))else {
+                    // A failed/uncertain signUp must never be retried automatically.
+                    // Review the private journal before resolving an orphaned creation.
+                    if(loadPopulation!=null) Files.writeString(intent,"CREATION_REQUEST_PENDING",StandardOpenOption.CREATE_NEW)
                     stage="CREATE_AUTH_USER"
                     val req=HttpRequest.newBuilder(URI(ValidationTarget.authUrl("identitytoolkit.googleapis.com/v1/accounts:signUp?key="+settings.apiKey)))
                         .timeout(Duration.ofSeconds(30)).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{\"returnSecureToken\":true}")).build()
@@ -35,6 +44,7 @@ fun main(args:Array<String>)=runBlocking {
                     require(token.uid==created.text("localId")){"PROVISION_PROJECT_MISMATCH"}
                     stage="SAVE_CREDENTIAL"
                     saveIdentity(path,settings.project,c.environment,token.uid,created.text("refreshToken"))
+                    if(loadPopulation!=null) Files.delete(intent)
                     Json.read(Files.readString(path))
                 }
                 require(data.text("projectId")==settings.project&&data.text("environment")==c.environment&&data.text("testSource")=="BOT_SWARM"&&data.path("isTestAccount").asBoolean()){"PROVISION_SCOPE_MISMATCH"}
@@ -48,8 +58,14 @@ fun main(args:Array<String>)=runBlocking {
                 val ref=db.document("developmentTestAccounts/${user.uid}")
                 db.runTransaction {tx->
                     val old=tx.get(ref).get()
-                    if(old.exists())require(old.getBoolean("isTestAccount")==true&&old.getString("testSource")=="BOT_SWARM"&&old.getString("environment")==c.environment){"TEST_MARKER_CONFLICT"}
-                    else tx.create(ref,mapOf("isTestAccount" to true,"testSource" to "BOT_SWARM","environment" to c.environment,"slot" to slot+1,"createdAt" to com.google.cloud.firestore.FieldValue.serverTimestamp()))
+                    if(old.exists()) {
+                        require(old.getBoolean("isTestAccount")==true&&old.getString("testSource")=="BOT_SWARM"&&old.getString("environment")==c.environment){"TEST_MARKER_CONFLICT"}
+                        if(loadPopulation!=null) require(old.getString("loadPopulation")==loadPopulation && old.getString("loadGroup")==settings.directory.fileName.toString() && old.getLong("slot")==slot+1L)
+                    } else {
+                        val marker=mutableMapOf<String,Any>("isTestAccount" to true,"testSource" to "BOT_SWARM","environment" to c.environment,"slot" to slot+1,"createdAt" to com.google.cloud.firestore.FieldValue.serverTimestamp())
+                        if(loadPopulation!=null) {marker["loadPopulation"]=loadPopulation;marker["loadGroup"]=settings.directory.fileName.toString()}
+                        tx.create(ref,marker)
+                    }
                     true
                 }.get()
                 println("SWARM_IDENTITY_PROVISIONED slot="+(slot+1))

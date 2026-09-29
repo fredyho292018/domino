@@ -29,6 +29,7 @@ class MatchmakingService(private val store:MatchmakingStore,private val catalog:
         if(mode !in setOf("DUEL_1V1",com.teamfho.domino.catalog.GameCatalogV4Publisher.KEY))throw MatchmakingFailure("MODE_UNAVAILABLE")
         val active=active(uid);if(active.match!=null)return active.copy(reason="ACTIVE_MATCH_EXISTS")
         val (key,_)=current(mode);val result=store.join(uid,key)
+        if(result.state==QueueState.QUEUED)CreationRecorder.joined(uid)
         metrics?.joined()
         log.info("MATCHMAKING_JOIN queue={}",key.value)
         return result
@@ -44,12 +45,16 @@ class MatchmakingService(private val store:MatchmakingStore,private val catalog:
         try{notify(uid,type,status)}catch(_:Exception){log.warn("MATCHMAKING_DELIVERY_UNAVAILABLE")}
     }
     private fun complete(r:PairReservation,state:OnlineState) {
-        if(!store.complete(r))return // Expired owner cannot finalize or count another worker's reservation.
+        if(!CreationRecorder.phase("redisComplete"){store.complete(r)})return // Expired owner cannot finalize or count another worker's reservation.
         metrics?.matched(r.waitMillis)
-        for(uid in r.uids)emit(uid,"MATCH_FOUND",found(OnlineMatchService.snapshot(state,uid)))
+        CreationRecorder.current.get()?.mark("M8_PUBLICATION_START")
+        CreationRecorder.phase("publicationEnqueue"){for(uid in r.uids)emit(uid,"MATCH_FOUND",found(OnlineMatchService.snapshot(state,uid)))}
         log.info("MATCHMAKING_MATCH_FOUND reservation={} matchId={}",r.id,state.match.matchId)
     }
-    private fun process(r:PairReservation) {
+    private fun process(r:PairReservation,reserveNanos:Long?=null) {
+        val previous=CreationRecorder.current.get();CreationRecorder.current.set(CreationRecorder.begin(r.id,r.uids))
+        if(reserveNanos!=null)CreationRecorder.current.get()?.measured("redisReserve",reserveNanos)
+        try {
         log.info("MATCHMAKING_RESERVATION reservation={} queue={}",r.id,r.key)
         log.info("MATCHMAKING_PAIR reservation={}",r.id)
         try {
@@ -67,13 +72,14 @@ class MatchmakingService(private val store:MatchmakingStore,private val catalog:
                 log.warn("MATCHMAKING_FAILURE reservation={}",r.id)
             } catch(_:Exception) {log.warn("MATCHMAKING_RECOVERY_PENDING reservation={}",r.id)}
         }
+        } finally {CreationRecorder.current.set(previous)}
     }
     fun tick() {
         try {
             store.cleanup().forEach{emit(it,"MATCHMAKING_STATUS",QueueStatus(QueueState.NOT_QUEUED,reason="DISCONNECTED"));log.info("MATCHMAKING_CLEANUP")}
-            store.recover()?.let(::process)
+            store.recover()?.let{process(it)}
             val modes=catalog.resolve()?.modes.orEmpty().filter{it.active&&it.key in setOf("DUEL_1V1",com.teamfho.domino.catalog.GameCatalogV4Publisher.KEY)}
-            for(mode in modes){val (key,rules)=current(mode.key);for(i in 0 until 8){val r=store.reserve(key,rules)?:break;process(r)}}
+            for(mode in modes){val (key,rules)=current(mode.key);for(i in 0 until 8){val started=if(CreationRecorder.enabled())System.nanoTime()else null;val r=store.reserve(key,rules)?:break;process(r,started?.let{System.nanoTime()-it})}}
         } catch(_:Exception){log.warn("MATCHMAKING_UNAVAILABLE")}
     }
     fun connectionLost(uid:String) {

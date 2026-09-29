@@ -153,7 +153,11 @@ class SimulatedClient(private val config:Config,private val identity:Identity,va
             }
             "COMMAND_ACCEPTED","COMMAND_REJECTED" -> if(p.text("commandId")==pending?.id) {
                 val rejected=n.text("type")=="COMMAND_REJECTED"
-                if(!rejected)metrics.recordAck(now()-firstPendingAt)
+                if(!rejected) {
+                    val duration=now()-firstPendingAt
+                    metrics.recordAck(duration)
+                    metrics.recordAckCorrelation(pending!!.id,pending!!.body["type"].toString(),duration)
+                }
                 pending=null;commandRetries=0
                 if(rejected){metrics.add("commandsRejected");resync()}
                 else if(p.path("resultingSequence").asLong()>(tracker.current?.sequence?:0))resync()

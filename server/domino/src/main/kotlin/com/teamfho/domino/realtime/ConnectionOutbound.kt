@@ -37,7 +37,7 @@ class ConnectionOutbound(private val session:WebSocketSession,
     private val metrics:OutboundMetrics?=null,
     internal val beforeEphemeralCommit:()->Unit={}) {
     private class Pending(val type:String,val json:String,val bytes:Int,val at:Long,
-        val authorization:EphemeralAuthorization?=null,val timing:AckTrace?=null) {
+        val authorization:EphemeralAuthorization?=null,val timing:AckTrace?=null,val creation:com.teamfho.domino.matchmaking.CreationDelivery?=null) {
         private val done=AtomicBoolean()
         private val subscription=AtomicReference<AutoCloseable?>()
         fun observe(revoked:()->Unit) {
@@ -106,7 +106,9 @@ class ConnectionOutbound(private val session:WebSocketSession,
                 }
                 fatal=true;return@withLock OfferResult.CLOSED
             }
-            val p=Pending(type,encoded,size,System.nanoTime(),authorization,timing)
+            val match=if(type=="MATCH_FOUND")payload["match"] as? Map<*,*> else null
+            val creation=if(match!=null)com.teamfho.domino.matchmaking.CreationRecorder.delivery(match["matchId"] as? String?:"",(match["seat"] as? Number)?.toInt()?:-1)else null
+            val p=Pending(type,encoded,size,System.nanoTime(),authorization,timing,creation)
             timing?.enqueued()
             if(kind==OutboundClass.SOCIAL_EPHEMERAL){old?.release();admitted=p}
             when(kind){OutboundClass.CRITICAL->critical.addLast(p);OutboundClass.CONTROL->control.addLast(p);else->social[key]=p}
@@ -193,7 +195,9 @@ class ConnectionOutbound(private val session:WebSocketSession,
                             continue
                         }
                     }
+                    pending.creation?.handed()
                     transport.send(frame)
+                    pending.creation?.sent()
                     pending.timing?.finish()
                 } finally {pending.release()}
                 lock.withLock {

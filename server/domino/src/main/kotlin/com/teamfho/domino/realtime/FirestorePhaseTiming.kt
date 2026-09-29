@@ -13,9 +13,17 @@ class FirestorePhaseTiming(private val clock:()->Long=System::nanoTime) {
         var readNanos=0L
         var reads=0
         var readRounds=0
+        var receiptNanos=0L
+        var receiptHits=0
+        var receiptMisses=0
+        var groupedNanos=0L
+        var groupedCount=0
+        var classified=false
+        var classificationInvalid=false
         var domainNanos=0L
     }
     fun <T> preRead(block:()->T):T {
+        synchronized(this){if(begin!=null)invalid=true}
         val at=clock()
         try{return block()}finally{synchronized(this){preRead+=duration(at,clock());preReads++}}
     }
@@ -28,18 +36,43 @@ class FirestorePhaseTiming(private val clock:()->Long=System::nanoTime) {
         synchronized(this){if(begin==null || attempts.size>=8 || attempts.lastOrNull()?.end==null&&attempts.isNotEmpty())invalid=true;if(attempts.size<8)attempts.add(item)}
         try{return block()}finally{synchronized(this){item.end=clock()}}
     }
-    fun <T> read(documentCount:Int=1,block:()->T):T {
+    fun <T> read(documentCount:Int=1,block:()->T):T = measuredRead(documentCount,0,block)
+    private fun <T> measuredRead(documentCount:Int,kind:Int,block:()->T):T {
         require(documentCount>0)
         val at=clock()
         try{return block()}finally{synchronized(this){
             val item=attempts.lastOrNull()
-            if(item==null || item.end!=null)invalid=true else {item.readNanos+=duration(at,clock());item.reads+=documentCount;item.readRounds++}
+            if(item==null || item.end!=null)invalid=true else {
+                val elapsed=duration(at,clock());item.readNanos+=elapsed;item.reads+=documentCount;item.readRounds++
+                if(kind==1)item.receiptNanos+=elapsed
+                if(kind==2){item.groupedNanos+=elapsed;item.groupedCount++}
+            }
         }}
+    }
+    /** Classifies only presence, never retains document data or identifiers. */
+    fun <T> receiptRead(block:()->T?):T? {
+        synchronized(this){attempts.lastOrNull()?.let {it.classified=true;if(it.readRounds!=0)it.classificationInvalid=true}}
+        var returned=false
+        var hit=false
+        try {return measuredRead(1,1) {block().also {returned=true;hit=it!=null}}}
+        finally {synchronized(this){attempts.lastOrNull()?.let {
+            if(!returned)it.classificationInvalid=true else if(hit)it.receiptHits++ else it.receiptMisses++
+        }}}
+    }
+    fun <T> groupedRead(block:()->T):T {
+        synchronized(this){attempts.lastOrNull()?.let {
+            it.classified=true
+            if(it.receiptMisses!=1 || it.receiptHits!=0 || it.readRounds!=1)it.classificationInvalid=true
+        }}
+        var returned=false
+        try{return measuredRead(2,2,block).also{returned=true}}
+        finally{if(!returned)synchronized(this){attempts.lastOrNull()?.classificationInvalid=true}}
     }
     fun <T> domain(block:()->T):T {
         val at=clock()
         try{return block()}finally{synchronized(this){
             val item=attempts.lastOrNull()
+            if(item?.classified==true && (item.receiptMisses!=1 || item.groupedCount!=1))item.classificationInvalid=true
             if(item!=null && item.end==null)item.domainNanos+=duration(at,clock())
         }}
     }
@@ -55,6 +88,11 @@ class FirestorePhaseTiming(private val clock:()->Long=System::nanoTime) {
         val complete=!invalid && preReads==1 && begin!=null&&end!=null&&attempts.isNotEmpty()&&attempts.all{it.end!=null} &&
             local>=0 && acquire+gaps+callbacks.sum()+completion==total
         return mapOf("complete" to complete,"preReadNanos" to preRead,"preReadCount" to preReads,
+            "readBreakdownComplete" to (complete && attempts.all{it.classified && !it.classificationInvalid &&
+                it.receiptHits+it.receiptMisses==1 && it.groupedCount==it.receiptMisses && it.readRounds==1+it.groupedCount}),
+            "receiptReadNanos" to attempts.sumOf{it.receiptNanos},
+            "receiptHitCount" to attempts.sumOf{it.receiptHits},"receiptMissCount" to attempts.sumOf{it.receiptMisses},
+            "getAllReadNanos" to attempts.sumOf{it.groupedNanos},"getAllCount" to attempts.sumOf{it.groupedCount},
             "transactionTotalNanos" to total,"acquisitionToFirstCallbackNanos" to acquire,
             "transactionReadNanos" to reads,"transactionReadCount" to attempts.sumOf{it.reads},
             "transactionReadRoundCount" to attempts.sumOf{it.readRounds},

@@ -23,6 +23,28 @@ import kotlin.test.*
 /** All persistence uses demo project, loopback, explicit emulator credentials, never ADC. */
 @Tag("EMULATOR")
 class GroupedCommandReadsEmulatorTests {
+    @Test fun `creation timing preserves four assignments atomic persistence and receipt reuse`() {
+        connect().use {db->
+            val recorder=com.teamfho.domino.matchmaking.CreationRecorder
+            val id=java.util.UUID.randomUUID().toString();val users=(0..3).map{"$id-$it"}
+            recorder.start(30);users.forEach(recorder::joined);val trace=requireNotNull(recorder.begin(id,users));recorder.current.set(trace)
+            try {
+                val catalog=com.teamfho.domino.catalog.GameCatalogV4Publisher.canonical()
+                val catalogs=com.teamfho.domino.catalog.GameCatalogService(com.teamfho.domino.catalog.GameCatalogRepository{catalog})
+                val resolved=requireNotNull(catalogs.resolve())
+                val rules=MatchRuleSnapshot.freeze(resolved,resolved.modes.single{it.key==com.teamfho.domino.catalog.GameCatalogV4Publisher.KEY})
+                val service=OnlineMatchService(catalogs,FirestoreOnlineRepository(db))
+                val first=service.createPaired(id,users,rules)
+                users.forEach{assertEquals(id,db.document("onlinePlayerAssignments/$it").get().get().getString("matchId"))}
+                assertEquals("COMMITTED",db.document("onlineMatchCreationReceipts/$id").get().get().getString("status"))
+                val counts=trace.snapshot()["phaseCounts"] as Map<*,*>
+                assertEquals(4,counts["assignmentRead"]);assertEquals(1,counts["assignmentBufferedWrites"])
+                assertEquals(first,service.createPaired(id,users,rules))
+                assertEquals(1,(trace.snapshot()["phaseCounts"] as Map<*,*>)["existingRuntimeRead"])
+                assertEquals(4,db.collection("matches/$id/players").get().get().size())
+            } finally {recorder.current.remove();recorder.stop()}
+        }
+    }
     private class Reads:ClientInterceptor {
         val requests=CopyOnWriteArrayList<BatchGetDocumentsRequest>()
         override fun <Q:Any?,S:Any?> interceptCall(method:MethodDescriptor<Q,S>,options:CallOptions,next:Channel):ClientCall<Q,S> =

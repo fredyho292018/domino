@@ -58,11 +58,13 @@ class OnlineConfiguration {
     @Bean fun onlineParticipantProfiles(db:ObjectProvider<Firestore>)=OnlineParticipantProfiles {uid ->
             try {
                 val database=db.ifAvailable?:throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)
-                val doc=database.document("players/${com.teamfho.domino.match.MatchIds.document(uid)}").get().get(15,java.util.concurrent.TimeUnit.SECONDS)
+                val doc=com.teamfho.domino.matchmaking.CreationRecorder.phase("profileRead"){database.document("players/${com.teamfho.domino.match.MatchIds.document(uid)}").get().get(15,java.util.concurrent.TimeUnit.SECONDS)}
+                com.teamfho.domino.matchmaking.CreationRecorder.firestoreActivity()
                 checkOnline(doc.exists(),OnlineError.STORAGE_UNAVAILABLE)
                 val name=doc.getString("displayName")
                 checkOnline(!name.isNullOrBlank(),OnlineError.STORAGE_UNAVAILABLE)
-                val marker=database.document("developmentTestAccounts/$uid").get().get(15,java.util.concurrent.TimeUnit.SECONDS)
+                val marker=com.teamfho.domino.matchmaking.CreationRecorder.phase("testMarkerRead"){database.document("developmentTestAccounts/$uid").get().get(15,java.util.concurrent.TimeUnit.SECONDS)}
+                com.teamfho.domino.matchmaking.CreationRecorder.firestoreActivity()
                 OnlineParticipantProfile(name,marker.getBoolean("isTestAccount")==true&&marker.getString("testSource")=="BOT_SWARM")
             } catch(e:OnlineFailure){throw e}
             catch(_:Exception){throw OnlineFailure(OnlineError.STORAGE_UNAVAILABLE)}

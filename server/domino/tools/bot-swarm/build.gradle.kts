@@ -13,6 +13,11 @@ dependencies {
 }
 application { mainClass.set("com.teamfho.swarm.MainKt") }
 tasks.test { useJUnitPlatform() }
+tasks.register<JavaExec>("loadAuthSample") {
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.teamfho.swarm.LoadAuthSampleKt")
+}
 tasks.register<JavaExec>("coordinateIdentities") {
     dependsOn(tasks.named("classes"))
     classpath = sourceSets.main.get().runtimeClasspath
@@ -37,6 +42,11 @@ tasks.register<JavaExec>("inspectMatch") {
     mainClass.set("com.teamfho.swarm.InspectMatchKt")
 }
 
+tasks.register<JavaExec>("reviewRun") {
+    dependsOn(tasks.named(provision.classesTaskName))
+    classpath = provision.runtimeClasspath
+    mainClass.set("com.teamfho.swarm.ReviewRunKt")
+}
 
 tasks.register<JavaExec>("capacityOutcome") {
     dependsOn(tasks.named(provision.classesTaskName))
