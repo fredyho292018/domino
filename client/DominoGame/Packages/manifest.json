@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.unity.vectorgraphics": "2.0.0-preview.25",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.device-simulator.devices": "1.0.1",
@@ -11,6 +12,7 @@
     "com.unity.modules.particlesystem": "1.0.0",
     "com.unity.modules.screencapture": "1.0.0",
     "com.unity.modules.ui": "1.0.0",
+    "com.unity.modules.uielements": "1.0.0",
     "com.unity.modules.unitywebrequest": "1.0.0",
     "com.unity.localization": "1.5.13",
     "com.unity.nuget.newtonsoft-json": "3.2.1",
