@@ -19,7 +19,7 @@ namespace Domino.Infrastructure.Firebase
         { this.client = client ?? throw new ArgumentNullException(nameof(client)); this.log = log; this.lifetime = lifetime; }
         public Task InitializeAsync()
         {
-            lock (gate) return initialization ??= InitializeCoreAsync();
+            lock (gate) { if (initialization == null || initialization.IsFaulted || initialization.IsCanceled) initialization = InitializeCoreAsync(); return initialization; }
         }
         async Task InitializeCoreAsync()
         {

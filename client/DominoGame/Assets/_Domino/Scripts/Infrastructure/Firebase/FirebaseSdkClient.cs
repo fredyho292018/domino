@@ -7,7 +7,7 @@ using global::Firebase.Auth;
 
 namespace Domino.Infrastructure.Firebase
 {
-    internal sealed class FirebaseSdkClient : IFirebaseClient, IAuthTokenProvider
+    internal sealed class FirebaseSdkClient : IFirebaseClient, IAuthTokenProvider, IFirebaseSessionControl
     {
         readonly Func<PlayerIdentity> expectedIdentity;
         public FirebaseSdkClient(Func<PlayerIdentity> expectedIdentity = null) { this.expectedIdentity = expectedIdentity; }
@@ -40,6 +40,7 @@ namespace Domino.Infrastructure.Firebase
                 return auth ??= FirebaseAuth.DefaultInstance ?? throw new InvalidOperationException("FirebaseAuth unavailable.");
             }
         }
+        public void SignOut() => Auth.SignOut();
         public PlayerIdentity GetCurrentUser() => Snapshot(Auth.CurrentUser);
         public async Task<PlayerIdentity> SignInAnonymouslyAsync()
         {

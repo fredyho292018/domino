@@ -17,6 +17,9 @@ namespace Domino.Infrastructure
     public static class ApplicationServices
     {
         static CancellationTokenSource lifetime;
+        static GameObject lifecycleObject;
+        public static ProductionAuthRouter AuthRouter { get; private set; }
+        public static bool UsesProductionAuth { get; private set; }
         public static IPlayerIdentityService Identity { get; private set; }
         public static FirebaseBootstrap Firebase { get; private set; }
         public static PlayerService Player { get; private set; }
@@ -46,6 +49,7 @@ namespace Domino.Infrastructure
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
+            AuthRouter = null;
             Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null; Rewarded = null;
             RewardVerification = null;
             RoundRewards = null;
@@ -72,7 +76,11 @@ namespace Domino.Infrastructure
             client = ValidationFirebaseFactory?.Invoke() ?? client;
 #endif
             Firebase = new FirebaseBootstrap(client, Debug.Log, lifetime.Token);
-            Identity = new FirebaseAuthService(Firebase, client, Debug.Log, lifetime.Token);
+            UsesProductionAuth = true;
+#if UNITY_EDITOR
+            UsesProductionAuth = ValidationFirebaseFactory == null;
+#endif
+            Identity = new FirebaseAuthService(Firebase, client, Debug.Log, lifetime.Token, UsesProductionAuth);
             var asset = Resources.Load<DominoApiSettings>("ApiSettings");
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
             if (ValidationNetworkPolicy.Isolated) settings = new DominoApiConfiguration(false, "");
@@ -111,28 +119,44 @@ namespace Domino.Infrastructure
                 recoveryReady: () => Player.HasConfirmedSnapshots, policy: Monetization);
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
             OnlineApi = new Domino.Online.OnlineMatchApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
-            var lifecycle = new GameObject("Realtime lifecycle");
+            var lifecycle = lifecycleObject = new GameObject("Realtime lifecycle");
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);
-            lifecycle.AddComponent<RealtimeLifecycle>();
-            lifecycle.AddComponent<RewardConfirmationToast>().Initialize(RoundRewards);
-            lifecycle.AddComponent<MonetizationLifecycle>().Initialize(Monetization, RoundRewards);
-            Realtime.Start();
+            if(!UsesProductionAuth) StartSessionLifecycles();
+            if(!UsesProductionAuth) Realtime.Start();
             Application.quitting += Shutdown;
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.playModeStateChanged += OnEditorPlayMode;
 #endif
             // Unity's main-thread entry point and captured UnitySynchronizationContext
             // keep SDK continuations/logging on main. Offline presentation proceeds independently.
-            _ = ObserveAsync(Identity, lifetime.Token);
-            _ = InitializePlayerAndRecoverAsync();
+            if(UsesProductionAuth) {
+                AuthRouter = new ProductionAuthRouter((FirebaseAuthService)Identity, Player);
+                AuthRouter.Changed += () => {
+                    if(AuthRouter?.Route==ProductionAuthRoute.AppShell){StartSessionLifecycles();Realtime.Start();_ = InitializePlayerAndRecoverAsync();}
+                };
+            } else {
+                _ = ObserveAsync(Identity, lifetime.Token);
+                _ = InitializePlayerAndRecoverAsync();
+            }
+        }
+        static void StartSessionLifecycles()
+        {
+            if(!lifecycleObject || lifecycleObject.GetComponent<RealtimeLifecycle>())return;
+            lifecycleObject.AddComponent<RealtimeLifecycle>();
+            lifecycleObject.AddComponent<RewardConfirmationToast>().Initialize(RoundRewards);
+            lifecycleObject.AddComponent<MonetizationLifecycle>().Initialize(Monetization, RoundRewards);
         }
         static async Task InitializePlayerAndRecoverAsync()
         {
-            await Player.InitializeAsync();
-            if (lifetime != null && !lifetime.IsCancellationRequested && Player.HasConfirmedSnapshots) {
-                await Monetization.RefreshAsync();
-                await Rewarded.InitializeAsync();
-                await RoundRewards.RecoverAsync();
+            var expectedPlayer=Player;var expectedLifetime=lifetime;
+            var policy=Monetization;var rewarded=Rewarded;var rewards=RoundRewards;
+            await expectedPlayer.InitializeAsync();
+            if (lifetime == expectedLifetime && lifetime != null && !lifetime.IsCancellationRequested && ReferenceEquals(Player,expectedPlayer) && Player.HasConfirmedSnapshots) {
+                await policy.RefreshAsync();
+                if(lifetime!=expectedLifetime || expectedLifetime.IsCancellationRequested)return;
+                await rewarded.InitializeAsync();
+                if(lifetime!=expectedLifetime || expectedLifetime.IsCancellationRequested)return;
+                await rewards.RecoverAsync();
             }
         }
         // Menu-triggered refresh changes future resolutions only; active sessions keep their snapshot.
@@ -156,8 +180,20 @@ namespace Domino.Infrastructure
                 if (!token.IsCancellationRequested) Debug.LogWarning("[AUTH] Initialization unavailable; offline play remains available.");
             }
         }
+        // No visible Guest logout button is added. Caller must obtain explicit loss-of-access confirmation.
+        public static async Task LogoutGuestAsync(bool confirmedLossOfAccess)
+        {
+            if(!confirmedLossOfAccess)throw new InvalidOperationException("Guest logout requires confirmation.");
+            var router=AuthRouter;var auth=Identity as FirebaseAuthService;
+            if(router==null || auth==null || auth.Current?.IsAnonymous!=true)throw new InvalidOperationException("Guest session required.");
+            await router.StopAsync();
+            auth.SignOut();
+            Reset();Start();
+        }
         static void Shutdown()
         {
+            AuthRouter?.Dispose();
+            if(lifecycleObject){UnityEngine.Object.Destroy(lifecycleObject);lifecycleObject=null;}
             RoundRewards?.Dispose();
             Player?.Dispose();
             Rewarded?.Dispose();

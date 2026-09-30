@@ -52,9 +52,12 @@ namespace Domino.Player
         }
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Start(false, cancellationToken);
         public Task RetryAsync(CancellationToken cancellationToken = default) => Start(false, cancellationToken);
+        // Explicit Auth-screen retry before any Player has been accepted. Existing identity/DTO checks remain mandatory.
+        public Task RetryBootstrapFromAuthAsync(CancellationToken cancellationToken = default) =>
+            Start(false, cancellationToken, authRoutingRetry: !HasConfirmedSnapshots);
         // Internal future-refresh seam, with no automatic trigger or public UI.
         internal Task RefreshConfirmedAsync(CancellationToken cancellationToken = default) => Start(true, cancellationToken);
-        Task Start(bool refresh, CancellationToken cancellationToken, string displayName = null)
+        Task Start(bool refresh, CancellationToken cancellationToken, string displayName = null, bool authRoutingRetry = false)
         {
             TaskCompletionSource<bool> completion;
             bool retry;
@@ -64,7 +67,7 @@ namespace Domino.Player
                 if (disposed || lifetime.IsCancellationRequested) return Task.CompletedTask;
                 if (displayName == null && State == PlayerSyncState.SYNCED && !refresh) return operation ?? Task.CompletedTask;
                 if (displayName != null && !CanEdit) return Task.CompletedTask;
-                if (State == PlayerSyncState.FAILED && !CanRetry) return operation ?? Task.CompletedTask;
+                if (State == PlayerSyncState.FAILED && !CanRetry && !authRoutingRetry) return operation ?? Task.CompletedTask;
                 retry = State != PlayerSyncState.NOT_SYNCED;
                 completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 operation = completion.Task; // Reserve before callbacks can reenter.
