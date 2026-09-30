@@ -9,7 +9,7 @@ namespace Domino.UI.AppShell
     {
         public AppTheme Theme => ThemeProvider.Current;
         public static string Title(MenuDestination destination)=>destination==MenuDestination.Support?"Help & Support":destination.ToString();
-        public ProductionMenuPage(IMenuDataSource source,Action<MenuDestination> navigate) : base("", "")
+        public ProductionMenuPage(IMenuDataSource source,Action<MenuDestination> navigate, Action signOut=null) : base("", "")
         {
             if(source==null)throw new ArgumentNullException(nameof(source));
             if(navigate==null)throw new ArgumentNullException(nameof(navigate));
@@ -40,6 +40,12 @@ namespace Domino.UI.AppShell
                 var chevron=Icon("chevron","MenuRowChevron");
                 ThemeStyles.RowContent(row,icon,Title(destination),"",chevron,false);
                 icon.tintColor=Theme.Colors.IconInactive;
+                Body.Add(row);
+            }
+            if(signOut!=null) {
+                var row=new ThemeButton("",signOut){name="MenuSignOut",tooltip="Sign Out"};
+                var icon=new Image{vectorImage=Resources.Load<VectorImage>("AuthIcons/icon_sign_out"),name="LogoutIcon"};
+                ThemeStyles.RowContent(row,icon,"Sign Out","",Icon("chevron","LogoutChevron"),false);
                 Body.Add(row);
             }
         }

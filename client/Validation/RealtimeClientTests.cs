@@ -71,6 +71,7 @@ static partial class PlayerFoundationClientTests
             Check(sockets[1].Disposed && service.Activity==null,"Background closes and clears stale stats");
             service.SetBackground(false); await Eventually(()=>sockets.Count==3&&service.Activity!=null);
             service.Dispose();Check(service.State==RealtimeConnectionState.DISCONNECTED,"Shutdown state");
+            int stoppedCount=sockets.Count;service.Start();service.SetBackground(false);await Task.Delay(30);Check(sockets.Count==stoppedCount,"Logout disposal suppresses reconnect");
         }
         token=new Tokens(); int factories=0;
         using(var expired=new RealtimeConnectionService(Config("https://example.com"),new Identity(),token,()=>new Socket{AuthError=++factories==1?"AUTH_TOKEN_EXPIRED":null})) {

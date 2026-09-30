@@ -13,7 +13,7 @@ namespace Domino.Editor
     {
         static readonly Vector2Int[] Sizes={new Vector2Int(375,667),new Vector2Int(393,852),new Vector2Int(412,915),new Vector2Int(430,932),new Vector2Int(480,1040),new Vector2Int(600,960),new Vector2Int(768,1024),new Vector2Int(834,1194)};
         const string Result="Library/Auth01Welcome.result.txt";
-        int index,checks,guestCalls;bool testing;
+        int index,checks,guestCalls,emailCalls,signInCalls;bool testing;
         VisualElement frame;ProductionWelcomeView welcome;
         [InitializeOnLoadMethod] static void Register(){EditorApplication.update+=()=>{
             if(EditorApplication.isCompiling||EditorApplication.isUpdating||EditorApplication.isPlayingOrWillChangePlaymode)return;
@@ -27,7 +27,7 @@ namespace Domino.Editor
             var select=new PopupField<string>(Sizes.Select(x=>x.x+"x"+x.y).ToList(),index);select.RegisterValueChangedCallback(_=>{index=select.index;testing=false;Mount();});rootVisualElement.Add(select);
             frame=new VisualElement();frame.style.position=Position.Absolute;frame.style.top=28;frame.style.width=Sizes[index].x;frame.style.height=Sizes[index].y;frame.style.paddingTop=frame.style.paddingBottom=24;
             float scale=Mathf.Min(1,Mathf.Min(position.width/Sizes[index].x,(position.height-28)/Sizes[index].y));frame.style.transformOrigin=new TransformOrigin(0,0,0);frame.style.scale=new Scale(new Vector3(scale,scale,1));rootVisualElement.Add(frame);
-            guestCalls=0;welcome=new ProductionWelcomeView(()=>guestCalls++);frame.Add(welcome);if(testing)rootVisualElement.schedule.Execute(CheckGeometry).ExecuteLater(400);
+            guestCalls=emailCalls=signInCalls=0;welcome=new ProductionWelcomeView(()=>guestCalls++,()=>emailCalls++,()=>signInCalls++);frame.Add(welcome);if(testing)rootVisualElement.schedule.Execute(CheckGeometry).ExecuteLater(400);
         }
         void Need(bool b,string key){if(!b)throw new Exception(key);checks++;}
         static float X(VisualElement e,VisualElement root){float x=0;while(e!=root){x+=e.layout.x;e=e.parent;}return x;}
@@ -35,6 +35,20 @@ namespace Domino.Editor
         void CheckGeometry(){try{
             var body=welcome.Body;Need(Mathf.Abs(X(body,frame)+body.layout.width/2-Sizes[index].x/2f)<1&&body.layout.width<=620.1f,"CENTERING");
             Need(welcome.contentViewport.layout.width==welcome.layout.width,"SCROLL_GUTTER");
+            var headings=body.Children().OfType<Label>().Take(4).ToArray();
+            float left=X(body,frame)+body.resolvedStyle.paddingLeft;
+            float right=X(body,frame)+body.layout.width-body.resolvedStyle.paddingRight;
+            Need(Mathf.Abs(body.resolvedStyle.paddingLeft-24)<.1f&&Mathf.Abs(body.resolvedStyle.paddingRight-24)<.1f,"MARGINS_24");
+            Need(welcome.contentContainer.resolvedStyle.justifyContent==Justify.FlexStart,"UPPER_CONTENT_NOT_VERTICALLY_CENTERED");
+            foreach(var heading in headings){Need(heading.resolvedStyle.unityTextAlign==TextAnchor.MiddleLeft,"WELCOME_HEADER_LEFT");Need(Mathf.Abs(X(heading,frame)-left)<1&&Mathf.Abs(X(heading,frame)+heading.layout.width-right)<1,"HEADER_COLUMN_EDGES");}
+            foreach(var key in new[]{"Google","Facebook","Email","Phone","Guest"}){
+                var row=welcome.Q("Auth"+key);Need(Mathf.Abs(X(row,frame)-left)<1&&Mathf.Abs(X(row,frame)+row.layout.width-right)<1,"PROVIDER_COLUMN_EDGES");
+                File.AppendAllText(Result,"PROVIDER="+key+" LEFT="+X(row,frame)+" RIGHT="+(X(row,frame)+row.layout.width)+" WIDTH="+row.layout.width+"\n");
+            }
+            var separator=welcome.Q("WelcomeSeparator");Need(Mathf.Abs(X(separator,frame)-left)<1&&Mathf.Abs(X(separator,frame)+separator.layout.width-right)<1,"SEPARATOR_COLUMN_EDGES");
+            Need(welcome.Q("AuthStatus").resolvedStyle.display==DisplayStyle.None,"FRESH_NO_COMING_SOON");
+            File.AppendAllText(Result,"VIEWPORT_WIDTH="+Sizes[index].x+" SAFE_CONTENT_WIDTH="+welcome.contentViewport.layout.width+" CONTENT_LEFT="+left+" CONTENT_RIGHT="+right+" CONTENT_WIDTH="+(right-left)+" TITLE_LEFT="+X(headings[1],frame)+" TITLE_RIGHT="+(X(headings[1],frame)+headings[1].layout.width)+"\n");
+
             float end=Mathf.Max(0,welcome.contentContainer.layout.height-welcome.contentViewport.layout.height);
             foreach(var child in body.Children())Need(child.layout.x>=0&&child.layout.xMax<=body.layout.width+.1f&&body.layout.y+child.layout.yMax<=end+welcome.contentViewport.layout.height+1,"REACHABILITY");
             foreach(var label in body.Query<Label>().ToList()){Need(X(label,body)>=0&&X(label,body)+label.layout.width<=body.layout.width+.1f,"LABEL_BOUNDS");Need(label.text.IndexOfAny(new[]{'\u00c2','\u00c3','\u00e2','\ufffd'})<0,"UTF8");}
@@ -42,9 +56,11 @@ namespace Domino.Editor
                 var row=welcome.Q<ThemeButton>("Auth"+provider);Need(row.layout.height==56&&row.layout.width>=44,"TOUCH");
                 Need(row.Q<Image>("AuthProviderIcon").vectorImage!=null,"ICON");Need(!string.IsNullOrEmpty(row.Q<Label>("AuthSecondaryLabel").text),"SECONDARY");
                 Need(row.Q<Label>("AuthPrimaryLabel").text==(provider=="Guest"?"Continue as Guest":"Continue with "+provider),"PRIMARY");
-                if(provider!="Guest"){Click(row);Need(guestCalls==0&&welcome.Q<Label>("AuthStatus").text=="Coming Soon","PROVIDER_PLACEHOLDER");}
+                if(provider=="Email"){Click(row);Need(emailCalls==1&&guestCalls==0,"EMAIL_ENTRY_ROUTE");}
+                else if(provider!="Guest"){Click(row);Need(guestCalls==0&&welcome.Q<Label>("AuthStatus").text=="Coming Soon","PROVIDER_PLACEHOLDER");}
             }
             var footer=welcome.Q("WelcomeSignInRow");var signIn=welcome.Q<Button>("SignIn");var prompt=footer.Q<Label>();
+            WelcomeRuntimeFooterProbe.Footer(welcome,s=>File.AppendAllText(Result,"ISOLATED "+Sizes[index]+" "+s+"\n"),true);
             Need(signIn.layout.width>=44&&signIn.layout.height>=44,"SIGN_IN_TOUCH_TARGET");
             Need(signIn.resolvedStyle.backgroundColor.a==0&&signIn.resolvedStyle.borderLeftWidth==0,"SIGN_IN_NO_SURFACE");
             Need(Mathf.Abs((X(prompt,body)+X(signIn,body)+signIn.layout.width)/2-body.layout.width/2)<1,"FOOTER_CENTERING");
@@ -60,7 +76,7 @@ namespace Domino.Editor
             File.AppendAllText(Result,Sizes[index]+" FOOTER_VISUAL_GAP="+visualGap.ToString("F2",System.Globalization.CultureInfo.InvariantCulture)+" HIT="+signIn.layout.width+"x"+signIn.layout.height+"\n");
             using(var ev=PointerEnterEvent.GetPooled()){ev.target=signIn;signIn.SendEvent(ev);}
             Need(signIn.resolvedStyle.backgroundColor.a==0,"SIGN_IN_HOVER_TRANSPARENT");
-            Click(signIn);Need(guestCalls==0&&welcome.Q<Label>("AuthStatus").text=="Coming Soon","SIGN_IN_PLACEHOLDER");
+            welcome.SetState(false,"");Click(signIn);Need(guestCalls==0&&signInCalls==1&&welcome.Q<Label>("AuthStatus").text=="","SIGN_IN_ROUTE");
             welcome.SetState(true,"Connecting…");Click(welcome.Q("AuthGuest"));Need(guestCalls==0&&!welcome.Q("AuthGuest").enabledSelf,"LOADING_DISABLED");
             welcome.SetState(false,"Try again");Click(welcome.Q("AuthGuest"));Need(guestCalls==1,"GUEST_ACTION");
             welcome.scrollOffset=new Vector2(0,end);Need(Mathf.Abs(welcome.scrollOffset.y-end)<1,"SCROLL");

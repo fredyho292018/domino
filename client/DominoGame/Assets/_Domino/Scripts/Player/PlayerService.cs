@@ -207,7 +207,7 @@ namespace Domino.Player
             lock (gate)
             {
                 if (disposed) return;
-                disposed = true; SyncStateChanged = null; BackendAvailabilityChanged = null; SnapshotChanged = null;
+                disposed = true; Player=null; Wallet=null; Entitlements=null; sessionUid=null; Error=null; EntitlementsChanged=null; SyncStateChanged = null; BackendAvailabilityChanged = null; SnapshotChanged = null;
                 disposal.Cancel();
                 disposal.Dispose();
             }

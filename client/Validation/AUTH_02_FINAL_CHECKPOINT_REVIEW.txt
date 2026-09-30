@@ -1,0 +1,56 @@
+CUBAN DOMINO CLUB — AUTH-02 FINAL CHECKPOINT REVIEW
+BASE_SHA=823e5c679388ac783bbba5ecb9acacd3dc8e6146
+DATE=2026-09-30
+
+Scope: email registration, verification, sign in, password reset, session restore routing, production logout, shared Auth UI, Welcome alignment and isolated validation.
+AUTH-02A and AUTH-02B share router/service/SDK/view files; category AUTH_02A_02B intentionally records shared ownership.
+No production source changed during checkpoint review. Approved 11064 checks retained, not rerun.
+
+PASSWORD_ALIGNMENT_CHECKS=11064_PASS
+BREAKDOWN=816 runtime-panel alignment;528 Editor alignment;5528 AUTH-02A;4192 AUTH-02B
+SHARED_PASSWORD_ALIGNMENT_FIX=APPROVED_BY_USER
+EMAIL_REGISTER_REAL=MANUALLY_CONFIRMED_PASS
+EMAIL_VERIFICATION_REAL=MANUALLY_CONFIRMED_PASS
+EMAIL_SESSION_RESTORE=MANUALLY_CONFIRMED_PASS
+REGISTERED_LOGOUT=MANUALLY_CONFIRMED_PASS
+EMAIL_SIGNIN_REAL=MANUALLY_CONFIRMED_PASS
+FORGOT_PASSWORD_EMAIL_REAL=MANUALLY_CONFIRMED_PASS
+PASSWORD_RESET_REAL=MANUALLY_CONFIRMED_PASS
+SIGNIN_WITH_NEW_PASSWORD=MANUALLY_CONFIRMED_PASS
+MANUAL_EVIDENCE_SOURCE=User confirmation; no new live authentication performed by checkpoint review.
+
+Profile: no pending production Profile source patch exists. Two diagnostic files are included, not represented as a production repair. Existing ProfileLayout.result.txt captures eight presets with action bottom=251 and history top=263, a 12-unit gap. AUTH-02B report records 1019 passing Profile checks. ProfileLayoutDiagnostic logs geometry; it does not add the previously requested geometry assertion to ProductionProfileValidation. No claim of such an assertion is made.
+Historical phase reports are retained as execution records. Their earlier pending/live-not-run statements are superseded for final manual acceptance by this review, without reclassifying manual evidence as automated Firebase evidence.
+
+AUTH_02_FILES=31 (9 shared A/B;21 shared Auth UI/assets;1 Welcome fix)
+AUTH_LOGOUT_FILES=10
+PROFILE_FIX_FILES=0_PRODUCT_PATCH;2_DIAGNOSTIC_FILES
+TEST_FILES=22
+VALIDATION_FILES=15 (including this review and exact inventory)
+TOTAL_CANDIDATE_FILES=80
+Counts include Unity .meta files; disjoint categories total 80.
+UNRELATED_CANDIDATES=0
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+BACKEND_CANDIDATES=0
+PLAYER_UI_CANDIDATES=0
+EMAIL_BRANDING_CANDIDATES=0
+PlayerService change clears session-owned snapshots on logout; it is not PLAYER-UI-01.
+EXCLUDED=102 protected files;prior FUNCTIONAL_00_AUTH_PLAYER_BACKEND_AUDIT.md
+
+Security review covers full candidate contents, not unrelated local configuration or historical logs.
+REAL_EMAILS=0
+REAL_PASSWORDS=0
+RAW_FIREBASE_UIDS=0
+TOKENS=0
+PRIVATE_KEYS=0
+ACTION_URLS=0
+Synthetic test strings and .invalid addresses are fixtures, not credentials. Four 28-character identifier matches are uppercase assertion keys, not UIDs. SVG/meta content contains no authentication material.
+SECRET_SCAN=PASS_SCOPED_PATTERNS_AND_SOURCE_REVIEW
+
+COMMIT_MESSAGE=feat: complete production email authentication
+DEPLOY=NO
+PLAYER_UI_01_STARTED=NO
+AUTH_EMAIL_BRANDING_01_STARTED=NO
+AUTH_03_STARTED=NO
+AUTH_07_STARTED=NO
+GOOGLE_FACEBOOK_PHONE_IMPLEMENTATION_STARTED=NO

@@ -18,6 +18,8 @@ namespace Domino.Infrastructure
     {
         static CancellationTokenSource lifetime;
         static GameObject lifecycleObject;
+        public static ProductionLogoutService Logout { get; private set; }
+        public static event Action SessionReplaced;
         public static ProductionAuthRouter AuthRouter { get; private set; }
         public static bool UsesProductionAuth { get; private set; }
         public static IPlayerIdentityService Identity { get; private set; }
@@ -55,7 +57,7 @@ namespace Domino.Infrastructure
             RoundRewards = null;
             Monetization = null;
             GameCatalog = null;
-            SocialApi = null;
+            SocialApi = null; OnlineApi = null;
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Start()
@@ -85,19 +87,20 @@ namespace Domino.Infrastructure
             var settings = asset ? asset.Configuration : new DominoApiConfiguration(false, "");
             if (ValidationNetworkPolicy.Isolated) settings = new DominoApiConfiguration(false, "");
 
+            var transport=new SessionApiTransport(new UnityApiTransport(),lifetime.Token);
             try {
                 var bundled = Resources.Load<TextAsset>("GameCatalogFallback");
                 GameCatalog = new Domino.Catalog.GameCatalogService(
-                    new Domino.Catalog.GameCatalogApi(settings, (IAuthTokenProvider)client, new UnityApiTransport()),
+                    new Domino.Catalog.GameCatalogApi(settings, (IAuthTokenProvider)client, transport),
                     new Domino.Catalog.FileGameCatalogCache(System.IO.Path.Combine(Application.persistentDataPath, "game-catalog-v1.json")),
                     bundled ? bundled.text : "", lifetime.Token, Debug.Log);
 #if UNITY_EDITOR
                 if (ValidationGameCatalogFactory != null) GameCatalog = ValidationGameCatalogFactory((IAuthTokenProvider)client);
 #endif
             } catch { Debug.LogWarning("[GAME-CATALOG] initialization unavailable; no valid bundled catalog"); }
-            IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityApiJsonCodec());
-            SocialApi = new Domino.Social.SocialApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
-            var rewardHttp = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, new UnityApiTransport(), new UnityRewardIntentCodec());
+            IDominoApiClient api = new DominoApiClient(settings, (IAuthTokenProvider)client, transport, new UnityApiJsonCodec());
+            SocialApi = new Domino.Social.SocialApi(settings, (IAuthTokenProvider)client, transport);
+            var rewardHttp = new RewardIntentApiClient(settings, (IAuthTokenProvider)client, transport, new UnityRewardIntentCodec());
             IRewardIntentApi rewardApi = rewardHttp;
             Domino.Rewards.IMonetizationPolicyApi monetizationApi = new Domino.Rewards.MonetizationPolicyApi(rewardHttp);
 #if UNITY_EDITOR
@@ -118,7 +121,7 @@ namespace Domino.Infrastructure
                 () => Player.HasConfirmedSnapshots && Player.State == PlayerSyncState.SYNCED, lifetime.Token,
                 recoveryReady: () => Player.HasConfirmedSnapshots, policy: Monetization);
             Realtime = new RealtimeConnectionService(new RealtimeConfiguration(settings), Identity, (IAuthTokenProvider)client);
-            OnlineApi = new Domino.Online.OnlineMatchApi(settings, (IAuthTokenProvider)client, new UnityApiTransport());
+            OnlineApi = new Domino.Online.OnlineMatchApi(settings, (IAuthTokenProvider)client, transport);
             var lifecycle = lifecycleObject = new GameObject("Realtime lifecycle");
             UnityEngine.Object.DontDestroyOnLoad(lifecycle);
             if(!UsesProductionAuth) StartSessionLifecycles();
@@ -131,6 +134,10 @@ namespace Domino.Infrastructure
             // keep SDK continuations/logging on main. Offline presentation proceeds independently.
             if(UsesProductionAuth) {
                 AuthRouter = new ProductionAuthRouter((FirebaseAuthService)Identity, Player);
+                var logoutRouter=AuthRouter;var logoutAuth=(FirebaseAuthService)Identity;
+                Logout=new ProductionLogoutService(()=>logoutAuth.Current, PrepareLogoutAsync,
+                    ()=>logoutRouter.StopAsync(), Shutdown, logoutAuth.SignOut,
+                    ()=>{Reset();Start();SessionReplaced?.Invoke();});
                 AuthRouter.Changed += () => {
                     if(AuthRouter?.Route==ProductionAuthRoute.AppShell){StartSessionLifecycles();Realtime.Start();_ = InitializePlayerAndRecoverAsync();}
                 };
@@ -180,19 +187,51 @@ namespace Domino.Infrastructure
                 if (!token.IsCancellationRequested) Debug.LogWarning("[AUTH] Initialization unavailable; offline play remains available.");
             }
         }
-        // No visible Guest logout button is added. Caller must obtain explicit loss-of-access confirmation.
-        public static async Task LogoutGuestAsync(bool confirmedLossOfAccess)
+        // Existing compatibility entry delegates to the same confirmation transaction.
+        public static Task LogoutGuestAsync(bool confirmedLossOfAccess)
         {
-            if(!confirmedLossOfAccess)throw new InvalidOperationException("Guest logout requires confirmation.");
-            var router=AuthRouter;var auth=Identity as FirebaseAuthService;
-            if(router==null || auth==null || auth.Current?.IsAnonymous!=true)throw new InvalidOperationException("Guest session required.");
-            await router.StopAsync();
-            auth.SignOut();
-            Reset();Start();
+            if(!confirmedLossOfAccess || Identity?.Current?.IsAnonymous!=true)throw new InvalidOperationException("Guest confirmation required.");
+            Logout.Request();return Logout.ConfirmAsync();
+        }
+        static async Task PrepareLogoutAsync()
+        {
+            RequireNoActiveGame();
+            foreach(var view in UnityEngine.Object.FindObjectsByType<Domino.Online.MatchmakingView>(FindObjectsInactive.Include,FindObjectsSortMode.None)) {
+                if(view.Client==null)throw new InvalidOperationException();
+                await view.Client.CancelAsync();
+                if(view.Client.MatchId!=null || view.Client.State!=Domino.Online.MatchmakingState.IDLE)throw new InvalidOperationException();
+                view.Client.Dispose();view.gameObject.SetActive(false);UnityEngine.Object.Destroy(view.gameObject);
+            }
+            RequireNoActiveGame();
+            // Recover remote queue state too; no local view does not prove absence of a queue.
+            if(Player?.HasConfirmedSnapshots==true) {
+                using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+                var status=await OnlineApi.SendAsync("GET","matchmaking/queue",null,deadline.Token);
+                var state=(string)status["state"];
+                if(state=="MATCHED")throw new InvalidOperationException();
+                if(state!="NOT_QUEUED") {
+                    if(state!="QUEUED" && state!="RESERVED")throw new InvalidOperationException();
+                    status=await OnlineApi.SendAsync("DELETE","matchmaking/queue",null,deadline.Token);
+                    if((string)status["state"]!="NOT_QUEUED")throw new InvalidOperationException();
+                }
+            }
+            RequireNoActiveGame();
+        }
+        static void RequireNoActiveGame()
+        {
+            // No invented leave/forfeit command: finish or close gameplay through its own UI first.
+            if(UnityEngine.Object.FindObjectsByType<Domino.Online.OnlineMatchController>(FindObjectsInactive.Include,FindObjectsSortMode.None).Length>0)throw new InvalidOperationException();
+            foreach(var controller in UnityEngine.Object.FindObjectsByType<Domino.Client.DominoClientController>(FindObjectsInactive.Include,FindObjectsSortMode.None))
+                if(controller.Session!=null)throw new InvalidOperationException();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(UnityEngine.Object.FindObjectsByType<Domino.Online.OnlineEntryView>(FindObjectsInactive.Include,FindObjectsSortMode.None).Length>0)throw new InvalidOperationException();
+#endif
         }
         static void Shutdown()
         {
             AuthRouter?.Dispose();
+            foreach(var view in UnityEngine.Object.FindObjectsByType<Domino.Social.SocialView>(FindObjectsInactive.Include,FindObjectsSortMode.None)) {view.gameObject.SetActive(false);UnityEngine.Object.Destroy(view.gameObject);}
+            foreach(var view in UnityEngine.Object.FindObjectsByType<Domino.Replay.HistoryReplayView>(FindObjectsInactive.Include,FindObjectsSortMode.None)) {view.gameObject.SetActive(false);UnityEngine.Object.Destroy(view.gameObject);}
             if(lifecycleObject){UnityEngine.Object.Destroy(lifecycleObject);lifecycleObject=null;}
             RoundRewards?.Dispose();
             Player?.Dispose();
