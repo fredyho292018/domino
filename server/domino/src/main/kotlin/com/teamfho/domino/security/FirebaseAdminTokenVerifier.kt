@@ -24,7 +24,10 @@ class FirebaseAdminTokenVerifier(private val auth: FirebaseAuth) : FirebaseToken
             val registered = user.providerData.any {
                 !it.providerId.isNullOrBlank() && it.providerId != "anonymous"
             }
-            return FirebaseIdentity(uid, !registered)
+            val firebase = decoded.claims?.get("firebase") as? Map<*, *>
+            return FirebaseIdentity(uid, !registered, user.isEmailVerified,
+                firebase?.get("sign_in_provider") as? String ?: "unknown",
+                user.providerData.any { it.providerId == "password" })
         } catch (failure: AuthFailure) {
             throw failure
         } catch (error: FirebaseAuthException) {

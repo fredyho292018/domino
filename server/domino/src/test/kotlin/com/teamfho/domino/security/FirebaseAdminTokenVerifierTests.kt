@@ -18,6 +18,15 @@ import kotlin.test.*
 class FirebaseAdminTokenVerifierTests {
     private val auth = mock(FirebaseAuth::class.java)
     private val verifier = FirebaseAdminTokenVerifier(auth)
+    @Test fun `verification uses current user and active provider comes from verified claims`() {
+        val current = user("password", "google.com")
+        `when`(current.isEmailVerified).thenReturn(true)
+        val token = auth.verifyIdToken("test-token", true)
+        `when`(token.claims).thenReturn(mapOf("firebase" to mapOf("sign_in_provider" to "google.com")))
+        val result = verifier.verify("test-token")
+        assertTrue(result.isEmailVerified); assertTrue(result.hasPasswordProvider)
+        assertEquals("google.com", result.signInProvider)
+    }
     private fun user(vararg providers: String): UserRecord {
         val token = mock(FirebaseToken::class.java)
         `when`(token.uid).thenReturn("verified-uid")

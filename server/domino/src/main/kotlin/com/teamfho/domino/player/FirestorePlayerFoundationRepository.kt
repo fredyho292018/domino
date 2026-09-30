@@ -13,7 +13,8 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-class FirestorePlayerFoundationRepository(private val firestore: Firestore, private val clock: Clock) : PlayerFoundationRepository {
+class FirestorePlayerFoundationRepository(private val firestore: Firestore, private val clock: Clock,
+    private val onboardingBoundary: OnboardingRolloutBoundary? = null) : PlayerFoundationRepository {
     override fun updateDisplayName(identity: FirebaseIdentity, displayName: String): BootstrapResult {
         require(identity.uid.isNotBlank() && identity.uid.length <= 128 && !identity.uid.contains('/') && identity.uid !in setOf(".", ".."))
         DisplayNameRules.validate(displayName)
@@ -30,10 +31,12 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                 if (player.displayName == displayName) BootstrapResult(player, wallet)
                 else {
                     val publicIdentity = tx.get(firestore.document("players/${identity.uid}/publicIdentity/current")).get()
-                    tx.update(playerRef, mapOf("displayName" to displayName, "updatedAt" to FieldValue.serverTimestamp()))
+                    tx.update(playerRef, mapOf("displayName" to displayName, "updatedAt" to FieldValue.serverTimestamp(),
+                        "profileRevision" to Math.addExact(player.profileRevision, 1)))
                     if (publicIdentity.exists()) tx.update(firestore.document("publicPlayerProfiles/${publicIdentity.getString("publicPlayerId")}"),
                         mapOf("displayName" to displayName, "normalizedDisplayName" to com.teamfho.domino.social.SocialNames.normalize(displayName), "updatedAt" to FieldValue.serverTimestamp()))
-                    BootstrapResult(player.copy(displayName = displayName, updatedAt = FoundationTimestamp.ServerAssigned), wallet)
+                    BootstrapResult(player.copy(displayName = displayName, updatedAt = FoundationTimestamp.ServerAssigned,
+                        profileRevision = Math.addExact(player.profileRevision, 1)), wallet)
                 }
             }, TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(5).build()).get(30, TimeUnit.SECONDS)
         } catch (_: InterruptedException) {
@@ -63,6 +66,7 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                 var player = existingPlayer ?: Player(identity.uid, initialType, candidateDisplayName, initialLanguage,
                     PlayerStatus.ACTIVE, serverTime, serverTime, serverTime)
                 val wallet = existingWallet ?: Wallet(0, 0, 0, serverTime, serverTime)
+                val initializeOnboarding = onboardingBoundary?.let { FirestoreOnboardingFoundation(firestore, it).prepare(tx, player, now) }
                 if (existingPlayer == null) {
                     tx.create(playerRef, FirestoreFoundationMapping.newPlayer(player) + ("socialDefaultDiscoverable" to true))
                 } else {
@@ -80,6 +84,7 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                     if (changes.isNotEmpty()) tx.update(playerRef, changes)
                 }
                 if (existingWallet == null) tx.create(walletRef, FirestoreFoundationMapping.newWallet())
+                initializeOnboarding?.invoke()
                 BootstrapResult(player, wallet)
             }, TransactionOptions.createReadWriteOptionsBuilder().setNumberOfAttempts(5).build()).get(30, TimeUnit.SECONDS)
         } catch (error: InterruptedException) {

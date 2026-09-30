@@ -14,7 +14,9 @@ internal object FirestoreFoundationMapping {
             data["displayName"] as String,
             data["language"] as String,
             PlayerStatus.valueOf(data["status"] as String),
-            timestamp(data["createdAt"]), timestamp(data["updatedAt"]), timestamp(data["lastSeenAt"])
+            timestamp(data["createdAt"]), timestamp(data["updatedAt"]), timestamp(data["lastSeenAt"]),
+            data["firstName"] as String?, data["lastName"] as String?, data["countryCode"] as String?,
+            data["profileRevision"]?.let { integer(it) } ?: 0
         )
     }
 
@@ -43,8 +45,9 @@ internal object FirestoreFoundationMapping {
         "uid" to player.uid, "accountType" to player.accountType.name, "displayName" to player.displayName,
         "language" to player.language, "status" to player.status.name,
         "createdAt" to FieldValue.serverTimestamp(), "updatedAt" to FieldValue.serverTimestamp(),
-        "lastSeenAt" to FieldValue.serverTimestamp()
-    )
+        "lastSeenAt" to FieldValue.serverTimestamp(), "profileRevision" to player.profileRevision
+    ) + listOfNotNull(player.firstName?.let { "firstName" to it }, player.lastName?.let { "lastName" to it },
+        player.countryCode?.let { "countryCode" to it }).toMap()
 
     fun newWallet(): Map<String, Any> = mapOf(
         "coins" to 0L, "lifetimeCoinsEarned" to 0L, "lifetimeCoinsSpent" to 0L,
