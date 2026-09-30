@@ -117,7 +117,7 @@ namespace Domino.Editor
                 var label=page.Q<Label>("ProfilePlayerName");ProfileCheck(label.layout.width<=info.layout.width && label.resolvedStyle.whiteSpace==WhiteSpace.Normal,"Long name wraps");
                 ProfileBounds(page);File.AppendAllText(ProfileResult,"PRESET="+Sizes[profilePreset]+" CENTERING=PASS OVERFLOW=PASS REACHABILITY=PASS ROUTES=PASS LONG_NAME=PASS\n");
                 if(++profilePreset<Sizes.Length){ProfilePreset();return;}
-                File.AppendAllText(ProfileResult,"CHECKS="+profileChecks+"_PASS\nFAIL=0\n");index=1;ProfileMount(new DemoProfileDataSource());File.AppendAllText(ProfileResult,"FINAL=OWN_PROFILE_393x852\n");
+                File.AppendAllText(ProfileResult,"CHECKS="+profileChecks+"_PASS\nFAIL=0\n");index=1;ProfileMount(new DemoProfileDataSource());File.AppendAllText(ProfileResult,"FINAL=OWN_PROFILE_393x852\n");StartRootContentTests();
             }catch(Exception e){ProfileFail(e);}
         }
     }

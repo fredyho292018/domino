@@ -22,9 +22,6 @@ namespace Domino.UI.AppShell
             var detail = new Label(subtitle); ThemeStyles.Text(detail, TextRole.Secondary); Body.Add(detail);
         }
     }
-    public sealed class ProductionPuzzlesPage : ProductionRootPage { public ProductionPuzzlesPage() : base("Puzzles", "Coming Soon") {} }
-    public sealed class ProductionLearnPage : ProductionRootPage { public ProductionLearnPage() : base("Learn", "Coming Soon") {} }
-    public sealed class ProductionWatchPage : ProductionRootPage { public ProductionWatchPage() : base("Watch", "Coming Soon") {} }
     // One retained page host. No authentication, backend or gameplay routes.
     public sealed class ProductionAppShell : VisualElement
     {
@@ -34,6 +31,7 @@ namespace Domino.UI.AppShell
         public VisualElement BottomNavigation { get; } = new VisualElement { name = "BottomNavigation" };
         public IReadOnlyList<ProductionRootPage> Pages => pages;
         public bool HasSubpage => detail != null;
+        public RootDestination? ActiveRootDestination { get; private set; }
         public MenuDestination? ActiveMenuDestination { get; private set; }
         public ProfileSection ActiveProfileSection { get; private set; }
         public IProfileDataSource ProfileDataSource { get; }
@@ -54,7 +52,7 @@ namespace Domino.UI.AppShell
             BottomNavigation.style.height = BottomNavigation.style.minHeight = Theme.Sizing.BottomTabTouchHeight;
             BottomNavigation.style.flexShrink = 0; BottomNavigation.style.backgroundColor = Theme.Colors.Surface;
             Add(BottomNavigation);
-            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(), new ProductionLearnPage(), new ProductionWatchPage(), new ProductionMenuPage(new DemoMenuDataSource(), OpenMenuDestination) };
+            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(new DemoPuzzlesDataSource(),()=>OpenRootDestination(RootDestination.Puzzle)), new ProductionLearnPage(new DemoLearnDataSource(new DemoHomeDataSource().Read().Coach),()=>OpenRootDestination(RootDestination.Lesson),()=>Select(ShellTab.Puzzles),()=>OpenRootDestination(RootDestination.CoachGames)), new ProductionWatchPage(new DemoWatchDataSource(),()=>OpenRootDestination(RootDestination.WatchGame)), new ProductionMenuPage(new DemoMenuDataSource(), OpenMenuDestination) };
             for (int i = 0; i < 5; i++)
             {
                 int target = i; PageHost.Add(pages[i]);
@@ -84,9 +82,17 @@ namespace Domino.UI.AppShell
             }
         }
 
-        public void OpenDetail() => OpenSubpage("Shell Test Detail",null);
+        public void OpenDetail() { if(ActiveTab==ShellTab.Menu)OpenSubpage("Shell Test Detail",null); }
+        public void OpenRootDestination(RootDestination destination)
+        {
+            var parent=destination==RootDestination.Puzzle?ShellTab.Puzzles:destination==RootDestination.WatchGame?ShellTab.Watch:ShellTab.Learn;
+            if(HasSubpage || ActiveTab!=parent)return;
+            OpenSubpage(destination==RootDestination.CoachGames?"Coach Games":destination==RootDestination.WatchGame?"Watch Game":destination.ToString(),null);
+            ActiveRootDestination=destination;
+        }
         public void OpenMenuDestination(MenuDestination destination)
         {
+            if(ActiveTab!=ShellTab.Menu)return;
             if(destination==MenuDestination.Profile){if(!HasSubpage && ActiveTab==ShellTab.Menu)OpenProfileSection(ProfileSection.Profile);return;}
             OpenSubpage(ProductionMenuPage.Title(destination),destination);
         }
@@ -99,7 +105,7 @@ namespace Domino.UI.AppShell
         }
         void OpenSubpage(string pageTitle,MenuDestination? destination)
         {
-            if (HasSubpage || ActiveTab != ShellTab.Menu) return;
+            if (HasSubpage) return;
             pages[(int)ActiveTab].style.display = DisplayStyle.None;
             ActiveMenuDestination=destination;
             detail = new VisualElement { name = "ShellTestDetail" }; detail.style.flexGrow = 1;
@@ -112,7 +118,7 @@ namespace Domino.UI.AppShell
             var message=new Label("Coming Soon"){name="SubpageMessage"};ThemeStyles.Text(message,TextRole.Secondary);detail.Add(message);
             PageHost.Add(detail);
         }
-        void CloseDetail() { detail?.RemoveFromHierarchy(); detail = null; ActiveMenuDestination=null; }
+        void CloseDetail() { detail?.RemoveFromHierarchy(); detail = null; ActiveMenuDestination=null; ActiveRootDestination=null; }
         public void Back() { if (!HasSubpage) return; if(ActiveMenuDestination==MenuDestination.Profile && ActiveProfileSection!=ProfileSection.Profile){OpenProfileSection(ProfileSection.Profile);return;} CloseDetail(); pages[(int)ActiveTab].style.display = DisplayStyle.Flex; }
 
         // Insets are logical panel units; caller converts Screen.safeArea from pixels.
