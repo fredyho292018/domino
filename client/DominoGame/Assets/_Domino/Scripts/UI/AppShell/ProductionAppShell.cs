@@ -25,15 +25,6 @@ namespace Domino.UI.AppShell
     public sealed class ProductionPuzzlesPage : ProductionRootPage { public ProductionPuzzlesPage() : base("Puzzles", "Coming Soon") {} }
     public sealed class ProductionLearnPage : ProductionRootPage { public ProductionLearnPage() : base("Learn", "Coming Soon") {} }
     public sealed class ProductionWatchPage : ProductionRootPage { public ProductionWatchPage() : base("Watch", "Coming Soon") {} }
-    public sealed class ProductionMenuPage : ProductionRootPage
-    {
-        public ProductionMenuPage(Action openDetail) : base("Menu", "")
-        {
-            var row = new ThemeButton("Shell Test Detail", openDetail) { name = "OpenDetail" };
-            row.style.minHeight = ThemeProvider.Current.Sizing.MenuRowHeight; Body.Add(row);
-        }
-    }
-
     // One retained page host. No authentication, backend or gameplay routes.
     public sealed class ProductionAppShell : VisualElement
     {
@@ -43,6 +34,7 @@ namespace Domino.UI.AppShell
         public VisualElement BottomNavigation { get; } = new VisualElement { name = "BottomNavigation" };
         public IReadOnlyList<ProductionRootPage> Pages => pages;
         public bool HasSubpage => detail != null;
+        public MenuDestination? ActiveMenuDestination { get; private set; }
         readonly ProductionRootPage[] pages;
         readonly ThemeButton[] tabs = new ThemeButton[5];
         readonly Image[] icons = new Image[5];
@@ -59,7 +51,7 @@ namespace Domino.UI.AppShell
             BottomNavigation.style.height = BottomNavigation.style.minHeight = Theme.Sizing.BottomTabTouchHeight;
             BottomNavigation.style.flexShrink = 0; BottomNavigation.style.backgroundColor = Theme.Colors.Surface;
             Add(BottomNavigation);
-            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(), new ProductionLearnPage(), new ProductionWatchPage(), new ProductionMenuPage(OpenDetail) };
+            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(), new ProductionLearnPage(), new ProductionWatchPage(), new ProductionMenuPage(new DemoMenuDataSource(), OpenMenuDestination) };
             for (int i = 0; i < 5; i++)
             {
                 int target = i; PageHost.Add(pages[i]);
@@ -89,18 +81,24 @@ namespace Domino.UI.AppShell
             }
         }
 
-        public void OpenDetail()
+        public void OpenDetail() => OpenSubpage("Shell Test Detail",null);
+        public void OpenMenuDestination(MenuDestination destination) => OpenSubpage(ProductionMenuPage.Title(destination),destination);
+        void OpenSubpage(string pageTitle,MenuDestination? destination)
         {
             if (HasSubpage || ActiveTab != ShellTab.Menu) return;
             pages[(int)ActiveTab].style.display = DisplayStyle.None;
+            ActiveMenuDestination=destination;
             detail = new VisualElement { name = "ShellTestDetail" }; detail.style.flexGrow = 1;
+            ThemeStyles.Page(detail);
             var header = new VisualElement(); header.style.flexDirection = FlexDirection.Row;
             var back = new Button(Back) { name = "ShellBack" }; var arrow = new Image();
             ThemeStyles.Back(back, arrow); back.Add(arrow); header.Add(back);
-            var title = new Label("Shell Test Detail"); ThemeStyles.Text(title, TextRole.SectionTitle); header.Add(title);
-            detail.Add(header); PageHost.Add(detail);
+            var title = new Label(pageTitle){name="SubpageTitle"}; ThemeStyles.Text(title, TextRole.SectionTitle); header.Add(title);
+            detail.Add(header);
+            var message=new Label("Coming Soon"){name="SubpageMessage"};ThemeStyles.Text(message,TextRole.Secondary);detail.Add(message);
+            PageHost.Add(detail);
         }
-        void CloseDetail() { detail?.RemoveFromHierarchy(); detail = null; }
+        void CloseDetail() { detail?.RemoveFromHierarchy(); detail = null; ActiveMenuDestination=null; }
         public void Back() { if (!HasSubpage) return; CloseDetail(); pages[(int)ActiveTab].style.display = DisplayStyle.Flex; }
 
         // Insets are logical panel units; caller converts Screen.safeArea from pixels.

@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 namespace Domino.Editor
 {
-    public sealed class ProductionShellPreview : EditorWindow
+    public sealed partial class ProductionShellPreview : EditorWindow
     {
         static readonly Vector2Int[] Sizes = { new Vector2Int(375,667), new Vector2Int(393,852), new Vector2Int(412,915), new Vector2Int(430,932), new Vector2Int(480,1040), new Vector2Int(600,960), new Vector2Int(768,1024), new Vector2Int(834,1194) };
         const string Result = "Library/UI02A.result.txt";
@@ -29,6 +29,7 @@ namespace Domino.Editor
         void Mount(bool test, bool preserveRoute = false)
         {
             var route = preserveRoute && shell != null ? shell.ActiveTab : ShellTab.Home;
+            var destination=preserveRoute && shell!=null?shell.ActiveMenuDestination:null;
             bool detail = preserveRoute && shell != null && shell.HasSubpage;
             titleContent = new GUIContent("PRODUCTION APP SHELL"); minSize = new Vector2(440,700); Show();
             rootVisualElement.Clear();
@@ -41,7 +42,7 @@ namespace Domino.Editor
             frame.style.transformOrigin = new TransformOrigin(0,0,0); frame.style.scale = new Scale(new Vector3(scale,scale,1));
             rootVisualElement.Add(frame); shell = new ProductionAppShell(); frame.Add(shell);
             shell.SetSafeArea(0,24,0,24);
-            shell.Select(route); if(detail) shell.OpenDetail();
+            shell.Select(route); if(detail) { if(destination.HasValue)shell.OpenMenuDestination(destination.Value);else shell.OpenDetail(); }
             if (test) rootVisualElement.schedule.Execute(Test).ExecuteLater(500);
         }
         void DiagnosticMount(){Mount(false);rootVisualElement.schedule.Execute(CaptureGeometry).ExecuteLater(700);}
@@ -96,7 +97,7 @@ namespace Domino.Editor
             if(shell.ActiveTab!=ShellTab.Learn)throw new Exception("Learn demonstration");
             shell.Select(ShellTab.Menu);Resize(0);
             if(shell.ActiveTab!=ShellTab.Menu)throw new Exception("Menu demonstration");
-            index=1;Mount(false);File.AppendAllText(Result,"DEMONSTRATION=PASS FINAL=HOME_393x852\n");
+            index=1;Mount(false);File.AppendAllText(Result,"DEMONSTRATION=PASS FINAL=HOME_393x852\n");StartMenuTests();
         }
         void Check(bool value, string label) { if (!value) throw new Exception(label); checks++; }
         static void Click(VisualElement e) { using(var evt = NavigationSubmitEvent.GetPooled()) { evt.target = e; e.SendEvent(evt); } }
@@ -113,7 +114,7 @@ namespace Domino.Editor
                     var tab=shell.Q<ThemeButton>("Tab"+(ShellTab)i); Check(tab.layout.height>=60,"Tab touch");
                     Check(tab.Q<Image>().vectorImage!=null && tab.Q<Image>().layout.width==26,"Icon contract");
                 }
-                Click(shell.Q("OpenDetail")); Check(shell.HasSubpage,"Detail route");
+                Click(shell.Q("MenuProfile")); Check(shell.HasSubpage,"Detail route");
                 // Wait for layout of newly mounted detail/header.
                 rootVisualElement.schedule.Execute(Finish).ExecuteLater(300);
             } catch(Exception e) { Fail(e); }
