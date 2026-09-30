@@ -141,6 +141,8 @@ namespace Domino.Editor
                 Check(page.Q<Label>("HomeGreeting").text=="Hola, Alex.","Demo data greeting");
                 Check(page.Q("HomePlayCard").Q<Label>().text=="\u00bfJugamos?","UTF8 Play title");
                 Check(page.Q<Button>("HomePlay").text=="PLAY \u2192","UTF8 Play CTA");
+                foreach(var cta in new[]{"HomePlay","HomeContinueLearning"})Check(page.Q<Button>(cta).resolvedStyle.unityTextAlign==TextAnchor.MiddleCenter,"Polish centered "+cta);
+                foreach(var cardName in new[]{"HomePlayCard","HomeCoachCard","HomeFriendsCard"})Check(page.Q(cardName).resolvedStyle.borderTopLeftRadius==ThemeProvider.Current.Radius.Card,"Polish card radius");
                 Check(page.Q<Label>("HomeSubtitle").text=="Una buena partida empieza con una buena mesa.","UTF8 subtitle");
                 Check(page.Q("HomeCoachCard").Query<Label>().ToList().Any(x=>x.text=="Hola, soy Amara.\nTe ense\u00f1ar\u00e9 a jugar domin\u00f3."),"UTF8 coach greeting");
                 Check(page.Query<TextElement>().ToList().All(x=>x.text.IndexOfAny(new[]{'\u00c2','\u00c3','\u00e2','\ufffd'})<0),"UTF8 no mojibake");

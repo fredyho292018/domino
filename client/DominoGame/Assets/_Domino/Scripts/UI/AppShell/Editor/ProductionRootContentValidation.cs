@@ -39,6 +39,12 @@ namespace Domino.Editor
                 }
                 float y=shell.BottomNavigation.layout.y;page.scrollOffset=new Vector2(0,end);RootCheck(Mathf.Abs(page.scrollOffset.y-end)<1 && shell.BottomNavigation.layout.y==y,"Scroll fixed nav");page.scrollOffset=Vector2.zero;
                 RootCheck(shell.PageHost.layout.y>=24 && shell.BottomNavigation.layout.yMax<=Sizes[index].y-24+.1f,"Safe area");
+                if(TestedRoot!=ShellTab.Watch){
+                    var cta=page.Q<Button>(TestedRoot==ShellTab.Puzzles?"StartPuzzle":"LearnContinue");RootCheck(cta.resolvedStyle.unityTextAlign==TextAnchor.MiddleCenter,"Polish CTA centered");
+                    foreach(var section in body.Query<Label>().ToList().Where(x=>x.name.StartsWith("Section")))RootCheck(section.resolvedStyle.fontSize==20&&section.style.unityFont.value==ThemeProvider.Current.Typography.FontFor(TextRole.SectionTitle),"Section typography");
+                    RootCheck(page.Q(TestedRoot==ShellTab.Puzzles?"DailyPuzzle":"LearnCoachCard").resolvedStyle.borderTopLeftRadius==ThemeProvider.Current.Radius.Card,"Polish card radius");
+                }
+                if(TestedRoot==ShellTab.Learn)foreach(var rowName in new[]{"LearnLessons","LearnPuzzles","LearnCoachGames"})RootCheck(page.Q(rowName).layout.height==56&&page.Q(rowName).Q<Image>().vectorImage!=null,"Training actionable row");
                 if(TestedRoot==ShellTab.Puzzles){
                     RootCheck(page.Q("DailyPuzzle")!=null && page.Q<Label>("PuzzleDifficulty").text=="Intermediate","Daily puzzle");
                     RootCheck(page.Query<Label>("CategoryName").ToList().Select(x=>x.text).SequenceEqual(new[]{"Opening","Strategy","Counting","Endgame"}),"Categories");rootActions=new[]{"StartPuzzle"};

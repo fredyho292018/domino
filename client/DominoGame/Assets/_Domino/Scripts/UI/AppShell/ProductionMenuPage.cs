@@ -14,7 +14,7 @@ namespace Domino.UI.AppShell
             if(source==null)throw new ArgumentNullException(nameof(source));
             if(navigate==null)throw new ArgumentNullException(nameof(navigate));
             Body.Clear();verticalScrollerVisibility=ScrollerVisibility.Hidden;
-            var eyebrow=Text("YOUR CORNER",TextRole.Caption,Body,"MenuEyebrow");eyebrow.style.color=Theme.Colors.Primary;
+            var eyebrow=Text("YOUR CORNER",TextRole.Caption,Body,"MenuEyebrow");RootVisualRhythm.Eyebrow(eyebrow);
             eyebrow.style.marginBottom=Theme.Spacing.SM;
             Text("Menu",TextRole.PageTitle,Body,"MenuTitle").style.marginBottom=Theme.Spacing.MD;
             var data=source.Read();
@@ -33,7 +33,7 @@ namespace Domino.UI.AppShell
             var destinations=new[]{MenuDestination.Friends,MenuDestination.Messages,MenuDestination.Stats,MenuDestination.Coach,MenuDestination.Theme,MenuDestination.Membership,MenuDestination.Settings,MenuDestination.Support};
             for(int i=0;i<destinations.Length;i++)
             {
-                if(i%2==0){var group=Text(groups[i/2],TextRole.Caption,Body,"MenuGroup"+i/2);group.style.color=Theme.Colors.Primary;group.style.marginTop=Theme.Spacing.SM;group.style.marginBottom=Theme.Spacing.SM;}
+                if(i%2==0){var group=Text(groups[i/2],TextRole.Caption,Body,"MenuGroup"+i/2);group.style.color=Theme.Colors.Primary;group.style.marginTop=Theme.Spacing.SectionGap;group.style.marginBottom=Theme.Spacing.SM;}
                 var destination=destinations[i];
                 var row=new ThemeButton("",()=>navigate(destination)){name="MenuRow"+destination};
                 var icon=Icon(destination.ToString().ToLowerInvariant(),"MenuRowIcon");
@@ -46,7 +46,7 @@ namespace Domino.UI.AppShell
         Label Text(string value,TextRole role,VisualElement parent,string elementName)
         {
             var label=new Label(value){name=elementName,pickingMode=PickingMode.Ignore};ThemeStyles.Text(label,role);
-            label.style.whiteSpace=WhiteSpace.Normal;label.style.unityTextAlign=TextAnchor.MiddleLeft;parent.Add(label);return label;
+            label.style.flexShrink=0;label.style.whiteSpace=WhiteSpace.Normal;label.style.unityTextAlign=TextAnchor.MiddleLeft;parent.Add(label);return label;
         }
         static Image Icon(string key,string elementName)=>new Image{vectorImage=Resources.Load<VectorImage>("AppShellMockIcons/icon_menu_"+key),name=elementName};
     }

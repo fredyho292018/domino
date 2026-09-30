@@ -15,11 +15,13 @@ namespace Domino.UI.AppShell
             Text(title,TextRole.PageTitle,Body,"RootTitle");
             if(!string.IsNullOrEmpty(subtitle))Text(subtitle,TextRole.Secondary,Body,"RootSubtitle");
         }
+        bool polished;
+        protected void ApplyPolish(){polished=true;RootVisualRhythm.Eyebrow(Body.Q<Label>("RootEyebrow"));var subtitle=Body.Q<Label>("RootSubtitle");if(subtitle!=null)subtitle.style.marginBottom=Theme.Spacing.MD;}
         protected Label Text(string value,TextRole role,VisualElement parent,string elementName="")
         {
             var label=new Label(value){name=elementName,pickingMode=PickingMode.Ignore};ThemeStyles.Text(label,role);label.style.whiteSpace=WhiteSpace.Normal;label.style.flexShrink=0;label.style.marginBottom=Theme.Spacing.SM;label.style.unityTextAlign=TextAnchor.MiddleLeft;parent.Add(label);return label;
         }
-        protected void Section(string title){var label=Text(title,TextRole.SectionTitle,Body,"Section"+title.Replace(" ",""));label.style.marginTop=Theme.Spacing.MD;}
+        protected void Section(string title){var label=Text(title,TextRole.SectionTitle,Body,"Section"+title.Replace(" ",""));label.style.marginTop=polished?Theme.Spacing.SectionGap:Theme.Spacing.MD;}
         protected VisualElement Card(string elementName)
         {
             var card=new VisualElement{name=elementName};ThemeStyles.Card(card);card.style.flexShrink=0;card.style.marginBottom=Theme.Spacing.MD;Body.Add(card);return card;
@@ -29,12 +31,12 @@ namespace Domino.UI.AppShell
     {
         public ProductionPuzzlesPage(IPuzzlesDataSource source,Action start):base("Puzzles","Train your domino vision.")
         {
-            var daily=source.Daily();Section("Daily Puzzle");var card=Card("DailyPuzzle");
+            ApplyPolish();var daily=source.Daily();Section("Daily Puzzle");var card=Card("DailyPuzzle");
             Text(daily.Title,TextRole.SectionTitle,card);Text(daily.Description,TextRole.Body,card);
-            Text("Difficulty",TextRole.Caption,card);Text(daily.Difficulty,TextRole.Body,card,"PuzzleDifficulty");
-            Text("Progress",TextRole.Caption,card);Text(daily.Progress,TextRole.Secondary,card,"PuzzleProgress");
-            card.Add(new ThemeButton("Start Puzzle",start,true){name="StartPuzzle"});
-            Section("Puzzle Categories");foreach(var category in source.Categories()){var item=Card("PuzzleCategory");Text(category.Name,TextRole.ButtonSecondary,item,"CategoryName");Text(category.Description,TextRole.Secondary,item);}
+            Text("Difficulty",TextRole.Caption,card).style.marginBottom=Theme.Spacing.XS;Text(daily.Difficulty,TextRole.Body,card,"PuzzleDifficulty");
+            Text("Progress",TextRole.Caption,card).style.marginBottom=Theme.Spacing.XS;Text(daily.Progress,TextRole.Secondary,card,"PuzzleProgress");
+            var startButton=new ThemeButton("Start Puzzle",start,true){name="StartPuzzle"};RootVisualRhythm.Cta(startButton);card.Add(startButton);
+            Section("Puzzle Categories");foreach(var category in source.Categories()){var item=Card("PuzzleCategory");RootVisualRhythm.Compact(item);Text(category.Name,TextRole.ButtonSecondary,item,"CategoryName");Text(category.Description,TextRole.Secondary,item).style.marginBottom=0;}
         }
     }
     public sealed class ProductionLearnPage : ProductionContentRoot
@@ -42,12 +44,17 @@ namespace Domino.UI.AppShell
         public HomeCoachSummary Coach { get; }
         public ProductionLearnPage(ILearnDataSource source,Action lesson,Action puzzles,Action coachGame):base("Learn", "")
         {
-            Coach=source.Coach;Section("Your Coach");var card=Card("LearnCoachCard");
+            ApplyPolish();Coach=source.Coach;Section("Your Coach");var card=Card("LearnCoachCard");
             var portrait=new VisualElement{name="LearnCoachAvatar"};portrait.style.width=portrait.style.height=120;portrait.style.alignSelf=Align.Center;portrait.style.flexShrink=0;portrait.style.overflow=Overflow.Hidden;portrait.style.marginBottom=Theme.Spacing.MD;ThemeStyles.Round(portrait,60);
             var image=new Image{image=Coach.Avatar,scaleMode=ScaleMode.ScaleAndCrop,pickingMode=PickingMode.Ignore};image.style.width=image.style.height=Length.Percent(100);portrait.Add(image);card.Add(portrait);
             Text(Coach.DisplayName,TextRole.SectionTitle,card,"LearnCoachName");Text(Coach.Greeting,TextRole.Body,card,"LearnCoachGreeting");
-            card.Add(new ThemeButton("Continue Learning",lesson,true){name="LearnContinue"});
-            Section("Training");Body.Add(new ThemeButton("Lessons",lesson){name="LearnLessons"});Body.Add(new ThemeButton("Puzzles",puzzles){name="LearnPuzzles"});Body.Add(new ThemeButton("Coach Games",coachGame){name="LearnCoachGames"});
+            var continueButton=new ThemeButton("Continue Learning",lesson,true){name="LearnContinue"};RootVisualRhythm.Cta(continueButton);card.Add(continueButton);
+            Section("Training");Training("Lessons",lesson,"LearnLessons");Training("Puzzles",puzzles,"LearnPuzzles");Training("Coach Games",coachGame,"LearnCoachGames");
+        }
+        void Training(string title,Action action,string elementName){
+            var row=new ThemeButton("",action){name=elementName};ThemeStyles.Row(row,false);
+            var label=new Label(title){pickingMode=PickingMode.Ignore};ThemeStyles.Text(label,TextRole.ButtonSecondary);label.style.flexGrow=1;label.style.unityTextAlign=TextAnchor.MiddleLeft;row.Add(label);
+            var arrow=new Image{vectorImage=Resources.Load<VectorImage>("AppShellMockIcons/icon_menu_chevron"),pickingMode=PickingMode.Ignore};ThemeStyles.Icon(arrow,false);row.Add(arrow);Body.Add(row);
         }
     }
     public sealed class ProductionWatchPage : ProductionContentRoot

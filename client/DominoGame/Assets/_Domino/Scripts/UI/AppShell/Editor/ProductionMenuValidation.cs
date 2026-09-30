@@ -27,6 +27,8 @@ namespace Domino.Editor
                 MenuCheck(body.Children().OfType<Label>().Where(x=>x.name.StartsWith("MenuGroup")).Select(x=>x.text).SequenceEqual(new[]{"SOCIAL","ACTIVITY","PERSONALIZATION","APP"}),"Exact groups");
                 MenuCheck(body.Children().Where(x=>x.name.StartsWith("MenuGroup")||x.name.StartsWith("MenuRow")).Select(x=>x.name).SequenceEqual(new[]{"MenuGroup0","MenuRowFriends","MenuRowMessages","MenuGroup1","MenuRowStats","MenuRowCoach","MenuGroup2","MenuRowTheme","MenuRowMembership","MenuGroup3","MenuRowSettings","MenuRowSupport"}),"Group membership");
                 MenuCheck(page.Q<Label>("MenuEyebrow").text=="YOUR CORNER" && page.Q<Label>("MenuTitle").text=="Menu","Heading");
+                MenuCheck(page.Q("MenuTitle").layout.y-page.Q("MenuEyebrow").layout.yMax>=8,"Eyebrow title gap no overlap");
+                MenuCheck(page.Body.resolvedStyle.paddingLeft==24&&page.Body.resolvedStyle.paddingRight==24,"Polish margins");
                 MenuCheck(page.Q<Label>("MenuDisplayName").text=="Alex \u00b7 Demo player" && page.Q<Label>("MenuMembership").text=="FREE \u00b7 Cuban Domino Club","Profile text");
                 MenuCheck(page.Q<Image>("MenuAvatar").vectorImage!=null && page.Q<Image>("MenuAvatar").layout.width>0,"Avatar");
                 MenuCheck(page.Q("MenuProfile").layout.height>=44,"Profile touch");
