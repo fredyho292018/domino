@@ -1,0 +1,209 @@
+{
+  "catalogVersion": 1,
+  "options": [
+    {
+      "questionKey": "DOMINO_EXPERIENCE",
+      "sortOrder": 10,
+      "key": "BEGINNER",
+      "active": true
+    },
+    {
+      "questionKey": "DOMINO_EXPERIENCE",
+      "sortOrder": 20,
+      "key": "RULES_KNOWN",
+      "active": true
+    },
+    {
+      "questionKey": "DOMINO_EXPERIENCE",
+      "sortOrder": 30,
+      "key": "STRATEGY",
+      "active": true
+    },
+    {
+      "questionKey": "DOMINO_EXPERIENCE",
+      "sortOrder": 40,
+      "key": "COMPETITIVE",
+      "active": true
+    }
+  ],
+  "membershipCatalogVersion": null,
+  "supportedLocales": [
+    "es",
+    "en"
+  ],
+  "requiredCapabilities": [
+    "SINGLE_SELECT_V1",
+    "COACH_SELECT_V1",
+    "CONTACTS_UNAVAILABLE",
+    "MEMBERSHIP_PRESENTATION"
+  ],
+  "translations": {
+    "es": {
+      "RULES_KNOWN": {
+        "description": "Sé cómo jugar y quiero practicar",
+        "title": "Conozco las reglas y los conceptos"
+      },
+      "COMPETITIVE": {
+        "description": "Juego de forma competitiva",
+        "title": "Soy un jugador de torneo"
+      },
+      "COACH_SELECTION": {
+        "description": "",
+        "title": "Elige tu entrenador"
+      },
+      "STRATEGY": {
+        "description": "Quiero mejorar mi juego",
+        "title": "Tengo conocimientos de estrategia y tácticas"
+      },
+      "EXPERIENCE_STEP": {
+        "description": "",
+        "title": "Tu punto de partida"
+      },
+      "MEMBERSHIP_STEP": {
+        "description": "",
+        "title": "Membership"
+      },
+      "BEGINNER": {
+        "description": "Quiero aprender desde el principio",
+        "title": "No sé jugar"
+      },
+      "DOMINO_EXPERIENCE": {
+        "description": "",
+        "title": "¿Cuál es tu nivel de\nexperiencia en dominó?"
+      },
+      "COACH_STEP": {
+        "description": "",
+        "title": "Elige tu entrenador"
+      },
+      "CONTACTS_STEP": {
+        "description": "",
+        "title": "Encuentra personas que conoces"
+      }
+    },
+    "en": {
+      "RULES_KNOWN": {
+        "description": "I know how to play and want to practice",
+        "title": "I know the rules and concepts"
+      },
+      "COMPETITIVE": {
+        "description": "I play competitively",
+        "title": "I am a tournament player"
+      },
+      "COACH_SELECTION": {
+        "description": "",
+        "title": "Choose your coach"
+      },
+      "STRATEGY": {
+        "description": "I want to improve my game",
+        "title": "I know strategy and tactics"
+      },
+      "EXPERIENCE_STEP": {
+        "description": "",
+        "title": "Your starting point"
+      },
+      "MEMBERSHIP_STEP": {
+        "description": "",
+        "title": "Membership"
+      },
+      "BEGINNER": {
+        "description": "I want to learn from the beginning",
+        "title": "I do not know how to play"
+      },
+      "DOMINO_EXPERIENCE": {
+        "description": "",
+        "title": "What is your level of experience in dominoes?"
+      },
+      "COACH_STEP": {
+        "description": "",
+        "title": "Choose your coach"
+      },
+      "CONTACTS_STEP": {
+        "description": "",
+        "title": "Find people you know"
+      }
+    }
+  },
+  "questions": [
+    {
+      "type": "SINGLE_SELECT",
+      "required": true,
+      "typeVersion": 1,
+      "sortOrder": 10,
+      "active": true,
+      "key": "DOMINO_EXPERIENCE",
+      "optionKeys": [
+        "BEGINNER",
+        "RULES_KNOWN",
+        "STRATEGY",
+        "COMPETITIVE"
+      ],
+      "stepKey": "EXPERIENCE_STEP",
+      "binding": "EXPERIENCE_LEVEL"
+    },
+    {
+      "type": "COACH_SELECT",
+      "required": true,
+      "typeVersion": 1,
+      "sortOrder": 10,
+      "active": true,
+      "key": "COACH_SELECTION",
+      "optionKeys": [],
+      "stepKey": "COACH_STEP",
+      "binding": "PREFERRED_COACH"
+    }
+  ],
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "coachCatalogVersion": null,
+  "steps": [
+    {
+      "required": true,
+      "skippable": false,
+      "sortOrder": 10,
+      "active": true,
+      "key": "EXPERIENCE_STEP",
+      "kind": "QUESTION",
+      "nextStepKey": "COACH_STEP",
+      "stage": "EXPERIENCE",
+      "questionKeys": [
+        "DOMINO_EXPERIENCE"
+      ]
+    },
+    {
+      "required": true,
+      "skippable": false,
+      "sortOrder": 20,
+      "active": true,
+      "key": "COACH_STEP",
+      "kind": "QUESTION",
+      "nextStepKey": "CONTACTS_STEP",
+      "stage": "COACH",
+      "questionKeys": [
+        "COACH_SELECTION"
+      ]
+    },
+    {
+      "required": false,
+      "skippable": true,
+      "sortOrder": 30,
+      "active": true,
+      "key": "CONTACTS_STEP",
+      "kind": "CONTACTS",
+      "nextStepKey": "MEMBERSHIP_STEP",
+      "stage": "CONTACTS",
+      "questionKeys": []
+    },
+    {
+      "required": false,
+      "skippable": true,
+      "sortOrder": 40,
+      "active": true,
+      "key": "MEMBERSHIP_STEP",
+      "kind": "MEMBERSHIP",
+      "nextStepKey": null,
+      "stage": "MEMBERSHIP",
+      "questionKeys": []
+    }
+  ],
+  "publishedAt": "2026-09-30T00:00:00Z"
+}
