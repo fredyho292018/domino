@@ -64,7 +64,7 @@ namespace Domino.Editor
         {
             try {
                 MenuCheck(shell.ActiveTab==ShellTab.Menu && shell.ActiveMenuDestination==destination,"Subpage resize preserved");
-                MenuCheck(shell.Q<Label>("SubpageTitle").text==ProductionMenuPage.Title(destination) && shell.Q<Label>("SubpageMessage").text=="Coming Soon","Placeholder content");
+                MenuCheck(shell.Q<Label>("SubpageTitle").text==ProductionMenuPage.Title(destination) && (destination==MenuDestination.Profile?shell.Q<ProductionProfilePage>()!=null:shell.Q<Label>("SubpageMessage").text=="Coming Soon"),"Placeholder content");
                 var back=shell.Q<Button>("ShellBack");MenuCheck(back.layout.width>=44 && back.layout.height>=44 && back.Q<Image>().vectorImage!=null,"Arrow Back touch");
                 Click(back);MenuCheck(!shell.HasSubpage && shell.ActiveTab==ShellTab.Menu,"Back Menu");
                 Resize(menuPreset);
@@ -74,7 +74,7 @@ namespace Domino.Editor
                         File.AppendAllText(MenuResult,"PRESET="+Sizes[menuPreset]+" CENTERING=PASS OVERFLOW=PASS REACHABILITY=PASS ROUTES=9/9_PASS\n");
                         if(++menuPreset<Sizes.Length){MenuMount();return;}
                         File.AppendAllText(MenuResult,"CHECKS="+menuChecks+"_PASS\nFAIL=0\n");index=1;Mount(false);shell.Select(ShellTab.Menu);
-                        File.AppendAllText(MenuResult,"FINAL=MENU_393x852\n");
+                        File.AppendAllText(MenuResult,"FINAL=MENU_393x852\n");StartProfileTests();
                     }catch(Exception e){MenuFail(e);}
                 }).ExecuteLater(250);
             }catch(Exception e){MenuFail(e);}

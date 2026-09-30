@@ -29,6 +29,8 @@ namespace Domino.Editor
         void Mount(bool test, bool preserveRoute = false)
         {
             var route = preserveRoute && shell != null ? shell.ActiveTab : ShellTab.Home;
+            var profileSource=preserveRoute && shell!=null?shell.ProfileDataSource:null;
+            var profileSection=preserveRoute && shell!=null?shell.ActiveProfileSection:ProfileSection.Profile;
             var destination=preserveRoute && shell!=null?shell.ActiveMenuDestination:null;
             bool detail = preserveRoute && shell != null && shell.HasSubpage;
             titleContent = new GUIContent("PRODUCTION APP SHELL"); minSize = new Vector2(440,700); Show();
@@ -40,9 +42,9 @@ namespace Domino.Editor
             frame.style.height = frame.style.minHeight = frame.style.maxHeight = Sizes[index].y; frame.style.flexShrink = 0;
             float scale = Mathf.Min(1, Mathf.Min(position.width / Sizes[index].x, (position.height - 28) / Sizes[index].y));
             frame.style.transformOrigin = new TransformOrigin(0,0,0); frame.style.scale = new Scale(new Vector3(scale,scale,1));
-            rootVisualElement.Add(frame); shell = new ProductionAppShell(); frame.Add(shell);
+            rootVisualElement.Add(frame); shell = new ProductionAppShell(profileSource); frame.Add(shell);
             shell.SetSafeArea(0,24,0,24);
-            shell.Select(route); if(detail) { if(destination.HasValue)shell.OpenMenuDestination(destination.Value);else shell.OpenDetail(); }
+            shell.Select(route); if(detail) { if(destination.HasValue)shell.OpenMenuDestination(destination.Value);else shell.OpenDetail(); if(destination==MenuDestination.Profile)shell.OpenProfileSection(profileSection); }
             if (test) rootVisualElement.schedule.Execute(Test).ExecuteLater(500);
         }
         void DiagnosticMount(){Mount(false);rootVisualElement.schedule.Execute(CaptureGeometry).ExecuteLater(700);}

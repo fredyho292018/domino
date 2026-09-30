@@ -35,14 +35,17 @@ namespace Domino.UI.AppShell
         public IReadOnlyList<ProductionRootPage> Pages => pages;
         public bool HasSubpage => detail != null;
         public MenuDestination? ActiveMenuDestination { get; private set; }
+        public ProfileSection ActiveProfileSection { get; private set; }
+        public IProfileDataSource ProfileDataSource { get; }
         readonly ProductionRootPage[] pages;
         readonly ThemeButton[] tabs = new ThemeButton[5];
         readonly Image[] icons = new Image[5];
         readonly Label[] labels = new Label[5];
         VisualElement detail;
 
-        public ProductionAppShell()
+        public ProductionAppShell(IProfileDataSource profileDataSource=null)
         {
+            ProfileDataSource=profileDataSource??new DemoProfileDataSource();
             name = "ProductionAppShell"; style.flexGrow = 1; style.minHeight = 0;
             style.backgroundColor = Theme.Colors.Background;
             PageHost.style.flexGrow = 1; PageHost.style.minHeight = 0;
@@ -82,7 +85,18 @@ namespace Domino.UI.AppShell
         }
 
         public void OpenDetail() => OpenSubpage("Shell Test Detail",null);
-        public void OpenMenuDestination(MenuDestination destination) => OpenSubpage(ProductionMenuPage.Title(destination),destination);
+        public void OpenMenuDestination(MenuDestination destination)
+        {
+            if(destination==MenuDestination.Profile){if(!HasSubpage && ActiveTab==ShellTab.Menu)OpenProfileSection(ProfileSection.Profile);return;}
+            OpenSubpage(ProductionMenuPage.Title(destination),destination);
+        }
+        public void OpenProfileSection(ProfileSection section)
+        {
+            if(ActiveTab!=ShellTab.Menu || (HasSubpage && ActiveMenuDestination!=MenuDestination.Profile))return;
+            CloseDetail();ActiveMenuDestination=MenuDestination.Profile;ActiveProfileSection=section;
+            pages[(int)ActiveTab].style.display=DisplayStyle.None;
+            detail=new ProductionProfilePage(ProfileDataSource,section,Back,OpenProfileSection);PageHost.Add(detail);
+        }
         void OpenSubpage(string pageTitle,MenuDestination? destination)
         {
             if (HasSubpage || ActiveTab != ShellTab.Menu) return;
@@ -99,7 +113,7 @@ namespace Domino.UI.AppShell
             PageHost.Add(detail);
         }
         void CloseDetail() { detail?.RemoveFromHierarchy(); detail = null; ActiveMenuDestination=null; }
-        public void Back() { if (!HasSubpage) return; CloseDetail(); pages[(int)ActiveTab].style.display = DisplayStyle.Flex; }
+        public void Back() { if (!HasSubpage) return; if(ActiveMenuDestination==MenuDestination.Profile && ActiveProfileSection!=ProfileSection.Profile){OpenProfileSection(ProfileSection.Profile);return;} CloseDetail(); pages[(int)ActiveTab].style.display = DisplayStyle.Flex; }
 
         // Insets are logical panel units; caller converts Screen.safeArea from pixels.
         public void SetSafeArea(float left, float top, float right, float bottom)
