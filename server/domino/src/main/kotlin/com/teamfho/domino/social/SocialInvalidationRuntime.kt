@@ -57,10 +57,15 @@ class SocialInvalidationPubSub(factory:RedisConnectionFactory,private val redis:
 class SocialInvalidationRuntime(private val database:()->Firestore?,private val factory:()->RedisConnectionFactory?,
     private val redis:()->StringRedisTemplate?,private val metrics:io.micrometer.core.instrument.MeterRegistry?=null):SmartLifecycle,SocialInvalidationSink,AutoCloseable {
     private val log=LoggerFactory.getLogger(javaClass)
-    private val worker=ThreadPoolExecutor(2,2,0,TimeUnit.MILLISECONDS,ArrayBlockingQueue(256),
+    private fun newWorker()=ThreadPoolExecutor(2,2,0,TimeUnit.MILLISECONDS,ArrayBlockingQueue(256),
         ThreadFactory {r->Thread(r,"social-authorization").also{it.isDaemon=true}},ThreadPoolExecutor.AbortPolicy())
-    val index=LocalSocialAuthorizationIndex(worker,metrics=metrics)
-    private val scheduler=Executors.newSingleThreadScheduledExecutor {r->Thread(r,"social-invalidation").also{it.isDaemon=true}}
+    @Volatile private var worker=newWorker()
+    // Keep the index identity stable while replacing its owned executor after a pause.
+    val index=LocalSocialAuthorizationIndex(Executor { worker.execute(it) },metrics=metrics)
+    private var scheduler:ScheduledExecutorService?=null
+    private var scheduled:ScheduledFuture<*>?=null
+    private val tickLock=Any()
+    @Volatile private var generation=0L
     private val pending=AtomicBoolean(true)
     private val reconcile=AtomicBoolean(true)
     private val listenerFailed=AtomicBoolean(false)
@@ -80,7 +85,19 @@ class SocialInvalidationRuntime(private val database:()->Firestore?,private val 
         if(events.isNotEmpty())metrics?.counter("social_invalidation_outbox_created")?.increment(events.size.toDouble())
         if(events.isNotEmpty())pending.set(true)
     }
-    override fun start() {if(!running){running=true;scheduler.scheduleWithFixedDelay(::tick,0,1,TimeUnit.SECONDS)}}
+    @Synchronized override fun start() {
+        if(running)return
+        check(scheduler==null || scheduler!!.isTerminated) { "Previous social scheduler has not terminated" }
+        if(worker.isShutdown) {
+            check(worker.isTerminated) { "Previous social worker has not terminated" }
+            worker=newWorker()
+        }
+        val next=Executors.newSingleThreadScheduledExecutor {r->Thread(r,"social-invalidation").also{it.isDaemon=true}}
+        scheduler=next
+        val cycle=++generation
+        running=true
+        scheduled=next.scheduleWithFixedDelay({synchronized(tickLock){if(running && cycle==generation)tick()}},0,1,TimeUnit.SECONDS)
+    }
     override fun isRunning()=running
     override fun isAutoStartup()=true
     private fun tick() {
@@ -143,8 +160,30 @@ class SocialInvalidationRuntime(private val database:()->Firestore?,private val 
             log.warn("[SOCIAL_INVALIDATION] publication unavailable; durable events retained")
         }
     }
-    override fun stop()=close()
-    override fun close(){running=false;scheduler.shutdownNow();listener?.remove();bus?.close();index.recoveryFailed();worker.shutdownNow()}
+    @Synchronized override fun stop() {
+        running=false
+        generation++
+        scheduled?.cancel(true)
+        scheduler?.shutdownNow()
+        // A cancelled tick must finish before its listener/bus state can be reused.
+        synchronized(tickLock) {
+            try { listener?.remove() } finally {
+                listener=null
+                try { bus?.close() } finally {
+                    bus=null;feed=null;cursor=null
+                    pending.set(true);reconcile.set(true);listenerFailed.set(false)
+                    nextDispatch=0;backoff=1;nextRecovery=0;nextSource=0;sourceBackoff=1
+                    try { index.recoveryFailed() } finally { worker.shutdownNow() }
+                }
+            }
+        }
+        try {
+            scheduler?.awaitTermination(5,TimeUnit.SECONDS)
+            worker.awaitTermination(5,TimeUnit.SECONDS)
+        } catch(_:InterruptedException) {Thread.currentThread().interrupt()}
+        if(scheduler?.isTerminated==true){scheduler=null;scheduled=null}
+    }
+    override fun close()=stop()
 }
 
 @Configuration(proxyBeanMethods=false)
