@@ -17,8 +17,9 @@ namespace Domino.Editor
         [InitializeOnLoadMethod] static void Register()
         {
             EditorApplication.update += () => {
-                if (!File.Exists("Library/UI02AResize.request") || EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode) return;
-                File.Delete("Library/UI02AResize.request"); var w = GetWindow<ProductionShellPreview>();
+                if(File.Exists("Library/HomeGeometry.request")&&!EditorApplication.isCompiling&&!EditorApplication.isUpdating&&!EditorApplication.isPlayingOrWillChangePlaymode){File.Delete("Library/HomeGeometry.request");var d=GetWindow<ProductionShellPreview>();d.index=0;File.WriteAllText("Library/HomeGeometry.result.txt","FOCUSED_CENTERING=YES\n");d.DiagnosticMount();return;}
+                if (!File.Exists("Library/UI02B1.request") || EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode) return;
+                File.Delete("Library/UI02B1.request"); var w = GetWindow<ProductionShellPreview>();
                 w.StartResizeTests();
             };
         }
@@ -42,6 +43,21 @@ namespace Domino.Editor
             shell.SetSafeArea(0,24,0,24);
             shell.Select(route); if(detail) shell.OpenDetail();
             if (test) rootVisualElement.schedule.Execute(Test).ExecuteLater(500);
+        }
+        void DiagnosticMount(){Mount(false);rootVisualElement.schedule.Execute(CaptureGeometry).ExecuteLater(700);}
+        static float LogicalX(VisualElement e,VisualElement root){float x=0;while(e!=root){x+=e.layout.x;e=e.parent;}return x;}
+        void CaptureGeometry()
+        {
+            var page=shell.Pages[0];var body=page.Body;float left=LogicalX(body,shell),safeLeft=shell.resolvedStyle.paddingLeft,safeWidth=shell.layout.width-safeLeft-shell.resolvedStyle.paddingRight;
+            float expectedWidth=Mathf.Min(safeWidth,ThemeProvider.Current.Sizing.ContentMaxWidth),expectedLeft=safeLeft+(safeWidth-expectedWidth)/2;
+            string text="PRESET="+Sizes[index]+" VIEWPORT="+shell.layout.size+" SAFE_LEFT="+safeLeft+" SAFE_RIGHT="+shell.resolvedStyle.paddingRight+" SAFE_WIDTH="+safeWidth+" EXPECTED_WIDTH="+expectedWidth+" EXPECTED_LEFT="+expectedLeft+" EXPECTED_CENTER="+(safeLeft+safeWidth/2)+" ACTUAL_LEFT="+left+" ACTUAL_RIGHT="+(left+body.layout.width)+" ACTUAL_CENTER="+(left+body.layout.width/2)+" DELTA="+(left+body.layout.width/2-safeLeft-safeWidth/2)+" LEFT_MARGIN="+(left-safeLeft)+" RIGHT_MARGIN="+(safeLeft+safeWidth-left-body.layout.width)+"\n";
+            foreach(var e in new VisualElement[]{shell,shell.PageHost,page,page.contentViewport,page.contentContainer,body}){
+                var r=e.resolvedStyle;
+                text+="ELEMENT="+(string.IsNullOrEmpty(e.name)?e.GetType().Name:e.name)+" LOGICAL_X="+LogicalX(e,shell)+" RECT="+e.layout+" position="+r.position+" left="+r.left+" right="+r.right+" minWidth="+r.minWidth+" maxWidth="+r.maxWidth+" margin="+r.marginLeft+","+r.marginRight+" padding="+r.paddingLeft+","+r.paddingRight+" alignSelf="+r.alignSelf+" alignItems="+r.alignItems+" justify="+r.justifyContent+" grow="+r.flexGrow+" shrink="+r.flexShrink+"\n";
+            }
+            File.AppendAllText("Library/HomeGeometry.result.txt",text);
+            if(Mathf.Abs(left+body.layout.width/2-safeLeft-safeWidth/2)>1 || body.layout.width>620.1f || left<safeLeft-.1f || left+body.layout.width>safeLeft+safeWidth+.1f){File.AppendAllText("Library/HomeGeometry.result.txt","FAIL=CENTER_OR_BOUNDS\n");return;}
+            if(++index<Sizes.Length)DiagnosticMount();else{File.AppendAllText("Library/HomeGeometry.result.txt","HOME_CENTERING=8/8_PASS\nCOMPLETE=YES\n");StartResizeTests();}
         }
         int resizeStep, resizeChecks;
         const string ResizeResult="Library/UI02AResize.result.txt";
@@ -115,8 +131,49 @@ namespace Domino.Editor
         {
             try {
                 var page=shell.Pages[0]; var body=page.Body;
+                Check(page is ProductionHomePage && shell.Pages.Count(p=>p is ProductionHomePage)==1,"Single production Home");
+                Check(ReferenceEquals(((ProductionHomePage)page).Theme,ThemeProvider.Current),"Home provider");
+                foreach(var name in new[]{"HomeGreeting","HomePlayCard","HomeCoachCard","HomeContinueLearning","HomeFriendsCard"})Check(page.Q(name)!=null,"Home section "+name);
+                Check(page.Q<Label>("HomeGreeting").text=="Hola, Alex.","Demo data greeting");
+                Check(page.Q("HomePlayCard").Q<Label>().text=="\u00bfJugamos?","UTF8 Play title");
+                Check(page.Q<Button>("HomePlay").text=="PLAY \u2192","UTF8 Play CTA");
+                Check(page.Q<Label>("HomeSubtitle").text=="Una buena partida empieza con una buena mesa.","UTF8 subtitle");
+                Check(page.Q("HomeCoachCard").Query<Label>().ToList().Any(x=>x.text=="Hola, soy Amara.\nTe ense\u00f1ar\u00e9 a jugar domin\u00f3."),"UTF8 coach greeting");
+                Check(page.Query<TextElement>().ToList().All(x=>x.text.IndexOfAny(new[]{'\u00c2','\u00c3','\u00e2','\ufffd'})<0),"UTF8 no mojibake");
+                var glyphFont=ThemeProvider.Current.Typography.FontFor(TextRole.Body);
+                const string glyphs="\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00bf\u00a1\u2192\u00b7";
+                glyphFont.RequestCharactersInTexture(glyphs,15,FontStyle.Normal);
+                foreach(char glyph in glyphs)Check(glyphFont.HasCharacter(glyph),"UTF8 glyph U+"+((int)glyph).ToString("X4"));
+                Check(page.Q("HomeCoachPortrait").Q<Image>().image!=null,"Amara asset");
+                Check(page.Q("BottomNavigation")==null,"Home has no toolbar");
+                Click(page.Q("HomePlay"));Check(page.Q("HomePlayNotice").style.display.value==DisplayStyle.Flex && shell.ActiveTab==ShellTab.Home,"Play local notice only");
+                page.Q("HomePlayNotice").style.display=DisplayStyle.None;
+                Click(page.Q("HomeContinueLearning"));Check(shell.ActiveTab==ShellTab.Learn,"Continue Learning route");
+                Click(shell.Q("TabHome"));Check(shell.ActiveTab==ShellTab.Home,"Home return");
+                foreach(HomeContentState state in Enum.GetValues(typeof(HomeContentState))) {
+                    if(state==HomeContentState.Content)continue;
+                    var statePage=new ProductionHomePage(new StateSource(state),()=>{});
+                    Check(statePage.ContentState==state && statePage.Q("HomeStatus")!=null && statePage.Q("HomePlay")==null,"Home state "+state);
+                }
+                rootVisualElement.schedule.Execute(HomeGeometryChecks).ExecuteLater(300);
+            } catch(Exception e) { Fail(e); }
+        }
+        void HomeGeometryChecks()
+        {
+            try {
+                var page=shell.Pages[0];var body=page.Body;
+                float naturalEnd=Mathf.Max(0,page.contentContainer.layout.height-page.contentViewport.layout.height);
+                foreach(var child in body.Children()) {
+                    Check(child.layout.x>=0 && child.layout.xMax<=body.layout.width+.1f,"Home horizontal bounds "+child.name);
+                    Check(child.layout.height<=page.contentViewport.layout.height && body.layout.y+child.layout.yMax<=naturalEnd+page.contentViewport.layout.height+1,"Home reachable "+child.name);
+                }
+                File.AppendAllText(Result,"HOME_SIZE="+Sizes[index]+" CONTENT="+page.contentContainer.layout.height+" VIEWPORT="+page.contentViewport.layout.height+" SCROLL_REQUIRED="+(naturalEnd>0)+"\n");
                 Check(body.layout.width<=620.1f && body.layout.width<=Sizes[index].x,"Content max width");
-                Check(Mathf.Abs(body.layout.center.x-body.parent.layout.width/2)<1,"Centered");
+                float safeLeft=shell.resolvedStyle.paddingLeft,safeWidth=shell.layout.width-safeLeft-shell.resolvedStyle.paddingRight;
+                float bodyLeft=LogicalX(body,shell),expectedCenter=safeLeft+safeWidth/2;
+                Check(Mathf.Abs(bodyLeft+body.layout.width/2-expectedCenter)<1,"Centered in safe area");
+                Check(Mathf.Abs((bodyLeft-safeLeft)-(safeLeft+safeWidth-bodyLeft-body.layout.width))<1,"Symmetric margins");
+                File.AppendAllText(Result,"CENTER="+Sizes[index]+" WIDTH="+body.layout.width+" LEFT="+bodyLeft+" DELTA="+(bodyLeft+body.layout.width/2-expectedCenter)+" PASS\n");
                 Check(shell.PageHost.layout.y>=24 && shell.BottomNavigation.layout.yMax<=Sizes[index].y-24+.1f,"Safe area");
                 Check(shell.PageHost.layout.yMax<=shell.BottomNavigation.layout.y+.1f,"No toolbar overlap");
                 Check(shell.BottomNavigation.layout.x>=0 && shell.BottomNavigation.layout.xMax<=Sizes[index].x,"No horizontal overflow");
@@ -137,6 +194,12 @@ namespace Domino.Editor
                 if(++index<Sizes.Length){Mount(true);return;}
                 File.AppendAllText(Result,"CHECKS="+checks+"_PASS\nFAIL=0\n");FinishDemonstration();
             } catch(Exception e) { Fail(e); }
+        }
+        sealed class StateSource : IHomeDataSource
+        {
+            readonly HomeContentState state;
+            public StateSource(HomeContentState state){this.state=state;}
+            public HomeSummary Read()=>new HomeSummary(state);
         }
         void Fail(Exception e) { File.AppendAllText(Result,"FAIL="+e.Message+"\n");Debug.LogException(e); }
     }

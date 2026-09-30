@@ -22,7 +22,6 @@ namespace Domino.UI.AppShell
             var detail = new Label(subtitle); ThemeStyles.Text(detail, TextRole.Secondary); Body.Add(detail);
         }
     }
-    public sealed class ProductionHomePage : ProductionRootPage { public ProductionHomePage() : base("CUBAN DOMINO CLUB", "Home") {} }
     public sealed class ProductionPuzzlesPage : ProductionRootPage { public ProductionPuzzlesPage() : base("Puzzles", "Coming Soon") {} }
     public sealed class ProductionLearnPage : ProductionRootPage { public ProductionLearnPage() : base("Learn", "Coming Soon") {} }
     public sealed class ProductionWatchPage : ProductionRootPage { public ProductionWatchPage() : base("Watch", "Coming Soon") {} }
@@ -60,7 +59,7 @@ namespace Domino.UI.AppShell
             BottomNavigation.style.height = BottomNavigation.style.minHeight = Theme.Sizing.BottomTabTouchHeight;
             BottomNavigation.style.flexShrink = 0; BottomNavigation.style.backgroundColor = Theme.Colors.Surface;
             Add(BottomNavigation);
-            pages = new ProductionRootPage[] { new ProductionHomePage(), new ProductionPuzzlesPage(), new ProductionLearnPage(), new ProductionWatchPage(), new ProductionMenuPage(OpenDetail) };
+            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(), new ProductionLearnPage(), new ProductionWatchPage(), new ProductionMenuPage(OpenDetail) };
             for (int i = 0; i < 5; i++)
             {
                 int target = i; PageHost.Add(pages[i]);
