@@ -1,0 +1,874 @@
+{
+  "en": {
+    "schemaVersion": 1,
+    "hierarchy": [
+      "FREE",
+      "GOLD",
+      "PLATINUM",
+      "DIAMOND"
+    ],
+    "entitlementPolicyVersion": 1,
+    "trialPolicyVersion": 1,
+    "supportedLocales": [
+      "en",
+      "es"
+    ],
+    "trialPresentation": {
+      "familyTrialEnabled": false,
+      "policyVersion": 1,
+      "commercialTrialEnabled": false,
+      "product": "PREMIUM_LEGACY"
+    },
+    "catalogVersion": 1,
+    "resolvedLocale": "en",
+    "familyPresentation": {
+      "effectivePlanKey": "DIAMOND",
+      "limitsPerPlayer": true,
+      "maxPlayers": 5,
+      "minPlayers": 2,
+      "ownerIncluded": true
+    },
+    "priceAuthority": "APPLE_GOOGLE_STORE",
+    "features": [
+      {
+        "iconKey": "icon_premium_review",
+        "sortOrder": 0,
+        "name": "Game Review",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "GAME_REVIEW",
+        "description": "Analysis and coaching, separate from match replay."
+      },
+      {
+        "iconKey": "icon_premium_move",
+        "sortOrder": 10,
+        "name": "Move Explanations",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "MOVE_EXPLANATIONS",
+        "description": "Explanations of moves."
+      },
+      {
+        "iconKey": "icon_menu_stats",
+        "sortOrder": 20,
+        "name": "Advanced Stats",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "ADVANCED_STATS",
+        "description": "Advanced game statistics."
+      },
+      {
+        "iconKey": "icon_nav_puzzles",
+        "sortOrder": 30,
+        "name": "Puzzles",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "PUZZLES",
+        "description": "Domino training exercises."
+      },
+      {
+        "iconKey": "icon_nav_learn",
+        "sortOrder": 40,
+        "name": "Lessons",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "LESSONS",
+        "description": "Learning content."
+      },
+      {
+        "iconKey": "icon_menu_coach",
+        "sortOrder": 50,
+        "name": "Coach Games",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "COACH_GAMES",
+        "description": "Practice games with a coach."
+      },
+      {
+        "iconKey": "icon_premium_robot",
+        "sortOrder": 60,
+        "name": "Bots",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "BOTS",
+        "description": "Games against bots."
+      },
+      {
+        "iconKey": "icon_premium_noads",
+        "sortOrder": 70,
+        "name": "No Ads",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "NO_ADS",
+        "description": "Ad-free presentation."
+      }
+    ],
+    "defaultLocale": "en",
+    "plans": [
+      {
+        "billingProducts": [],
+        "features": [
+          {
+            "included": false,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": false,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": false,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": false,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": false,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": false,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 50,
+        "key": "FREE",
+        "productKind": "INDIVIDUAL",
+        "name": "Free",
+        "description": "Base access to the club.",
+        "iconKey": "icon_menu_membership"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": false,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 30,
+        "key": "GOLD",
+        "productKind": "INDIVIDUAL",
+        "name": "Gold",
+        "description": "Training and social benefits.",
+        "iconKey": "icon_premium_star"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 20,
+        "key": "PLATINUM",
+        "productKind": "INDIVIDUAL",
+        "name": "Platinum",
+        "description": "Gold benefits plus game review.",
+        "iconKey": "icon_premium_crown"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": true,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": true,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 10,
+        "key": "DIAMOND",
+        "productKind": "INDIVIDUAL",
+        "name": "Diamond",
+        "description": "Platinum benefits plus move explanations and advanced statistics.",
+        "iconKey": "icon_menu_membership"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": true,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": true,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 40,
+        "key": "FRIENDS_AND_FAMILY",
+        "productKind": "MULTI_PLAYER",
+        "name": "Friends & Family",
+        "description": "2–5 players, including the owner, with Diamond-equivalent benefits.",
+        "iconKey": "icon_premium_family"
+      }
+    ]
+  },
+  "es": {
+    "schemaVersion": 1,
+    "hierarchy": [
+      "FREE",
+      "GOLD",
+      "PLATINUM",
+      "DIAMOND"
+    ],
+    "entitlementPolicyVersion": 1,
+    "trialPolicyVersion": 1,
+    "supportedLocales": [
+      "en",
+      "es"
+    ],
+    "trialPresentation": {
+      "familyTrialEnabled": false,
+      "policyVersion": 1,
+      "commercialTrialEnabled": false,
+      "product": "PREMIUM_LEGACY"
+    },
+    "catalogVersion": 1,
+    "resolvedLocale": "es",
+    "familyPresentation": {
+      "effectivePlanKey": "DIAMOND",
+      "limitsPerPlayer": true,
+      "maxPlayers": 5,
+      "minPlayers": 2,
+      "ownerIncluded": true
+    },
+    "priceAuthority": "APPLE_GOOGLE_STORE",
+    "features": [
+      {
+        "iconKey": "icon_premium_review",
+        "sortOrder": 0,
+        "name": "Análisis de partidas",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "GAME_REVIEW",
+        "description": "Análisis y entrenamiento, independientes de la repetición de partidas."
+      },
+      {
+        "iconKey": "icon_premium_move",
+        "sortOrder": 10,
+        "name": "Explicaciones de jugadas",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "MOVE_EXPLANATIONS",
+        "description": "Explicaciones de las jugadas."
+      },
+      {
+        "iconKey": "icon_menu_stats",
+        "sortOrder": 20,
+        "name": "Estadísticas avanzadas",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "ADVANCED_STATS",
+        "description": "Estadísticas avanzadas de juego."
+      },
+      {
+        "iconKey": "icon_nav_puzzles",
+        "sortOrder": 30,
+        "name": "Ejercicios",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "PUZZLES",
+        "description": "Ejercicios de dominó."
+      },
+      {
+        "iconKey": "icon_nav_learn",
+        "sortOrder": 40,
+        "name": "Lecciones",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "LESSONS",
+        "description": "Contenido de aprendizaje."
+      },
+      {
+        "iconKey": "icon_menu_coach",
+        "sortOrder": 50,
+        "name": "Partidas con entrenador",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "COACH_GAMES",
+        "description": "Partidas de práctica con entrenador."
+      },
+      {
+        "iconKey": "icon_premium_robot",
+        "sortOrder": 60,
+        "name": "Bots",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "BOTS",
+        "description": "Partidas contra bots."
+      },
+      {
+        "iconKey": "icon_premium_noads",
+        "sortOrder": 70,
+        "name": "Sin anuncios",
+        "kind": "BOOLEAN_CAPABILITY",
+        "key": "NO_ADS",
+        "description": "Presentación sin anuncios."
+      }
+    ],
+    "defaultLocale": "en",
+    "plans": [
+      {
+        "billingProducts": [],
+        "features": [
+          {
+            "included": false,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": false,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": false,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": false,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": false,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": false,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 50,
+        "key": "FREE",
+        "productKind": "INDIVIDUAL",
+        "name": "Gratis",
+        "description": "Acceso básico al club.",
+        "iconKey": "icon_menu_membership"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "GOLD",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": false,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 30,
+        "key": "GOLD",
+        "productKind": "INDIVIDUAL",
+        "name": "Gold",
+        "description": "Beneficios de entrenamiento y sociales.",
+        "iconKey": "icon_premium_star"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "PLATINUM",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": false,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": false,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 20,
+        "key": "PLATINUM",
+        "productKind": "INDIVIDUAL",
+        "name": "Platinum",
+        "description": "Beneficios Gold y análisis de partidas.",
+        "iconKey": "icon_premium_crown"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "DIAMOND",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": true,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": true,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 10,
+        "key": "DIAMOND",
+        "productKind": "INDIVIDUAL",
+        "name": "Diamond",
+        "description": "Beneficios Platinum, explicaciones de jugadas y estadísticas avanzadas.",
+        "iconKey": "icon_menu_membership"
+      },
+      {
+        "billingProducts": [
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "MONTHLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "GOOGLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "APPLE"
+          },
+          {
+            "active": false,
+            "billingPeriod": "YEARLY",
+            "purchasable": false,
+            "planKey": "FRIENDS_AND_FAMILY",
+            "platform": "GOOGLE"
+          }
+        ],
+        "features": [
+          {
+            "included": true,
+            "featureKey": "GAME_REVIEW"
+          },
+          {
+            "included": true,
+            "featureKey": "MOVE_EXPLANATIONS"
+          },
+          {
+            "included": true,
+            "featureKey": "ADVANCED_STATS"
+          },
+          {
+            "included": true,
+            "featureKey": "PUZZLES"
+          },
+          {
+            "included": true,
+            "featureKey": "LESSONS"
+          },
+          {
+            "included": true,
+            "featureKey": "COACH_GAMES"
+          },
+          {
+            "included": true,
+            "featureKey": "BOTS"
+          },
+          {
+            "included": true,
+            "featureKey": "NO_ADS"
+          }
+        ],
+        "active": true,
+        "sortOrder": 40,
+        "key": "FRIENDS_AND_FAMILY",
+        "productKind": "MULTI_PLAYER",
+        "name": "Amigos y familia",
+        "description": "De 2 a 5 jugadores, incluido el titular, con beneficios equivalentes a Diamond.",
+        "iconKey": "icon_premium_family"
+      }
+    ]
+  }
+}

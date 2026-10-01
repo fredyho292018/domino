@@ -1,0 +1,85 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Domino.Infrastructure.Api;
+using Domino.UI.AppShell;
+using Domino.UI.Theming;
+using Newtonsoft.Json.Linq;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
+namespace Domino.Editor {
+ public sealed partial class ProductionOnboardingPreview {
+  bool membershipTesting,membershipCleanup,membershipTabs,membershipFeatures;int membershipChecks;
+  static MembershipCatalogDto MembershipFixture(string locale)=>JObject.Parse(File.ReadAllText(Path.GetFullPath(Path.Combine(Application.dataPath,"../../Validation/MembershipCatalogFixture.json"))))[locale].ToObject<MembershipCatalogDto>();
+  sealed partial class Fixture {
+   EntitlementSummaryDto access=new EntitlementSummaryDto{availability="AVAILABLE",snapshot=new EffectiveEntitlementsDto{plan="FREE",trialConsumed=false,trialActive=false}};
+   public TrialEligibilityDto TrialEligibility=>new TrialEligibilityDto{eligible=state.Contains("TRIAL_")||state=="MEMBERSHIP_CLIENT_UPDATE_REQUIRED",state="ELIGIBLE",activationMode="EXPLICIT",policyVersion=1,periodDays=7}; // Test policy, never a production default.
+   public EntitlementSummaryDto CurrentEntitlements=>access;
+   public bool? futureFeatureIncluded;
+   public Task<MembershipCatalogDto> LoadMembershipAsync(string locale,int? version,CancellationToken token){var c=MembershipFixture(locale);if(futureFeatureIncluded.HasValue){c.features=c.features.Concat(new[]{new MembershipFeatureDto{key="FUTURE_FEATURE",name="Future feature",iconKey="icon_menu_stats",sortOrder=15}}).ToArray();foreach(var p in c.plans)p.features=p.features.Concat(new[]{new MembershipPlanFeatureDto{featureKey="FUTURE_FEATURE",included=futureFeatureIncluded.Value}}).ToArray();}return Task.FromResult(c);}
+   sealed class MembershipOperation {public bool back;public string id=Guid.NewGuid().ToString("D");}
+   public object PrepareMembershipSkip()=>new MembershipOperation();public object PrepareMembershipBack()=>new MembershipOperation{back=true};
+   public Task<OnboardingStateDto> ExecuteMembershipAsync(object operation,CancellationToken token){var op=(MembershipOperation)operation;current.revision+=3;if(op.back)current.currentStepKey="CONTACTS_STEP";else current.skippedStepKeys=(current.skippedStepKeys??Array.Empty<string>()).Concat(new[]{"MEMBERSHIP_STEP"}).Distinct().ToArray();return Task.FromResult(current);}
+   public object PrepareTrial(long version)=>new MembershipOperation();
+   public async Task<TrialActivationResponseDto> ExecuteTrialAsync(object operation,CancellationToken token){
+    if(state=="MEMBERSHIP_TRIAL_LOADING")await Task.Delay(Timeout.Infinite,token);
+    string error=state=="MEMBERSHIP_TRIAL_NOT_ELIGIBLE"?"TRIAL_NOT_ELIGIBLE":state=="MEMBERSHIP_TRIAL_CONSUMED"?"TRIAL_ALREADY_CONSUMED":state=="MEMBERSHIP_TRIAL_POLICY_CHANGED"?"TRIAL_POLICY_VERSION_MISMATCH":state=="MEMBERSHIP_CLIENT_UPDATE_REQUIRED"?"CLIENT_UPDATE_REQUIRED":state=="MEMBERSHIP_TRIAL_DISABLED"?"TRIAL_DISABLED":state=="MEMBERSHIP_TRIAL_IDEMPOTENCY_CONFLICT"?"IDEMPOTENCY_CONFLICT":state=="MEMBERSHIP_TRIAL_DEPENDENCY_UNAVAILABLE"?"DEPENDENCY_UNAVAILABLE":null;
+    if(error!=null)throw new DominoApiException(ApiFailure.Server,409,error);
+    if(state=="MEMBERSHIP_TRIAL_NETWORK_ERROR"&&!failed){failed=true;throw new DominoApiException(ApiFailure.Transport);}
+    access=new EntitlementSummaryDto{availability="AVAILABLE",snapshot=new EffectiveEntitlementsDto{plan="PREMIUM_TRIAL",trialActive=true,trialConsumed=true,trialEndsAt="2030-01-08T00:00:00Z",revision=8}};
+    return new TrialActivationResponseDto{operationId=((MembershipOperation)operation).id,outcome=state=="MEMBERSHIP_TRIAL_ALREADY_ACTIVE"?"ALREADY_ACTIVE":"ACTIVATED",entitlements=access};
+   }
+  }
+  async Task LoadMembershipFixture(){if(!States[selected].StartsWith("MEMBERSHIP_"))return;string state=States[selected];string plan=state=="MEMBERSHIP_FREE"?"FREE":state=="MEMBERSHIP_GOLD"?"GOLD":state=="MEMBERSHIP_PLATINUM"?"PLATINUM":state=="MEMBERSHIP_FAMILY"?"FRIENDS_AND_FAMILY":"DIAMOND";controller.SelectMembershipPlan(plan);if(state.Contains("TRIAL_")&&state!="MEMBERSHIP_TRIAL_ELIGIBLE"||state=="MEMBERSHIP_CLIENT_UPDATE_REQUIRED")await controller.ActivateMembershipTrialAsync();}
+  [InitializeOnLoadMethod]static void MembershipRequests(){EditorApplication.update+=()=>{if(EditorApplication.isCompiling||EditorApplication.isUpdating||EditorApplication.isPlayingOrWillChangePlaymode||!File.Exists("Library/Onboarding02F.request"))return;string mode;try{mode=File.ReadAllText("Library/Onboarding02F.request").Trim();File.Delete("Library/Onboarding02F.request");}catch(IOException){return;}var w=GetWindow<ProductionOnboardingPreview>();w.membershipTesting=true;w.contactsTesting=w.coachTesting=w.experienceTesting=w.copyTesting=w.basicTesting=w.keyboardTesting=w.validating=false;w.membershipChecks=0;w.membershipFeatures=mode=="features";w.membershipTabs=mode=="tabs";w.membershipCleanup=mode=="cleanup"||w.membershipTabs||w.membershipFeatures;w.version=mode=="cta-v2"||w.membershipCleanup?2:1;w.size=w.membershipTabs?1:0;w.selected=w.membershipCleanup?43:42;w.locale="en";File.WriteAllText("Library/Onboarding02F.validation.txt","START="+DateTime.UtcNow.ToString("O")+"\n");w.Mount();};}
+  async Task MembershipInteractions(){
+   controller.SelectMembershipPlan("DIAMOND");view.scrollOffset=new Vector2(0,240);await Task.Delay(80);float before=view.scrollOffset.y;controller.SelectMembershipPeriod("YEARLY");await Task.Delay(80);MembershipNeed(Mathf.Abs(view.scrollOffset.y-before)<1,"PERIOD_SCROLL_PRESERVED");
+   var revision=controller.State.revision;var versionBefore=controller.State.catalogVersion;await controller.ChangeMembershipLocaleAsync("en");await Task.Delay(80);MembershipNeed(controller.SelectedMembershipPlan=="DIAMOND"&&controller.MembershipBillingPeriod=="YEARLY"&&controller.State.revision==revision&&controller.State.catalogVersion==versionBefore,"LOCALE_SELECTION_REVISION");MembershipNeed(Mathf.Abs(view.scrollOffset.y-before)<1,"LOCALE_SCROLL_PRESERVED");
+   foreach(var button in view.Q<ProductionMembershipView>().Query<Button>().ToList())if(button.enabledInHierarchy){MembershipNeed(button.focusable&&button.tabIndex>=0,"KEYBOARD_FOCUSABLE");}
+  }
+  [InitializeOnLoadMethod]static void MembershipPreviewRequest(){EditorApplication.update+=()=>{
+   if(EditorApplication.isCompiling||EditorApplication.isUpdating||EditorApplication.isPlayingOrWillChangePlaymode||!File.Exists("Library/Onboarding02F.preview"))return;
+   try{File.Delete("Library/Onboarding02F.preview");}catch(IOException){return;}var w=GetWindow<ProductionOnboardingPreview>();w.membershipTesting=w.contactsTesting=w.coachTesting=w.experienceTesting=w.copyTesting=w.basicTesting=w.keyboardTesting=w.validating=false;w.version=2;w.selected=47;w.size=1;w.locale="en";w.Mount();w.rootVisualElement.schedule.Execute(()=>w.view?.ScrollTo(w.view.Q<Button>("MembershipNotNow"))).StartingIn(800);
+  };}
+  async Task ValidateDynamicFeatures(){
+   foreach(bool included in new[]{false,true}){
+    var fixture=new Fixture("MEMBERSHIP_GOLD",2){futureFeatureIncluded=included};using var owner=new OnboardingShellController(fixture);await owner.LoadAsync("en");owner.SelectMembershipPlan("GOLD");
+    var rendered=new ProductionMembershipView(owner);var rows=rendered.Q("MembershipFeatures").Children().ToArray();
+    MembershipNeed((rendered.Q("Feature_FUTURE_FEATURE")!=null)==included,"DYNAMIC_INCLUDED_FILTER_"+included);
+    var plan=owner.Membership.plans.Single(p=>p.key=="GOLD");var expected=owner.Membership.features.Where(f=>plan.features.Any(r=>r.featureKey==f.key&&r.included)).OrderBy(f=>f.sortOrder).ThenBy(f=>f.key,StringComparer.Ordinal);
+    MembershipNeed(rows.Select(r=>r.name).SequenceEqual(expected.Select(f=>"Feature_"+f.key)),"DYNAMIC_SERVER_ORDER");
+    if(included)MembershipNeed(rendered.Q("Feature_FUTURE_FEATURE").Q<Image>().tintColor==ThemeProvider.Current.Colors.IconInactive,"DYNAMIC_NEUTRAL_COLOR");
+   }
+  }
+  void MembershipNeed(bool condition,string label){if(!condition)throw new InvalidOperationException(label);membershipChecks++;}
+  async void ValidateMembershipVisual(){try{
+   var form=view.Q<ProductionMembershipView>();MembershipNeed(form!=null,"FORM");MembershipNeed(view.Body.layout.width<=620.1f&&Mathf.Abs(view.Body.worldBound.center.x-view.worldBound.center.x)<1,"CENTER");MembershipNeed(view.Body.resolvedStyle.paddingTop==48&&view.Body.resolvedStyle.paddingBottom==48,"SAFE_AREA");
+   MembershipNeed(!controller.CurrentStep.required&&controller.CurrentStep.skippable,"OPTIONAL");MembershipNeed(controller.State.revision==7&&controller.State.catalogVersion==version,"REVISION_VERSION");
+   var plans=form.Query<Button>().ToList().Where(b=>b.name.StartsWith("Plan_")).ToArray();MembershipNeed(plans.Length==4,"COMMERCIAL_PLANS");MembershipNeed(plans.Count(b=>b.userData is bool chosen&&chosen)==(controller.SelectedMembershipPlan=="FREE"?0:1),"SELECTED_NOT_COLOR_ONLY");
+   var commercial=form.Q("CommercialPlans").Query<Button>().ToList();MembershipNeed(commercial.Count==4,"FOUR_COMMERCIAL_TABS");MembershipNeed(commercial.All(b=>Mathf.Abs(b.worldBound.y-commercial[0].worldBound.y)<1),"HORIZONTAL_TABS");foreach(var tab in commercial){MembershipNeed(tab.Q<Image>()?.vectorImage!=null,"TAB_ICON");MembershipNeed(tab.Q<Label>("PlanLabel")!=null,"TAB_LABEL");MembershipNeed(tab.resolvedStyle.borderBottomWidth==3,"UNDERLINE_RESERVED");if(tab.userData is bool chosen&&chosen)MembershipNeed(tab.resolvedStyle.borderBottomColor.a>0,"SELECTED_UNDERLINE");}MembershipNeed(form.Q<Button>("Plan_FREE")==null&&controller.Membership.plans.Any(p=>p.key=="FREE"),"FREE_UI_REMOVED_DOMAIN_RETAINED");
+   var gap=form.WorldToLocal(form.Q("CommercialPlans").worldBound.min).y-form.WorldToLocal(form.Q<Label>("MembershipOptional").worldBound.max).y;MembershipNeed(Mathf.Abs(gap-ThemeProvider.Current.Spacing.MD)<.1f,"HEADER_TABS_MARGIN_TOKEN");foreach(var tab in commercial){var before=tab.layout;tab.Focus();await Task.Delay(30);MembershipNeed(tab.resolvedStyle.backgroundColor.a==0,"FOCUSED_TAB_TRANSPARENT");MembershipNeed(tab.resolvedStyle.borderTopWidth==0,"NO_EXTRA_FOCUS_TOP_LINE");MembershipNeed(tab.layout==before,"FOCUS_GEOMETRY_UNCHANGED");tab.Blur();MembershipNeed(tab.resolvedStyle.backgroundColor.a==0,"UNFOCUSED_TAB_TRANSPARENT");}MembershipNeed(commercial.Count(t=>t.resolvedStyle.borderBottomColor.a>0)==(controller.SelectedMembershipPlan=="FREE"?0:1),"SINGLE_SELECTED_UNDERLINE");MembershipNeed(form.Q("CommercialPlans").resolvedStyle.marginBottom==ThemeProvider.Current.Spacing.XL,"TAB_PANEL_SPACING_TOKEN");MembershipNeed(form.WorldToLocal(form.Q("MembershipFeatures").worldBound.min).y-form.WorldToLocal(form.Q("CommercialPlans").worldBound.max).y>=ThemeProvider.Current.Spacing.XL-1,"TAB_PANEL_GAP");MembershipNeed(form.Q("MembershipFeatures").resolvedStyle.borderTopWidth==0,"NO_CONTENT_TOP_LINE");
+   foreach(var row in form.Q("MembershipFeatures").Children())MembershipNeed(row.layout.height>=40&&row.layout.height<=60,"COMPACT_FEATURE_ROW");var billing=form.Q("MembershipBilling");if(billing!=null){MembershipNeed(billing.layout.height==52,"BILLING_HEIGHT");MembershipNeed(billing.Children().First().name=="Billing_YEARLY","YEARLY_FIRST");}
+   var currentPlan=controller.Membership.plans.Single(p=>p.key==controller.SelectedMembershipPlan);
+   var expected=controller.Membership.features.Where(f=>currentPlan.features.Any(r=>r.featureKey==f.key&&r.included)).OrderBy(f=>f.sortOrder).ThenBy(f=>f.key,StringComparer.Ordinal).ToArray();
+   var featurePanel=form.Q("MembershipFeatures");var rendered=featurePanel.Children().ToArray();
+   MembershipNeed(rendered.Select(r=>r.name).SequenceEqual(expected.Select(f=>"Feature_"+f.key)),"INCLUDED_ONLY_SERVER_ORDER");
+   var colorKeys=new[]{"GAME_REVIEW","MOVE_EXPLANATIONS","ADVANCED_STATS","PUZZLES","LESSONS","COACH_GAMES","BOTS","NO_ADS"};
+   var approvedColors=new[]{"71A84B","56BDB5","64A5DB","D99B5B","63B4CF","71A84B","A6B9CB","CA8080"};
+   for(int i=0;i<colorKeys.Length;i++)MembershipNeed(ProductionMembershipView.FeatureIconColor(colorKeys[i])==Domino.UI.UiKit.Hex(approvedColors[i]),"MOCK_COLOR_"+colorKeys[i]);
+   MembershipNeed(ProductionMembershipView.FeatureIconColor("FUTURE_FEATURE")==ThemeProvider.Current.Colors.IconInactive,"NEUTRAL_FALLBACK");
+   for(int i=0;i<rendered.Length;i++){MembershipNeed(rendered[i].Q<Label>("FeatureName").text==expected[i].name,"LOCALIZED_FEATURE");MembershipNeed(rendered[i].Q<Image>().tintColor==ProductionMembershipView.FeatureIconColor(expected[i].key),"RENDERED_ICON_COLOR");}
+   MembershipNeed(rendered.Length==0||rendered.Any(r=>r.Q<Image>().tintColor!=ThemeProvider.Current.Colors.Primary),"NOT_ALL_GREEN");
+   MembershipNeed(Mathf.Abs(featurePanel.layout.height-(rendered.Sum(r=>r.layout.height)+featurePanel.resolvedStyle.paddingTop+featurePanel.resolvedStyle.paddingBottom))<1,"CONTENT_DRIVEN_HEIGHT");
+   foreach(var label in form.Query<Label>("FeatureInclusion").ToList())MembershipNeed(label.text=="✓","INCLUDED_STATUS_ONLY");
+   foreach(var label in form.Query<Label>().ToList().Concat(new[]{view.Q<Label>("OnboardingTitle")})){if(label.resolvedStyle.display==DisplayStyle.None||label.layout.width<=0)continue;MembershipNeed(label.worldBound.xMin>=view.worldBound.xMin-.5f&&label.worldBound.xMax<=view.worldBound.xMax+.5f,"TEXT_OVERFLOW");MembershipNeed(label.layout.height>=label.MeasureTextSize(label.text,label.layout.width,VisualElement.MeasureMode.Exactly,0,VisualElement.MeasureMode.Undefined).y-1,"TEXT_CLIP");}
+   foreach(var button in form.Query<Button>().ToList().Concat(new[]{view.Q<Button>("MembershipBack")})){MembershipNeed(button.layout.height>=44,"TOUCH");MembershipNeed(button.worldBound.xMin>=view.worldBound.xMin-.5f&&button.worldBound.xMax<=view.worldBound.xMax+.5f,"BUTTON_OVERFLOW");view.scrollOffset=new Vector2(0,view.contentContainer.WorldToLocal(button.worldBound.min).y);await Task.Delay(60);MembershipNeed(button.worldBound.yMin>=view.contentViewport.worldBound.yMin-1&&button.worldBound.yMax<=view.contentViewport.worldBound.yMax+1,"ACTION_REACHABLE "+button.name+" "+button.worldBound+" viewport="+view.contentViewport.worldBound+" offset="+view.scrollOffset);}
+   var cta=form.Q<ThemeButton>("MembershipTrialAction");var skip=form.Q<Button>("MembershipNotNow");MembershipNeed(cta!=null&&skip!=null,"PRIMARY_AND_SKIP_PRESENT");MembershipNeed(cta.parent==form&&skip.parent==form&&cta.worldBound.yMax<=skip.worldBound.yMin,"CTA_BEFORE_NOT_NOW_NO_OVERLAP");MembershipNeed(Mathf.Abs(cta.layout.width-form.layout.width)<5,"CTA_FULL_WIDTH");MembershipNeed(cta.resolvedStyle.backgroundColor==cta.Theme.Colors.Primary,"CTA_THEME_PRIMARY");MembershipNeed(!cta.text.Contains("$"),"NO_FAKE_ZERO_PRICE");MembershipNeed(cta.enabledSelf==(controller.CanActivateTrial&&controller.MembershipEntitlements?.snapshot?.trialActive!=true),"AUTHORITATIVE_CTA_ENABLEMENT");if(States[selected]=="MEMBERSHIP_TRIAL_ELIGIBLE")MembershipNeed(cta.text.Contains(controller.MembershipTrialEligibility.periodDays.ToString()),"POLICY_DURATION_COPY");if(controller.MembershipEntitlements?.snapshot?.trialActive==true)MembershipNeed(!cta.enabledSelf&&!cta.text.Contains("Start")&&!cta.text.Contains("Iniciar"),"ACTIVE_NOT_START");if(controller.TrialFeedback=="LOADING")MembershipNeed(!cta.enabledSelf&&cta.text==(locale=="es"?"Activando prueba…":"Activating trial…"),"SAME_CTA_LOADING");
+   MembershipNeed(form.Q<Button>("Purchase")==null,"NO_PURCHASE");if(controller.MembershipIsFamily)MembershipNeed(form.Q("MembershipTrial")==null&&form.Q("MembershipFamilyMeta")!=null,"FAMILY_NO_TRIAL");
+   if(States[selected]=="MEMBERSHIP_TRIAL_LOADING")MembershipNeed(controller.Busy&&!controller.CanActivateTrial,"TRIAL_BUSY");if(States[selected]=="MEMBERSHIP_TRIAL_NETWORK_ERROR")MembershipNeed(controller.TrialRetry,"TRIAL_RETRY");if(States[selected]=="MEMBERSHIP_TRIAL_SUCCESS"||States[selected]=="MEMBERSHIP_TRIAL_ALREADY_ACTIVE")MembershipNeed(controller.MembershipEntitlements.snapshot.trialActive,"AUTHORITATIVE_ACCESS");
+   File.AppendAllText("Library/Onboarding02F.validation.txt",$"v{version} {locale} {States[selected]} {Sizes[size]} PASS\n");selected++;if(selected==(membershipTabs||membershipFeatures?47:membershipCleanup?48:States.Length)){selected=membershipCleanup?43:42;size++;}if(size==(membershipTabs?2:Sizes.Length)){size=membershipTabs?1:0;if(locale=="en")locale="es";else{locale="en";version++;}}if(version>2){if(membershipFeatures)await ValidateDynamicFeatures();await MembershipInteractions();membershipTesting=false;File.AppendAllText("Library/Onboarding02F.validation.txt","CHECKS="+membershipChecks+"_PASS\nFAIL=0\n");version=2;size=1;selected=47;locale="en";}Mount();if(!membershipTesting)rootVisualElement.schedule.Execute(()=>{if(membershipTabs||membershipFeatures)view.scrollOffset=Vector2.zero;else view?.ScrollTo(view.Q<Button>("MembershipNotNow"));}).StartingIn(800);
+  }catch(Exception e){membershipTesting=false;File.AppendAllText("Library/Onboarding02F.validation.txt","FAIL="+e.Message+"\n");}}
+ }
+}

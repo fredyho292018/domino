@@ -12,6 +12,7 @@ namespace Domino.UI.Theming
         public readonly Color Primary=UiKit.Hex("71A84B"), Background=UiKit.Hex("2A2623"), Surface=UiKit.Hex("41403C");
         public readonly Color TextPrimary=UiKit.Hex("FBFAFA"), TextSecondary=UiKit.Hex("969495"), IconActive=UiKit.Hex("FBFAFA"), IconInactive=UiKit.Hex("969495");
         public readonly Color Success=UiKit.Hex("71A84B"), Error=UiKit.Hex("E89898"), Warning=UiKit.Hex("E5BE67"), Info=UiKit.Hex("69B9E8");
+        public Color TextSecondaryEmphasized=>Color.Lerp(TextSecondary,TextPrimary,.2f);
         public Color Selected=>Primary; public Color Disabled=>TextSecondary;
         public readonly Color Win=UiKit.Hex("B8DEA5"), Loss=UiKit.Hex("E8B0B0");
         public Color DiamondAccent=>Info; public readonly Color PlatinumAccent=UiKit.Hex("C9CDD5");

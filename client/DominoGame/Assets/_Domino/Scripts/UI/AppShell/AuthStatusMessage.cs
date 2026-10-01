@@ -25,6 +25,8 @@ namespace Domino.UI.AppShell
             animation=schedule.Execute(()=>{angle=(angle+24)%360;Icon.style.rotate=new Rotate(new Angle(angle,AngleUnit.Degree));}).Every(80);animation.Pause();Hide();
         }
         public void Hide(){style.display=DisplayStyle.None;Title.text=Message.text=tooltip="";animation.Pause();}
+        // Caller supplies curated presentation copy, never raw exception text or identity data.
+        public void PresentSemantic(AuthStatusVariant variant,string safeMessage){Show(variant,"",safeMessage);}
         void Show(AuthStatusVariant variant,string title,string message)
         {
             Variant=variant;style.display=DisplayStyle.Flex;Title.text=title;Title.style.display=string.IsNullOrEmpty(title)?DisplayStyle.None:DisplayStyle.Flex;Message.text=message;Message.style.display=string.IsNullOrEmpty(message)?DisplayStyle.None:DisplayStyle.Flex;tooltip=(title+" "+message).Trim();
