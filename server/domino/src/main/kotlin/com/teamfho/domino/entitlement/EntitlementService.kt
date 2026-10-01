@@ -6,7 +6,6 @@ import java.time.Instant
 
 interface EntitlementRepository {
     fun read(uid: String): EntitlementState
-    fun trial(uid: String, now: Instant, policy: SubscriptionPolicy): Pair<EntitlementState, Boolean>
     fun adminGrant(uid: String, grant: EntitlementGrant): EntitlementState
 }
 data class PolicySnapshot(val policy: SubscriptionPolicy, val available: Boolean)
@@ -33,7 +32,7 @@ class SubscriptionPolicyService(private val read: () -> SubscriptionPolicy?,
 }
 
 class EntitlementService(val policies: SubscriptionPolicyService, private val repository: EntitlementRepository,
-    private val clock: Clock = Clock.systemUTC()) {
+    private val clock: Clock = Clock.systemUTC(), private val trials:TrialActivationService? = null) {
     private val log=org.slf4j.LoggerFactory.getLogger(javaClass)
     private val observedExpiry=object:LinkedHashMap<String,Instant>() {
         override fun removeEldestEntry(eldest:MutableMap.MutableEntry<String,Instant>)=size>2048
@@ -65,17 +64,13 @@ class EntitlementService(val policies: SubscriptionPolicyService, private val re
     }
     fun summary(uid: String)=try { EntitlementSummary("AVAILABLE",resolve(uid)) }
         catch (_: Exception) { EntitlementSummary("UNAVAILABLE") }
-    @Synchronized fun bootstrap(identity: FirebaseIdentity): EntitlementSummary = try {
-        val p=policies.resolve()
-        if(!p.available) throw EntitlementFailure("ENTITLEMENTS_UNAVAILABLE")
-        val prior=state(identity.uid)
-        val result=if(p.policy.enabled && p.policy.promotionalTrialEnabled && !prior.trialConsumed &&
-            (!p.policy.trialRequiresLinkedAccount || !identity.isAnonymous))
-            repository.trial(identity.uid,clock.instant(),p.policy) else prior to false
-        cache[identity.uid]=clock.instant().plusSeconds(30) to result.first
-        if(result.second)log.info("[ENTITLEMENT] TRIAL_GRANTED policyVersion={}",p.policy.policyVersion)
-        EntitlementSummary("AVAILABLE",resolved(result.first,p.policy,identity.uid),result.second)
-    } catch (_: Exception) { EntitlementSummary("UNAVAILABLE") }
+    fun bootstrap(identity: FirebaseIdentity): EntitlementSummary = summary(identity.uid)
+    fun trialEligibility(identity:FirebaseIdentity)=trials?.eligibility(identity) ?: TrialEligibilityResponse("UNKNOWN",false,null,null)
+    fun activateTrial(identity:FirebaseIdentity,request:TrialActivationRequest):TrialActivationResponse {
+        val result=(trials ?: throw com.teamfho.domino.player.OnboardingFailure("DEPENDENCY_UNAVAILABLE",503)).activate(identity,request)
+        invalidate(identity.uid)
+        return result
+    }
     @Synchronized fun adminGrant(uid: String, grant: EntitlementGrant): EffectiveEntitlements {
         require(grant.source==EntitlementSource.ADMIN_GRANT)
         repository.adminGrant(uid,grant);cache.remove(uid)
@@ -98,3 +93,4 @@ class EntitlementService(val policies: SubscriptionPolicyService, private val re
         if(!limit.unlimited && current>=limit.maximum!!) throw EntitlementFailure("LIMIT_REACHED",limitKey=key,current=current,maximum=limit.maximum)
     }
 }
+

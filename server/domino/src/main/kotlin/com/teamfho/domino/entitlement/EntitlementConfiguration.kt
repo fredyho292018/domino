@@ -24,10 +24,10 @@ class EntitlementConfiguration {
     @Bean fun entitlementRepository(db:ObjectProvider<Firestore>):EntitlementRepository=object:EntitlementRepository {
         fun ready()=FirestoreEntitlements(db.ifAvailable?:throw IllegalStateException("STORAGE_UNAVAILABLE"))
         override fun read(uid:String)=ready().read(uid)
-        override fun trial(uid:String,now:java.time.Instant,policy:SubscriptionPolicy)=ready().trial(uid,now,policy)
         override fun adminGrant(uid:String,grant:EntitlementGrant)=ready().adminGrant(uid,grant)
     }
-    @Bean fun entitlementService(policy:SubscriptionPolicyService,repository:EntitlementRepository)=EntitlementService(policy,repository)
+    @Bean fun trialActivationService(repository:com.teamfho.domino.player.OnboardingProgressRepository,fallback:SubscriptionPolicy)=TrialActivationService(repository,fallback)
+    @Bean fun entitlementService(policy:SubscriptionPolicyService,repository:EntitlementRepository,trials:TrialActivationService)=EntitlementService(policy,repository,trials=trials)
 }
 
 @RestController
@@ -58,3 +58,4 @@ class EntitlementErrors {
         .body(mapOf("code" to e.code,"feature" to e.feature,"currentPlan" to e.currentPlan,
             "limitKey" to e.limitKey,"current" to e.current,"maximum" to e.maximum))
 }
+

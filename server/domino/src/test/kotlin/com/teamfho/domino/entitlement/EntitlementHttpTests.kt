@@ -22,14 +22,14 @@ class EntitlementHttpTests {
     @TestConfiguration(proxyBeanMethods=false) class Fixture {
         @Bean @Primary fun testEntitlements()=EntitlementService(SubscriptionPolicyService({SubscriptionPolicy()}),MemoryEntitlements())
     }
-    @Test fun `bootstrap issues anonymous trial and response exposes capabilities but no grant internals`() {
+    @Test fun `bootstrap never issues anonymous trial and response exposes capabilities but no grant internals`() {
         mvc.perform(post("/api/v1/player/bootstrap").header("Authorization","Bearer valid-guest").contentType("application/json").content("{}"))
-            .andExpect(status().isOk).andExpect(jsonPath("$.entitlements.snapshot.plan").value("PREMIUM"))
-            .andExpect(jsonPath("$.entitlements.snapshot.trialActive").value(true))
-            .andExpect(jsonPath("$.entitlements.snapshot.limits.FRIENDS_MAX.maximum").value(100))
+            .andExpect(status().isOk).andExpect(jsonPath("$.entitlements.snapshot.plan").value("FREE"))
+            .andExpect(jsonPath("$.entitlements.snapshot.trialActive").value(false))
+            .andExpect(jsonPath("$.entitlements.snapshot.limits.FRIENDS_MAX.maximum").value(5))
             .andExpect(jsonPath("$.entitlements.snapshot.grants").doesNotExist())
         mvc.perform(get("/api/v1/player/entitlements?uid=victim").header("Authorization","Bearer valid-guest"))
-            .andExpect(status().isOk).andExpect(jsonPath("$.snapshot.plan").value("PREMIUM"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.snapshot.plan").value("FREE"))
             .andExpect(jsonPath("$.snapshot.grantedBy").doesNotExist())
     }
     @Test fun `identity required profile and entitlement routes cannot write client premium`() {
@@ -42,3 +42,4 @@ class EntitlementHttpTests {
             .andExpect(status().is4xxClientError)
     }
 }
+

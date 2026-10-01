@@ -59,6 +59,10 @@ class PlayerControllerTests {
         assertTrue(name.matches(Regex("Guest-[A-Z0-9]{8}")))
         assertEquals("UNAVAILABLE",json["entitlements"]["availability"].asText())
         (json as tools.jackson.databind.node.ObjectNode).remove("entitlements")
+        assertEquals("EXPLICIT",json["capabilities"]["trialActivationMode"].asText())
+        assertEquals("1",json["capabilities"]["trialActivationContractVersion"].asText())
+        assertEquals(false,json["trialEligibility"]["eligible"].asBoolean())
+        json.remove("capabilities");json.remove("trialEligibility")
         assertEquals(mapper.readTree("""{"player":{"uid":"$uid","accountType":"$type","displayName":"$name","language":"es","status":"ACTIVE"},"wallet":{"coins":0}}"""), json)
     }
 

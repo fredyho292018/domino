@@ -11,7 +11,9 @@ data class PlayerResponse(
 data class WalletResponse(val coins: Long)
 
 data class PlayerBootstrapResponse(val player: PlayerResponse, val wallet: WalletResponse,
-    val entitlements: com.teamfho.domino.entitlement.EntitlementSummary? = null) {
+    val entitlements: com.teamfho.domino.entitlement.EntitlementSummary? = null,
+    val trialEligibility:com.teamfho.domino.entitlement.TrialEligibilityResponse?=null,
+    val capabilities:Map<String,String> = mapOf("trialActivationMode" to "EXPLICIT","trialActivationContractVersion" to "1")) {
     companion object {
         fun from(result: BootstrapResult) = PlayerBootstrapResponse(
             result.player.let { PlayerResponse(it.uid, it.accountType, it.displayName, it.language, it.status) },

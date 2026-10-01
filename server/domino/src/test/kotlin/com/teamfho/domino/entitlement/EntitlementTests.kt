@@ -13,7 +13,7 @@ class EntitlementClock(var now:Instant=Instant.parse("2026-09-20T00:00:00Z")):Cl
 class MemoryEntitlements:EntitlementRepository {
     val data=mutableMapOf<String,EntitlementState>();val tests=mutableSetOf<String>();var reads=0;var unavailable=false
     @Synchronized override fun read(uid:String):EntitlementState {reads++;check(!unavailable);return data[uid]?:EntitlementState()}
-    @Synchronized override fun trial(uid:String,now:Instant,policy:SubscriptionPolicy):Pair<EntitlementState,Boolean> {
+    @Synchronized fun trial(uid:String,now:Instant,policy:SubscriptionPolicy):Pair<EntitlementState,Boolean> {
         val s=read(uid)
         if(s.trialConsumed||uid in tests)return s to false
         val g=EntitlementGrant("initial-premium-trial",EntitlementSource.PROMOTIONAL_TRIAL,validFrom=now,
@@ -26,31 +26,29 @@ class EntitlementTests {
     val clock=EntitlementClock();val repo=MemoryEntitlements();var policy=SubscriptionPolicy()
     val policies=SubscriptionPolicyService({policy},clock=clock)
     val service=EntitlementService(policies,repo,clock)
-    fun bootstrap(uid:String="normal")=service.bootstrap(FirebaseIdentity(uid,true))
+    fun historicalTrialSummary(uid:String="normal"):EntitlementSummary { if(policy.enabled && policy.promotionalTrialEnabled && !repo.unavailable)repo.trial(uid,clock.now,policy);service.invalidate(uid);return service.bootstrap(FirebaseIdentity(uid,true)) }
     fun admin(days:Long=30)=EntitlementGrant("admin",EntitlementSource.ADMIN_GRANT,validFrom=clock.now,
         validUntil=clock.now.plusSeconds(days*86400),createdAt=clock.now,policyVersion=1,reason="TEST",grantedBy="test-admin")
-    @Test fun `new and existing anonymous accounts receive lazy trial once across fresh client state`() {
+    @Test fun `new and existing anonymous bootstrap never grants`() {
         for(uid in listOf("new","existing")) {
-            val first=bootstrap(uid);assertTrue(first.trialGranted);assertTrue(first.snapshot!!.trialActive)
-            repeat(8){assertFalse(bootstrap(uid).trialGranted)}
-            val fresh=EntitlementService(policies,repo,clock).bootstrap(FirebaseIdentity(uid,true))
-            assertEquals(first.snapshot!!.validUntil,fresh.snapshot!!.validUntil);assertEquals(1,repo.data[uid]!!.grants.size)
+            repeat(3){val result=service.bootstrap(FirebaseIdentity(uid,true));assertFalse(result.trialGranted);assertEquals(Plan.FREE,result.snapshot!!.plan)}
+            assertNull(repo.data[uid])
         }
     }
     @Test fun `day six twenty three hours premium exact day seven free without reads or destructive writes`() {
-        val initial=bootstrap().snapshot!!;val saved=repo.data["normal"]
+        val initial=historicalTrialSummary().snapshot!!;val saved=repo.data["normal"]
         clock.now=clock.now.plusSeconds(7*86400L-3600);assertEquals(Plan.PREMIUM,service.resolve("normal").plan)
         clock.now=clock.now.plusSeconds(3600);assertEquals(Plan.FREE,service.resolve("normal").plan)
         assertEquals(saved,repo.data["normal"]);assertEquals(clock.now,initial.validUntil)
-        assertFalse(bootstrap().trialGranted)
+        assertFalse(historicalTrialSummary().trialGranted)
     }
     @Test fun `test account excluded and kill switch does not revoke issued grant`() {
-        repo.tests.add("swarm");assertFalse(bootstrap("swarm").snapshot!!.trialActive)
-        bootstrap();policy=policy.copy(policyVersion=2,promotionalTrialEnabled=false);policies.invalidate()
-        assertFalse(bootstrap("another").trialGranted);assertEquals(Plan.PREMIUM,service.resolve("normal").plan)
+        repo.tests.add("swarm");assertFalse(historicalTrialSummary("swarm").snapshot!!.trialActive)
+        historicalTrialSummary();policy=policy.copy(policyVersion=2,promotionalTrialEnabled=false);policies.invalidate()
+        assertFalse(historicalTrialSummary("another").trialGranted);assertEquals(Plan.PREMIUM,service.resolve("normal").plan)
     }
     @Test fun `policy version limits update without extending issued trial`() {
-        val first=bootstrap().snapshot!!
+        val first=historicalTrialSummary().snapshot!!
         policy=policy.copy(policyVersion=2,promotionalTrialDays=14,freeHistoryMax=5,freeReplayMax=1)
         clock.now=clock.now.plusSeconds(61)
         assertEquals(first.validUntil,service.resolve("normal").validUntil)
@@ -58,7 +56,7 @@ class EntitlementTests {
         assertEquals(1,service.limit("free",EntitlementLimit.REPLAY_MAX).maximum)
     }
     @Test fun `admin restoration and multiple sources retain longer coverage`() {
-        val trial=bootstrap().snapshot!!;val grant=admin()
+        val trial=historicalTrialSummary().snapshot!!;val grant=admin()
         service.adminGrant("normal",grant)
         assertEquals(grant.validUntil,service.resolve("normal").validUntil)
         clock.now=trial.validUntil!!;assertEquals(setOf(EntitlementSource.ADMIN_GRANT),service.resolve("normal").sources)
@@ -74,7 +72,7 @@ class EntitlementTests {
         assertEquals(Plan.FREE,EntitlementResolver.resolve(s.copy(grants=listOf(g.copy(status=GrantStatus.REVOKED))),policy,clock.now).plan)
     }
     @Test fun `approved feature matrix limits and typed denials`() {
-        val free=service.resolve("free");val premium=bootstrap().snapshot!!
+        val free=service.resolve("free");val premium=historicalTrialSummary().snapshot!!
         assertEquals(SubscriptionPolicy.FREE_FEATURES,free.features)
         assertEquals(EntitlementFeature.entries.toSet(),premium.features)
         assertEquals(5,free.limits[EntitlementLimit.FRIENDS_MAX]!!.maximum)
@@ -88,7 +86,7 @@ class EntitlementTests {
     }
     @Test fun `unavailable distinct from free public features remain independent`() {
         repo.unavailable=true
-        assertEquals("UNAVAILABLE",bootstrap().availability)
+        assertEquals("UNAVAILABLE",service.bootstrap(FirebaseIdentity("normal",true)).availability)
         assertEquals("ENTITLEMENTS_UNAVAILABLE",assertFailsWith<EntitlementFailure>{service.requireFeature("free",EntitlementFeature.PARTY_CREATE)}.code)
         service.requireFeature("free",EntitlementFeature.PUBLIC_DUEL);service.requireFeature("free",EntitlementFeature.PUBLIC_PARTNERS)
     }
@@ -105,3 +103,7 @@ class EntitlementTests {
         val s=EntitlementService(p,repo,clock);repeat(20){s.resolve("none")};assertEquals(1,repo.reads)
     }
 }
+
+
+
+

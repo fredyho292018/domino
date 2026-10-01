@@ -1,3 +1,5 @@
 firebase:
   enabled: false
   project-id: domino-test
+
+domino.trial.require-compatible-client: false

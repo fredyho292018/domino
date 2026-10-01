@@ -19,5 +19,5 @@ class PlayerController(private val service: PlayerBootstrapService, private val 
         @AuthenticationPrincipal identity: FirebaseIdentity,
         @RequestBody(required = false) request: PlayerBootstrapRequest?
     ): PlayerBootstrapResponse = PlayerBootstrapResponse.from(service.bootstrap(identity, request))
-        .copy(entitlements=entitlements.bootstrap(identity))
+        .copy(entitlements=entitlements.bootstrap(identity),trialEligibility=entitlements.trialEligibility(identity))
 }
