@@ -26,6 +26,7 @@ namespace Domino.Player
         public PlayerSnapshot Player { get; private set; }
         public WalletSnapshot Wallet { get; private set; }
         public EntitlementSummaryDto Entitlements { get; private set; }
+        public TrialEligibilityDto TrialEligibility { get; private set; }
         public event Action EntitlementsChanged;
         // Presentation snapshot only; server endpoints remain the access authority.
         public void ReceiveEntitlements(string uid, EntitlementSummaryDto value) {
@@ -107,7 +108,7 @@ namespace Domino.Player
                     player.AccountType != Player.AccountType || player.Language != Player.Language || player.Status != Player.Status))
                     throw new DominoApiException(ApiFailure.Contract, 200);
                 Player = player;
-                if(!IsSaving) ReceiveEntitlements(user.Uid,result.entitlements);
+                if(!IsSaving) { ReceiveEntitlements(user.Uid,result.entitlements);TrialEligibility=result.trialEligibility; }
                 if (!IsSaving) Wallet = wallet;
                 IsSaving = false;
                 Notify(SnapshotChanged, Player);
@@ -207,7 +208,7 @@ namespace Domino.Player
             lock (gate)
             {
                 if (disposed) return;
-                disposed = true; Player=null; Wallet=null; Entitlements=null; sessionUid=null; Error=null; EntitlementsChanged=null; SyncStateChanged = null; BackendAvailabilityChanged = null; SnapshotChanged = null;
+                disposed = true; Player=null; Wallet=null; Entitlements=null; TrialEligibility=null; sessionUid=null; Error=null; EntitlementsChanged=null; SyncStateChanged = null; BackendAvailabilityChanged = null; SnapshotChanged = null;
                 disposal.Cancel();
                 disposal.Dispose();
             }

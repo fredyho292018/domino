@@ -21,6 +21,7 @@ namespace Domino.Infrastructure
         public static ProductionLogoutService Logout { get; private set; }
         public static event Action SessionReplaced;
         public static ProductionAuthRouter AuthRouter { get; private set; }
+        public static Domino.UI.AppShell.ProductionRoutingComposition Routing { get; private set; }
         public static bool UsesProductionAuth { get; private set; }
         public static IPlayerIdentityService Identity { get; private set; }
         public static FirebaseBootstrap Firebase { get; private set; }
@@ -52,6 +53,7 @@ namespace Domino.Infrastructure
             UnityEditor.EditorApplication.playModeStateChanged -= OnEditorPlayMode;
 #endif
             AuthRouter = null;
+            Routing = null;
             Identity = null; Firebase = null; Player = null; Realtime = null; Ads = null; Rewarded = null;
             RewardVerification = null;
             RoundRewards = null;
@@ -133,13 +135,16 @@ namespace Domino.Infrastructure
             // Unity's main-thread entry point and captured UnitySynchronizationContext
             // keep SDK continuations/logging on main. Offline presentation proceeds independently.
             if(UsesProductionAuth) {
-                AuthRouter = new ProductionAuthRouter((FirebaseAuthService)Identity, Player);
+                Routing = new Domino.UI.AppShell.ProductionRoutingComposition((FirebaseAuthService)Identity, Player,
+                    ()=>new OnboardingApiSession(settings,(IAuthTokenProvider)client,transport,()=>Identity?.Current?.Uid,lifetime.Token),()=>DominoLocalization.Language);
+                AuthRouter = new ProductionAuthRouter((FirebaseAuthService)Identity, Player, destination:Routing);
                 var logoutRouter=AuthRouter;var logoutAuth=(FirebaseAuthService)Identity;
                 Logout=new ProductionLogoutService(()=>logoutAuth.Current, PrepareLogoutAsync,
                     ()=>logoutRouter.StopAsync(), Shutdown, logoutAuth.SignOut,
                     ()=>{Reset();Start();SessionReplaced?.Invoke();});
+                bool sessionStarted=false;
                 AuthRouter.Changed += () => {
-                    if(AuthRouter?.Route==ProductionAuthRoute.AppShell){StartSessionLifecycles();Realtime.Start();_ = InitializePlayerAndRecoverAsync();}
+                    if(!sessionStarted&&AuthRouter?.Route==ProductionAuthRoute.AppShell){sessionStarted=true;StartSessionLifecycles();Realtime.Start();_ = InitializePlayerAndRecoverAsync();}
                 };
             } else {
                 _ = ObserveAsync(Identity, lifetime.Token);

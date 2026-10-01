@@ -6,7 +6,16 @@ using Domino.Player;
 
 namespace Domino.Identity
 {
-    public enum ProductionAuthRoute { Loading, Welcome, AppShell, Error, EmailEntry, Register, VerificationPending, EmailPlaceholder, EmailSignIn, ForgotPassword }
+    public enum ProductionAuthRoute { Loading, Welcome, AppShell, Error, EmailEntry, Register, VerificationPending, EmailPlaceholder, EmailSignIn, ForgotPassword, Onboarding, UpdateRequired }
+    // Auth forms retain their navigation; authenticated destination decisions belong to one injected owner.
+    public interface IAuthenticatedDestination : IDisposable
+    {
+        ProductionAuthRoute Route { get; }
+        string Message { get; }
+        event Action Changed;
+        Task ResolveAsync();
+        Task RetryAsync();
+    }
     public interface IPostAuthenticationPolicy { ProductionAuthRoute Destination(PlayerSnapshot player); }
     // Temporary migration policy. No onboarding status is fabricated or stored.
     public sealed class TemporaryAppShellPolicy : IPostAuthenticationPolicy
@@ -17,9 +26,12 @@ namespace Domino.Identity
         readonly FirebaseAuthService identity;
         readonly PlayerService player;
         readonly IPostAuthenticationPolicy policy;
+        readonly IAuthenticatedDestination destination;
+        bool destinationActive;
         readonly CancellationTokenSource lifetime = new CancellationTokenSource();
         Task operation;bool disposed;
-        public ProductionAuthRoute Route { get; private set; } = ProductionAuthRoute.Loading;
+        ProductionAuthRoute formRoute = ProductionAuthRoute.Loading;
+        public ProductionAuthRoute Route { get => destinationActive ? destination.Route : formRoute; private set => formRoute=value; }
         public AuthSessionKind SessionKind { get; private set; }=AuthSessionKind.NoSession;
         public EmailOperationState EmailState { get; private set; }
         public EmailAuthError EmailError { get; private set; }
@@ -27,15 +39,22 @@ namespace Domino.Identity
         public bool VerificationSent { get; private set; }
         public string DisplayEmail => identity.Session?.DisplayEmail??"";
         public bool CanCancelCreatedEmail => identity.CanCancelCreatedEmail;
-        public string Message { get; private set; } = "";
+        string formMessage="";
+        public string Message { get => destinationActive && !(Route==ProductionAuthRoute.VerificationPending && !string.IsNullOrEmpty(formMessage)) ? destination.Message : formMessage; private set => formMessage=value; }
         public event Action Changed;
-        public ProductionAuthRouter(FirebaseAuthService identity, PlayerService player, IPostAuthenticationPolicy policy = null)
-        { this.identity=identity; this.player=player; this.policy=policy??new TemporaryAppShellPolicy(); }
+        public ProductionAuthRouter(FirebaseAuthService identity, PlayerService player, IPostAuthenticationPolicy policy = null, IAuthenticatedDestination destination = null)
+        { this.identity=identity; this.player=player; this.policy=policy??new TemporaryAppShellPolicy(); this.destination=destination;if(destination!=null)destination.Changed+=Notify; }
+        public Task RetryRoutingAsync()=>destinationActive?destination.RetryAsync():RestoreAsync();
         public Task RestoreAsync()=>BeginSession(false);
         public Task ContinueAsGuestAsync()=>BeginSession(true);
         Task BeginSession(bool guest)
         {
             if(disposed||Route==ProductionAuthRoute.AppShell)return Task.CompletedTask;
+            if(destination!=null)return Execute(EmailOperationState.Checking,async()=>{
+                destinationActive=false;Route=ProductionAuthRoute.Loading;Notify();
+                if(guest)await identity.ContinueAsGuestAsync();
+                if(disposed)return;destinationActive=true;await destination.ResolveAsync();UpdateSessionKind();
+            });
             return Execute(EmailOperationState.Checking,async()=>{
                 var user=await(guest?identity.ContinueAsGuestAsync():identity.RestoreAsync());if(disposed)return;
                 await ClassifyAndBootstrap(user,true);
@@ -43,6 +62,7 @@ namespace Domino.Identity
         }
         async Task ClassifyAndBootstrap(PlayerIdentity user,bool reload)
         {
+            if(destination!=null){destinationActive=true;await destination.ResolveAsync();UpdateSessionKind();return;}
             if(user==null){SessionKind=AuthSessionKind.NoSession;Route=ProductionAuthRoute.Welcome;Message="";return;}
             SessionKind=user.IsAnonymous?AuthSessionKind.RestoredGuest:AuthSessionKind.OtherRegistered;
             if(!user.IsAnonymous&&identity.SupportsEmail){
@@ -70,10 +90,11 @@ namespace Domino.Identity
             if(disposed||Busy)return;
             if(identity.Current!=null){Message=EmailAuthRules.Message(identity.Current.IsAnonymous?EmailAuthError.GuestUpgradeRequired:EmailAuthError.SessionConflict);Notify();return;}
             if(route!=ProductionAuthRoute.EmailEntry&&route!=ProductionAuthRoute.Register&&route!=ProductionAuthRoute.EmailPlaceholder&&route!=ProductionAuthRoute.Welcome&&route!=ProductionAuthRoute.EmailSignIn&&route!=ProductionAuthRoute.ForgotPassword)return;
-            Route=route;Message=route==ProductionAuthRoute.EmailPlaceholder?"Coming Soon":"";EmailError=EmailAuthError.None;EmailState=EmailOperationState.Idle;Notify();
+            destinationActive=false;Route=route;Message=route==ProductionAuthRoute.EmailPlaceholder?"Coming Soon":"";EmailError=EmailAuthError.None;EmailState=EmailOperationState.Idle;Notify();
         }
         public Task RegisterAsync(string email,string password,string confirmation)=>Execute(EmailOperationState.Submitting,async()=>{
             await identity.RegisterEmailAsync(email,password,confirmation);if(disposed)return;
+            if(destination!=null){destinationActive=true;await destination.ResolveAsync();}
             SessionKind=AuthSessionKind.EmailUnverified;EmailState=EmailOperationState.Routing;Route=ProductionAuthRoute.VerificationPending;VerificationSent=false;Notify();
             await identity.SendVerificationAsync();if(disposed)return;VerificationSent=true;Message="Verification email sent.";
         });
@@ -97,6 +118,7 @@ namespace Domino.Identity
             // Only a newly created, still-unverified Email session owned by this service can be ended.
             if(player.HasConfirmedSnapshots)throw new EmailAuthException(EmailAuthError.SessionConflict);
             await identity.CancelCreatedEmailAsync(confirmed);if(disposed)return;
+            if(destination!=null){destinationActive=true;await destination.ResolveAsync();destinationActive=false;}
             SessionKind=AuthSessionKind.NoSession;VerificationSent=false;Route=ProductionAuthRoute.EmailEntry;Message="";
         });
         Task Execute(EmailOperationState state,Func<Task> work)
@@ -115,8 +137,9 @@ namespace Domino.Identity
             }}
             finally{if(!disposed){Busy=false;Notify();}completion.TrySetResult(true);}
         }
+        void UpdateSessionKind(){var s=identity.Session;SessionKind=s==null?AuthSessionKind.NoSession:s.IsAnonymous?AuthSessionKind.RestoredGuest:s.IsPasswordProvider?s.IsEmailVerified?AuthSessionKind.EmailVerified:AuthSessionKind.EmailUnverified:AuthSessionKind.OtherRegistered;}
         void Notify(){Changed?.Invoke();}
         public async Task StopAsync(){Dispose();if(operation!=null)await operation;}
-        public void Dispose(){if(disposed)return;disposed=true;lifetime.Cancel();Changed=null;}
+        public void Dispose(){if(disposed)return;disposed=true;lifetime.Cancel();if(destination!=null){destination.Changed-=Notify;destination.Dispose();}Changed=null;}
     }
 }
