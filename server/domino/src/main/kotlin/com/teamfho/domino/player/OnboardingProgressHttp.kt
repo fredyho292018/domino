@@ -25,7 +25,22 @@ class OnboardingProgressController(private val service:OnboardingProgressService
     private fun <T> body(request:HttpServletRequest,type:Class<T>):T {
         val bytes=request.inputStream.readNBytes(16385)
         onboardingCheck(bytes.size<=16384,"REQUEST_INVALID",400)
-        try { return GameCatalogCodec.mapper.readValue(bytes,type) }
+        try {
+            if(type==SaveStepRequest::class.java) {
+                val tree=GameCatalogCodec.mapper.readTree(bytes)
+                tree.get("detectedTimeZone")?.let{require(it.isNull || it.isString)}
+                tree.get("answers")?.let { answers ->
+                    require(answers.isArray)
+                    answers.forEach { answer ->
+                        require(answer.isObject)
+                        listOf("questionKey","type","optionKey","textValue").forEach { field ->
+                            answer.get(field)?.let{require(it.isNull || it.isString)}
+                        }
+                    }
+                }
+            }
+            return GameCatalogCodec.mapper.readValue(bytes,type)
+        }
         catch(e:Exception){throw OnboardingFailure("REQUEST_INVALID",400)}
     }
     private fun <T> ok(value:T)=ResponseEntity.ok().header("Cache-Control","no-store").body(value)

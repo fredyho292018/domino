@@ -86,7 +86,7 @@ class CoachCatalogTests {
         val old=OnboardingCatalogSeed.canonical();val linked=CoachCatalogSeed.compatibleOnboarding()
         assertNull(old.coachCatalogVersion);assertEquals(1,old.catalogVersion)
         assertEquals(2,linked.catalogVersion);assertEquals(1,linked.coachCatalogVersion)
-        assertEquals(old.steps,linked.steps);assertEquals(old.questions,linked.questions);assertEquals(old.options,linked.options)
+        assertEquals(old.steps,linked.steps.drop(1));assertEquals(old.questions,linked.questions.drop(5));assertEquals(old.options,linked.options)
         OnboardingCatalogValidation.validate(linked)
     }
 }

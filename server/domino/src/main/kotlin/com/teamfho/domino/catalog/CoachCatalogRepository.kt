@@ -43,7 +43,6 @@ object CoachCatalogSeed {
         requireNotNull(javaClass.getResourceAsStream("/coach-catalog-v1.json")),CoachCatalogPublication::class.java)
     fun run(repository:CoachCatalogRepository)=repository.publish(canonical())
     // A separate immutable onboarding publication opts NEW starts into Coach v1. Never rewrite v1 or existing pins.
-    fun compatibleOnboarding():OnboardingCatalogPublication=OnboardingCatalogSeed.canonical().copy(
-        catalogVersion=2,coachCatalogVersion=1,publishedAt="2026-09-30T00:00:00Z")
+    fun compatibleOnboarding():OnboardingCatalogPublication=OnboardingCatalogV2.canonical()
     fun publishCompatibleOnboarding(repository:OnboardingCatalogRepository)=repository.publish(compatibleOnboarding())
 }

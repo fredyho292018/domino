@@ -6,18 +6,22 @@ import java.time.Instant
 
 class OnboardingFailure(val code: String, val status: Int = 409): RuntimeException(code)
 internal fun onboardingCheck(ok: Boolean, code: String, status: Int = 409) { if(!ok) throw OnboardingFailure(code,status) }
-data class OnboardingAnswer(val questionKey: String, val type: OnboardingQuestionType, val optionKey: String)
+data class OnboardingAnswer(val questionKey: String, val type: OnboardingQuestionType, val optionKey: String? = null,
+    @get:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) val textValue: String? = null)
+data class OnboardingBasicProfile(val firstName:String?,val lastName:String?,val displayName:String,val countryCode:String?,val preferredLocale:String,val timeZone:String?)
 data class OnboardingDomainRevisions(val profile: Long, val preferences: Long, val domino: Long)
 data class OnboardingResponse(val status: OnboardingStatus, val catalogVersion: Int?, val currentStepKey: String?,
     val currentSubstepKey: String?, val lastCompletedStepKey: String?, val completedStepKeys: List<String>,
     val skippedStepKeys: List<String>, val startedAt: Instant?, val completedAt: Instant?, val updatedAt: Instant,
     val revision: Long, val completionOrigin: CompletionOrigin?, val requiredFieldsMissing: List<String>,
-    val domainRevisions: OnboardingDomainRevisions, val answers: List<OnboardingAnswer>)
+    val domainRevisions: OnboardingDomainRevisions, val answers: List<OnboardingAnswer>,
+    @get:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) val basicProfile:OnboardingBasicProfile? = null)
 data class OnboardingMutationResponse(val onboarding: OnboardingResponse, val domino: DominoProfile? = null)
 data class OnboardingStartRequest(val operationId: String, val expectedRevision: Long)
 enum class OnboardingStepAction { SAVE, SKIP }
 data class SaveStepRequest(val operationId: String, val expectedRevision: Long, val catalogVersion: Int,
-    val domainRevisions: Map<String,Long>, val action: OnboardingStepAction, val answers: List<OnboardingAnswer>)
+    val domainRevisions: Map<String,Long>, val action: OnboardingStepAction, val answers: List<OnboardingAnswer>,
+    @get:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) val detectedTimeZone:String? = null)
 data class OnboardingCursorRequest(val operationId: String, val expectedRevision: Long, val catalogVersion: Int,
     val targetStepKey: String, val targetSubstepKey: String? = null)
 data class OnboardingCompleteRequest(val operationId: String, val expectedRevision: Long, val catalogVersion: Int)

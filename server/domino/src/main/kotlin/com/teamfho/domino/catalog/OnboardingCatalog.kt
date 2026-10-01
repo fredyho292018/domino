@@ -1,8 +1,8 @@
 package com.teamfho.domino.catalog
 
-enum class OnboardingQuestionType { SINGLE_SELECT, COACH_SELECT }
+enum class OnboardingQuestionType { SINGLE_SELECT, COACH_SELECT, TEXT, COUNTRY_SELECT, LOCALE_SELECT }
 enum class OnboardingStepKind { QUESTION, CONTACTS, MEMBERSHIP }
-enum class OnboardingBinding { EXPERIENCE_LEVEL, PREFERRED_COACH }
+enum class OnboardingBinding { EXPERIENCE_LEVEL, PREFERRED_COACH, FIRST_NAME, LAST_NAME, DISPLAY_NAME, COUNTRY_CODE, PREFERRED_LOCALE }
 data class OnboardingCopy(val title: String, val description: String = "")
 data class CatalogStep(val key: String, val stage: String, val sortOrder: Int, val active: Boolean,
     val required: Boolean, val skippable: Boolean, val kind: OnboardingStepKind,
@@ -28,11 +28,11 @@ object OnboardingCatalogValidation {
         val keys = p.steps.map { it.key } + p.questions.map { it.key } + p.options.map { it.key }
         require(keys.distinct().size == keys.size && keys.all { Regex("[A-Z][A-Z0-9_]{0,63}").matches(it) })
         require(p.requiredCapabilities.distinct().size == p.requiredCapabilities.size)
-        require(p.requiredCapabilities.all { it in setOf("SINGLE_SELECT_V1","COACH_SELECT_V1","CONTACTS_UNAVAILABLE","MEMBERSHIP_PRESENTATION") })
+        require(p.requiredCapabilities.all { it in setOf("SINGLE_SELECT_V1","COACH_SELECT_V1","CONTACTS_UNAVAILABLE","MEMBERSHIP_PRESENTATION","BASIC_PROFILE_V1") })
         val ordered = p.steps.sortedWith(compareBy<CatalogStep>{it.sortOrder}.thenBy{it.key})
         ordered.forEachIndexed { i,s -> require(s.nextStepKey == ordered.getOrNull(i+1)?.key) }
         p.steps.forEach { s ->
-            require(s.stage in setOf("EXPERIENCE","COACH","CONTACTS","MEMBERSHIP") && s.sortOrder >= 0)
+            require(s.stage in setOf("EXPERIENCE","COACH","CONTACTS","MEMBERSHIP","BASIC_PROFILE") && s.sortOrder >= 0)
             require(s.required != s.skippable)
             require(s.questionKeys.distinct().size == s.questionKeys.size)
             require(s.questionKeys.all { k -> p.questions.any { it.key == k && it.stepKey == s.key } })
@@ -51,7 +51,18 @@ object OnboardingCatalogValidation {
                     require(!q.active || p.options.any { it.key in q.optionKeys && it.active })
                 }
                 OnboardingQuestionType.COACH_SELECT -> require(q.binding == OnboardingBinding.PREFERRED_COACH && q.optionKeys.isEmpty() && "COACH_SELECT_V1" in p.requiredCapabilities)
+                OnboardingQuestionType.TEXT -> require(q.stepKey=="BASIC_PROFILE_STEP" && p.catalogVersion>=2 && "BASIC_PROFILE_V1" in p.requiredCapabilities && q.binding in setOf(OnboardingBinding.FIRST_NAME,OnboardingBinding.LAST_NAME,OnboardingBinding.DISPLAY_NAME) && q.optionKeys.isEmpty())
+                OnboardingQuestionType.COUNTRY_SELECT -> require(q.stepKey=="BASIC_PROFILE_STEP" && p.catalogVersion>=2 && "BASIC_PROFILE_V1" in p.requiredCapabilities && q.binding==OnboardingBinding.COUNTRY_CODE && q.optionKeys.isEmpty())
+                OnboardingQuestionType.LOCALE_SELECT -> require(q.stepKey=="BASIC_PROFILE_STEP" && p.catalogVersion>=2 && "BASIC_PROFILE_V1" in p.requiredCapabilities && q.binding==OnboardingBinding.PREFERRED_LOCALE && q.optionKeys.isEmpty())
             }
+        }
+        if("BASIC_PROFILE_V1" in p.requiredCapabilities) {
+            val basic=p.steps.single{it.key=="BASIC_PROFILE_STEP"}
+            require(p.catalogVersion>=2 && basic.stage=="BASIC_PROFILE" && basic.active && basic.required && !basic.skippable)
+            val questions=p.questions.filter{it.key in basic.questionKeys}
+            require(questions.size==5 && questions.all{it.active && it.required})
+            require(questions.map{it.binding}.toSet()==setOf(OnboardingBinding.FIRST_NAME,OnboardingBinding.LAST_NAME,
+                OnboardingBinding.DISPLAY_NAME,OnboardingBinding.COUNTRY_CODE,OnboardingBinding.PREFERRED_LOCALE))
         }
         require(p.options.all { o -> o.sortOrder >= 0 && p.questions.any { it.key == o.questionKey && o.key in it.optionKeys } })
         require(p.translations.keys.all { it in p.supportedLocales })

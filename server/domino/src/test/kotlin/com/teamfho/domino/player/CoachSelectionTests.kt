@@ -13,7 +13,7 @@ class CoachSelectionTests {
     private val repo=ProgressMemory().also {
         it.initialize()
         it.docs["coachCatalogs/1"]=GameCatalogCodec.map(CoachCatalogSeed.canonical())
-        it.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(CoachCatalogSeed.compatibleOnboarding())
+        it.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(OnboardingCatalogSeed.canonical().copy(catalogVersion=2,coachCatalogVersion=1))
         it.docs["systemConfig/onboardingCatalog"]=mapOf("publishedVersion" to 2)
     }
     private val user=FirebaseIdentity("fixture-player",true)
@@ -102,7 +102,7 @@ class CoachSelectionTests {
     @Test fun `incompatible missing and unpinned publications fail closed`() {
         val state=ready();fail("ONBOARDING_CATALOG_VERSION_MISMATCH"){service.save(user,"COACH_STEP",request(state).copy(catalogVersion=1))}
         repo.docs.remove("coachCatalogs/1");fail("COACH_CATALOG_NOT_FOUND"){save(state)}
-        repo.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(CoachCatalogSeed.compatibleOnboarding().copy(coachCatalogVersion=null))
+        repo.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(OnboardingCatalogSeed.canonical().copy(catalogVersion=2,coachCatalogVersion=1).copy(coachCatalogVersion=null))
         fail("COACH_CATALOG_VERSION_MISMATCH"){save(state)}
     }
     @Test fun `legacy completion preserved and account paths remain isolated`() {

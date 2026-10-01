@@ -33,7 +33,7 @@ class CoachCatalogHttpTests {
     @BeforeEach fun setup(){
         progress.docs.clear();progress.initialize("verified-guest")
         progress.docs["coachCatalogs/1"]=GameCatalogCodec.map(CoachCatalogSeed.canonical())
-        progress.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(CoachCatalogSeed.compatibleOnboarding())
+        progress.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(OnboardingCatalogSeed.canonical().copy(catalogVersion=2,coachCatalogVersion=1))
         progress.docs["systemConfig/onboardingCatalog"]=mapOf("publishedVersion" to 2)
     }
     @Test fun `catalog authentication required`() {mvc.perform(get("/api/v1/coaches")).andExpect(status().isUnauthorized)}
