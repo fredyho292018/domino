@@ -123,7 +123,9 @@ class OnboardingProgressService(private val repository: OnboardingProgressReposi
                             domino=domino.copy(experienceLevel=ExperienceLevel.valueOf(a.optionKey))
                         }
                         OnboardingBinding.PREFERRED_COACH -> {
-                            coach.validate(tx,p.coachCatalogVersion,a.optionKey)
+                            if(s.domino.preferredCoachKey==a.optionKey && s.domino.selectedCoachCatalogVersion==p.coachCatalogVersion)
+                                coach.validateExisting(tx,p.coachCatalogVersion,a.optionKey)
+                            else coach.validate(tx,p.coachCatalogVersion,a.optionKey)
                             onboardingCheck(p.coachCatalogVersion!=null,"DEPENDENCY_UNAVAILABLE",503)
                             domino=domino.copy(preferredCoachKey=a.optionKey,selectedCoachCatalogVersion=p.coachCatalogVersion)
                         }
@@ -160,7 +162,7 @@ class OnboardingProgressService(private val repository: OnboardingProgressReposi
                     OnboardingBinding.EXPERIENCE_LEVEL -> onboardingCheck(p.options.any{it.active && it.questionKey==q.key && it.key==s.domino.experienceLevel?.name},"ONBOARDING_INCOMPLETE",400)
                     OnboardingBinding.PREFERRED_COACH -> {
                         onboardingCheck(s.domino.preferredCoachKey!=null && s.domino.selectedCoachCatalogVersion==p.coachCatalogVersion,"ONBOARDING_INCOMPLETE",400)
-                        coach.validate(tx,p.coachCatalogVersion,s.domino.preferredCoachKey)
+                        coach.validateExisting(tx,p.coachCatalogVersion,s.domino.preferredCoachKey)
                     }
                 }
             } }

@@ -17,7 +17,7 @@ class OnboardingProgressConfiguration {
         db.ifAvailable?.let{FirestoreOnboardingProgressRepository(it)} ?: object:OnboardingProgressRepository {
             override fun <T> transaction(action:(OnboardingProgressTransaction)->T):T=throw OnboardingFailure("DEPENDENCY_UNAVAILABLE",503)
         }
-    @Bean fun onboardingProgressService(repository:OnboardingProgressRepository)=OnboardingProgressService(repository)
+    @Bean fun onboardingProgressService(repository:OnboardingProgressRepository)=OnboardingProgressService(repository,com.teamfho.domino.catalog.AuthoritativeCoachValidation())
 }
 @RestController
 @RequestMapping("/api/v1/player/onboarding")

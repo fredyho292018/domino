@@ -40,6 +40,7 @@ object OnboardingWriteAuthorization {
 // No I/O or keys are invented by the default implementation.
 fun interface OnboardingCoachValidation {
     fun validate(tx: OnboardingProgressTransaction, catalogVersion: Int?, key: String?)
+    fun validateExisting(tx: OnboardingProgressTransaction, catalogVersion: Int?, key: String?) = validate(tx,catalogVersion,key)
 }
 object UnavailableOnboardingCoach: OnboardingCoachValidation {
     override fun validate(tx: OnboardingProgressTransaction, catalogVersion: Int?, key: String?) {

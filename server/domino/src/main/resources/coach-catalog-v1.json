@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": 1,
+  "defaultLocale": "en",
+  "supportedLocales": [
+    "es",
+    "en"
+  ],
+  "coaches": [
+    {
+      "key": "LUCIA",
+      "active": true,
+      "sortOrder": 10,
+      "avatarKey": "COACH_LUCIA",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_lucia.png"
+    },
+    {
+      "key": "ELENA",
+      "active": true,
+      "sortOrder": 20,
+      "avatarKey": "COACH_ELENA",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_elena.png"
+    },
+    {
+      "key": "AMARA",
+      "active": true,
+      "sortOrder": 30,
+      "avatarKey": "COACH_AMARA",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_amara.png"
+    },
+    {
+      "key": "MEI",
+      "active": true,
+      "sortOrder": 40,
+      "avatarKey": "COACH_MEI",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_mei.png"
+    },
+    {
+      "key": "SOFIA",
+      "active": true,
+      "sortOrder": 50,
+      "avatarKey": "COACH_SOFIA",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_sofia.png"
+    },
+    {
+      "key": "DAVID",
+      "active": true,
+      "sortOrder": 60,
+      "avatarKey": "COACH_DAVID",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_david.png"
+    },
+    {
+      "key": "MATEO",
+      "active": true,
+      "sortOrder": 70,
+      "avatarKey": "COACH_MATEO",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_mateo.png"
+    },
+    {
+      "key": "GABRIEL",
+      "active": true,
+      "sortOrder": 80,
+      "avatarKey": "COACH_GABRIEL",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_gabriel.png"
+    },
+    {
+      "key": "LEO",
+      "active": true,
+      "sortOrder": 90,
+      "avatarKey": "COACH_LEO",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_leo.png"
+    },
+    {
+      "key": "OMAR",
+      "active": true,
+      "sortOrder": 100,
+      "avatarKey": "COACH_OMAR",
+      "assetVersion": 1,
+      "storagePath": "AppShellMockCoaches/coach_omar.png"
+    }
+  ],
+  "translations": {
+    "es": {
+      "LUCIA": {
+        "name": "Lucía",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Lucía."
+      },
+      "ELENA": {
+        "name": "Elena",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Elena."
+      },
+      "AMARA": {
+        "name": "Amara",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Amara."
+      },
+      "MEI": {
+        "name": "Mei",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Mei."
+      },
+      "SOFIA": {
+        "name": "Sofía",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Sofía."
+      },
+      "DAVID": {
+        "name": "David",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy David."
+      },
+      "MATEO": {
+        "name": "Mateo",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Mateo."
+      },
+      "GABRIEL": {
+        "name": "Gabriel",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Gabriel."
+      },
+      "LEO": {
+        "name": "Leo",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Leo."
+      },
+      "OMAR": {
+        "name": "Omar",
+        "description": "Te enseñaré a jugar dominó.",
+        "shortDescription": "Hola, soy Omar."
+      }
+    },
+    "en": {
+      "LUCIA": {
+        "name": "Lucía",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Lucía."
+      },
+      "ELENA": {
+        "name": "Elena",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Elena."
+      },
+      "AMARA": {
+        "name": "Amara",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Amara."
+      },
+      "MEI": {
+        "name": "Mei",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Mei."
+      },
+      "SOFIA": {
+        "name": "Sofía",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Sofía."
+      },
+      "DAVID": {
+        "name": "David",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am David."
+      },
+      "MATEO": {
+        "name": "Mateo",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Mateo."
+      },
+      "GABRIEL": {
+        "name": "Gabriel",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Gabriel."
+      },
+      "LEO": {
+        "name": "Leo",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Leo."
+      },
+      "OMAR": {
+        "name": "Omar",
+        "description": "I will teach you to play dominoes.",
+        "shortDescription": "Hi, I am Omar."
+      }
+    }
+  },
+  "publishedAt": "2026-09-30T00:00:00Z"
+}
