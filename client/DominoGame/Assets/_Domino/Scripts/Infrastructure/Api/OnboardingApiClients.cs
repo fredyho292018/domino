@@ -15,7 +15,9 @@ namespace Domino.Infrastructure.Api
         void Apply(OnboardingStateDto value) {
             session.EnsureCurrent();
             if(value==null || value.revision<0 || (value.status!="NOT_STARTED" && value.status!="IN_PROGRESS" && value.status!="COMPLETED") ||
-                value.domainRevisions==null || value.answers==null || (value.status!="NOT_STARTED" && !(value.catalogVersion>0)))throw new DominoApiException(ApiFailure.Contract);
+                value.domainRevisions==null || value.answers==null || (value.status!="NOT_STARTED" && !(value.catalogVersion>0) &&
+                !(value.status=="COMPLETED" && value.completionOrigin=="LEGACY_EXEMPT" && value.catalogVersion==null && value.currentStepKey==null && value.startedAt==null &&
+                  !string.IsNullOrEmpty(value.completedAt) && value.completedStepKeys?.Length==0 && value.skippedStepKeys?.Length==0)))throw new DominoApiException(ApiFailure.Contract);
             // Concurrent reads and lost-response retries cannot roll back a newer server revision.
             if(state==null || value.revision>=state.revision)state=OnboardingApiSession.Decode<OnboardingStateDto>(OnboardingApiSession.Serialize(value));
         }
