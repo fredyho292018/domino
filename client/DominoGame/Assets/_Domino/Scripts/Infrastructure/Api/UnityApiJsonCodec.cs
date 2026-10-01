@@ -22,6 +22,8 @@ namespace Domino.Infrastructure.Api
                     uid = Text(player, "uid"), accountType = Text(player, "accountType"), displayName = Text(player, "displayName"),
                     language = Text(player, "language"), status = Text(player, "status") },
                 wallet = new WalletResponseDto { coins = coins.Value<long>() },
+                trialEligibility = root["trialEligibility"]?.ToObject<TrialEligibilityDto>(),
+                capabilities = root["capabilities"]?.ToObject<System.Collections.Generic.Dictionary<string,string>>(),
                 // Unlimited limits carry maximum:null; retain the DTO default for that unused value.
                 entitlements = root["entitlements"]?.ToObject<EntitlementSummaryDto>(
                     JsonSerializer.Create(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }))

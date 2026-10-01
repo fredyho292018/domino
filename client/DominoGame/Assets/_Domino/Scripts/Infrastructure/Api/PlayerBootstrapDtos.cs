@@ -3,7 +3,8 @@ using System;
 namespace Domino.Infrastructure.Api
 {
     [Serializable] public sealed class PlayerBootstrapRequestDto { public string language; }
-    [Serializable] public sealed class PlayerBootstrapResponseDto { public PlayerResponseDto player; public WalletResponseDto wallet; public EntitlementSummaryDto entitlements; }
+    [Serializable] public sealed class PlayerBootstrapResponseDto { public PlayerResponseDto player; public WalletResponseDto wallet; public EntitlementSummaryDto entitlements; public TrialEligibilityDto trialEligibility; public System.Collections.Generic.Dictionary<string,string> capabilities; }
+    [Serializable] public sealed class TrialEligibilityDto { public string state, activationMode; public bool eligible; public long? policyVersion; public int? periodDays; }
     [Serializable] public sealed class EntitlementSummaryDto { public string availability; public EffectiveEntitlementsDto snapshot; public bool trialGranted; }
     [Serializable] public sealed class EffectiveEntitlementsDto {
         public string plan, status, validUntil, trialEndsAt, serverTime, nextTransitionAt;

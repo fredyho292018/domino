@@ -21,6 +21,7 @@ namespace Domino.Infrastructure.Api
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
             request.SetRequestHeader("Authorization", "Bearer " + token);
+            if (TrialContractHeader.Required(method, url)) request.SetRequestHeader(TrialContractHeader.Name, TrialContractHeader.Value);
             request.timeout = timeoutSeconds;
             request.redirectLimit = 0;
             var operation = request.SendWebRequest();

@@ -12,7 +12,7 @@ namespace Domino.Infrastructure.Api
         static readonly HashSet<string> KnownCodes = new HashSet<string> {
             "AUTH_TOKEN_MISSING", "AUTH_TOKEN_INVALID", "AUTH_TOKEN_EXPIRED", "AUTH_SESSION_INVALID", "ACCESS_DENIED",
             "REQUEST_INVALID", "DISPLAY_NAME_INVALID", "DISPLAY_NAME_RESERVED", "LANGUAGE_UNSUPPORTED", "PLAYER_STATE_CONFLICT", "WALLET_STATE_INVALID",
-            "DEPENDENCY_UNAVAILABLE", "FIRESTORE_CONTENTION_EXHAUSTED", "INTERNAL_ERROR" };
+            "DEPENDENCY_UNAVAILABLE", "FIRESTORE_CONTENTION_EXHAUSTED", "INTERNAL_ERROR", "CLIENT_UPDATE_REQUIRED" };
         readonly DominoApiConfiguration settings;
         readonly IAuthTokenProvider tokens;
         readonly IApiTransport transport;

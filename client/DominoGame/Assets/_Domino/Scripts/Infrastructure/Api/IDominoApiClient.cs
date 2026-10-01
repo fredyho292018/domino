@@ -4,6 +4,13 @@ using System.Threading.Tasks;
 
 namespace Domino.Infrastructure.Api
 {
+    public static class TrialContractHeader
+    {
+        public const string Name = "X-Trial-Activation-Contract";
+        public const string Value = "1";
+        public static bool Required(string method, Uri url) => method == "POST" &&
+            (url.AbsolutePath == "/api/v1/player/bootstrap" || url.AbsolutePath == "/api/v1/player/trial/activate");
+    }
     public sealed class DominoApiConfiguration
     {
         public Uri Endpoint { get; }
