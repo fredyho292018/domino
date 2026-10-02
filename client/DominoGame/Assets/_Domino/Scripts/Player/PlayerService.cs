@@ -7,7 +7,7 @@ using Domino.Infrastructure.Api;
 
 namespace Domino.Player
 {
-    public sealed class PlayerService : IDisposable
+    public sealed partial class PlayerService : IDisposable
     {
         readonly IPlayerIdentityService identity;
         readonly IDominoApiClient api;
@@ -30,7 +30,7 @@ namespace Domino.Player
         public event Action EntitlementsChanged;
         // Presentation snapshot only; server endpoints remain the access authority.
         public void ReceiveEntitlements(string uid, EntitlementSummaryDto value) {
-            if(disposed || Player?.Uid!=uid || identity.Current?.Uid!=uid)return;
+            if(disposed || lifetime.IsCancellationRequested || Player?.Uid!=uid || identity.Current?.Uid!=uid)return;
             Entitlements=value;EntitlementsChanged?.Invoke();
         }
         public DominoApiException Error { get; private set; }
@@ -107,7 +107,9 @@ namespace Domino.Player
                 if (IsSaving && (player.DisplayName != displayName || wallet.Coins != Wallet.Coins ||
                     player.AccountType != Player.AccountType || player.Language != Player.Language || player.Status != Player.Status))
                     throw new DominoApiException(ApiFailure.Contract, 200);
+                if (Player != null && Player.DisplayName != player.DisplayName) requireNewerProfile = true;
                 Player = player;
+                if (PreferredLocale == null) PreferredLocale = player.Language;
                 if(!IsSaving) { ReceiveEntitlements(user.Uid,result.entitlements);TrialEligibility=result.trialEligibility; }
                 if (!IsSaving) Wallet = wallet;
                 IsSaving = false;
@@ -209,6 +211,7 @@ namespace Domino.Player
             {
                 if (disposed) return;
                 disposed = true; Player=null; Wallet=null; Entitlements=null; TrialEligibility=null; sessionUid=null; Error=null; EntitlementsChanged=null; SyncStateChanged = null; BackendAvailabilityChanged = null; SnapshotChanged = null;
+                ClearPresentationAuthority();
                 disposal.Cancel();
                 disposal.Dispose();
             }

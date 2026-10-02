@@ -12,6 +12,8 @@ namespace Domino.UI.AppShell
     {
         ProductionAuthRouter router;
         ProductionRoutingComposition composition;
+        // Shared identity source for subsequent shell consumer migrations; no visual binding in 01A.
+        public PlayerPresentationSource PlayerPresentation { get; private set; }
         VisualElement isolatedRoot;
         VisualElement Root=>isolatedRoot??GetComponent<UIDocument>().rootVisualElement;
 #if UNITY_EDITOR
@@ -24,8 +26,8 @@ namespace Domino.UI.AppShell
         ProductionOnboardingRoot onboarding;
         VisualElement routingStatus;
         void Start(){ApplicationServices.SessionReplaced+=Rebind;Bind();}
-        void Rebind(){if(logout!=null)logout.Changed-=RenderLogout;logout=null;if(router!=null)router.Changed-=Render;onboarding?.Dispose();onboarding=null;routingStatus=null;welcome=null;shell=null;email=null;Bind();}
-        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;router.Changed+=Render;Render();_ = router.RestoreAsync();}
+        void Rebind(){PlayerPresentation?.Dispose();PlayerPresentation=null;if(logout!=null)logout.Changed-=RenderLogout;logout=null;if(router!=null)router.Changed-=Render;onboarding?.Dispose();onboarding=null;routingStatus=null;welcome=null;shell=null;email=null;Bind();}
+        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;if(composition!=null&&ApplicationServices.Player!=null)PlayerPresentation=new PlayerPresentationSource(ApplicationServices.Player,composition.Router);router.Changed+=Render;Render();_ = router.RestoreAsync();}
         void Render(){
             if(logout!=null && (logout.State==LogoutState.Confirming||logout.State==LogoutState.LoggingOut||logout.State==LogoutState.Error)){RenderLogout();return;}
             var root=Root;root.style.flexGrow=1;
@@ -60,6 +62,6 @@ namespace Domino.UI.AppShell
             },logout.State==LogoutState.LoggingOut,logout.Message));
         }
         void Update(){var root=GetComponent<UIDocument>().rootVisualElement;if(root.layout.width<=0||Screen.width<=0||Screen.height<=0)return;var safe=Screen.safeArea;float x=root.layout.width/Screen.width,y=root.layout.height/Screen.height;root.style.paddingLeft=safe.xMin*x;root.style.paddingRight=(Screen.width-safe.xMax)*x;root.style.paddingTop=(Screen.height-safe.yMax)*y;root.style.paddingBottom=safe.yMin*y;}
-        void OnDestroy(){onboarding?.Dispose();if(router!=null)router.Changed-=Render;ApplicationServices.SessionReplaced-=Rebind;if(logout!=null)logout.Changed-=RenderLogout;}
+        void OnDestroy(){PlayerPresentation?.Dispose();onboarding?.Dispose();if(router!=null)router.Changed-=Render;ApplicationServices.SessionReplaced-=Rebind;if(logout!=null)logout.Changed-=RenderLogout;}
     }
 }
