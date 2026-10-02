@@ -87,6 +87,6 @@ class PlayerControllerTests {
         val first = call("""{"language":"es"}""").andExpect(status().isOk).andReturn().response.contentAsString
         val second = call().andExpect(status().isOk).andReturn().response.contentAsString
         assertEquals(mapper.readTree(first), mapper.readTree(second))
-        assertEquals(2, repository.store.documents.size)
+        assertEquals(5, repository.store.documents.size)
     }
 }

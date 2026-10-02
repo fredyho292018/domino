@@ -11,12 +11,13 @@ class OnboardingPersistenceTests {
     private val now = Instant.parse("2026-01-02T00:00:00Z")
     private val db = mock(Firestore::class.java)
     private val stored = mutableMapOf<String, Map<String, Any>>()
-    @Test fun `bootstrap boundary transaction retries without rewriting existing player`() {
+    @Test fun `bootstrap boundary does not repair existing incomplete player`() {
         val store=InMemoryFirestoreTransactions(now)
         val clock=java.time.Clock.fixed(now,java.time.ZoneOffset.UTC)
         val identity=com.teamfho.domino.security.FirebaseIdentity("fixture-player",true)
         val legacy=FirestorePlayerFoundationRepository(store.firestore,clock)
         legacy.ensure(identity,"es","Guest-ABCDEFGH")
+        listOf("preferences", "dominoProfile", "onboarding").forEach { store.documents.remove("players/fixture-player/$it/current") }
         val original=store.documents.toMap()
         val enabled=FirestorePlayerFoundationRepository(store.firestore,clock,OnboardingRolloutBoundary(now.plusSeconds(1)))
         store.retryFirstCallback=true
@@ -25,7 +26,7 @@ class OnboardingPersistenceTests {
         val first=store.documents.toMap()
         enabled.ensure(identity,"en","Guest-ZYXWVUTS")
         assertEquals(first,store.documents)
-        assertEquals("COMPLETED",store.documents.getValue("players/fixture-player/onboarding/current")["status"])
+        assertEquals(2,store.documents.size)
     }
     @Test fun `new bootstrap at boundary atomically creates five documents`() {
         val store=InMemoryFirestoreTransactions(now)

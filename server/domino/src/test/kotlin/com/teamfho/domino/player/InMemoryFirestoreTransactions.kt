@@ -14,6 +14,7 @@ internal class InMemoryFirestoreTransactions(val now: Instant) {
     val documents = ConcurrentHashMap<String, Map<String, Any>>()
     val callbacks = mutableListOf<List<String>>()
     var retryFirstCallback = false
+    var beforeRetry: (() -> Unit)? = null
     var injectedFailure: Throwable? = null
     private val refs = ConcurrentHashMap<String, DocumentReference>()
     private val lock = Any()
@@ -60,6 +61,7 @@ internal class InMemoryFirestoreTransactions(val now: Instant) {
                             }.`when`(tx).update(any(DocumentReference::class.java), anyMap<String, Any>())
                             try { result = function.updateCallback(tx) }
                             finally { callbacks += trace }
+                            if (retryFirstCallback && attempt == 0) beforeRetry?.invoke()
                             if (!retryFirstCallback || attempt == 1) {
                                 val staged = documents.toMutableMap()
                                 for ((operation, path, values) in writes) {

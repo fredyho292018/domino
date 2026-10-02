@@ -42,7 +42,7 @@ class PlayerFoundationRepositoryTests {
     private fun assertNoWrites() = assertTrue(store.callbacks.flatten().none { it.startsWith("create:") || it.startsWith("update:") })
 
     @ParameterizedTest @ValueSource(booleans = [true, false])
-    fun `new identity creates two documents with zero wallet`(anonymous: Boolean) {
+    fun `new identity creates five documents with zero wallet`(anonymous: Boolean) {
         val result = ensure(anonymous)
         assertEquals(if (anonymous) PlayerAccountType.GUEST else PlayerAccountType.REGISTERED, result.player.accountType)
         assertEquals("en", result.player.language)
@@ -51,8 +51,8 @@ class PlayerFoundationRepositoryTests {
         assertEquals(0L, result.wallet.lifetimeCoinsEarned)
         assertEquals(0L, result.wallet.lifetimeCoinsSpent)
         assertEquals(FoundationTimestamp.ServerAssigned, result.player.createdAt)
-        assertEquals(setOf(playerPath, walletPath), store.documents.keys)
-        assertEquals(listOf("read:$playerPath", "read:$walletPath", "create:$playerPath", "create:$walletPath"), store.callbacks.single())
+        assertEquals(setOf(playerPath, walletPath, "$playerPath/preferences/current", "$playerPath/dominoProfile/current", "$playerPath/onboarding/current"), store.documents.keys)
+        assertEquals(listOf("read:$playerPath", "read:$walletPath", "read:$playerPath/preferences/current", "read:$playerPath/dominoProfile/current", "read:$playerPath/onboarding/current", "create:$playerPath", "create:$walletPath", "create:$playerPath/preferences/current", "create:$playerPath/dominoProfile/current", "create:$playerPath/onboarding/current"), store.callbacks.single())
         assertEquals(Timestamp.ofTimeSecondsAndNanos(now.epochSecond, now.nano), store.documents.getValue(playerPath)["createdAt"])
     }
     @Test fun `second ensure conserves alias language wallet and timestamps`() {
@@ -93,11 +93,11 @@ class PlayerFoundationRepositoryTests {
         assertEquals(before, store.documents[playerPath])
         assertEquals(1, store.callbacks.flatten().count { it.startsWith("create:") })
     }
-    @Test fun `missing player repaired preserving wallet exactly`() {
+    @Test fun `missing player with orphan wallet rejects without repair`() {
         store.documents[walletPath] = wallet(9_007_199_254_740_991L); val before = store.documents[walletPath]
-        assertEquals(Wallet.MAX_COINS, ensure().wallet.coins)
+        assertEquals(FoundationError.PLAYER_STATE_CONFLICT, assertFailsWith<PlayerFoundationException> { ensure() }.code)
         assertEquals(before, store.documents[walletPath])
-        assertEquals(1, store.callbacks.flatten().count { it.startsWith("create:") })
+        assertFalse(store.documents.containsKey(playerPath)); assertNoWrites()
     }
     @ParameterizedTest @ValueSource(longs = [899, 900, 901])
     fun `last seen threshold preserves business timestamps`(elapsed: Long) {
@@ -144,13 +144,13 @@ class PlayerFoundationRepositoryTests {
         val candidate = GuestDisplayNames.generate()
         val result = ensure(name = candidate)
         assertEquals(2, store.callbacks.size)
-        assertEquals(2, store.documents.size)
+        assertEquals(5, store.documents.size)
         assertEquals(candidate, result.player.displayName)
         assertEquals(candidate, store.documents.getValue(playerPath)["displayName"])
     }
     @ParameterizedTest @ValueSource(booleans = [true, false])
     fun `simultaneous ensures share one persisted winner and never reset balance`(existingWallet: Boolean) {
-        if (existingWallet) store.documents[walletPath] = wallet(5000000000L)
+        if (existingWallet) { seed(); store.documents[walletPath] = wallet(5000000000L) }
         val before = store.documents[walletPath]
         val executor = Executors.newFixedThreadPool(8)
         val start = CountDownLatch(1)
@@ -159,10 +159,10 @@ class PlayerFoundationRepositoryTests {
             start.countDown()
             val results = futures.map { it.get(10, TimeUnit.SECONDS) }
             assertEquals(1, results.map { it.player.displayName }.toSet().size)
-            assertEquals(2, store.documents.size)
+            assertEquals(if (existingWallet) 2 else 5, store.documents.size)
             if (existingWallet) assertEquals(before, store.documents[walletPath])
             else assertEquals(0L, store.documents.getValue(walletPath)["coins"])
-            assertEquals(if (existingWallet) 1 else 2, store.callbacks.flatten().count { it.startsWith("create:") })
+            assertEquals(if (existingWallet) 0 else 5, store.callbacks.flatten().count { it.startsWith("create:") })
         } finally { executor.shutdownNow() }
     }
     @ParameterizedTest @ValueSource(strings = ["ABORTED", "UNAVAILABLE", "DEADLINE_EXCEEDED"])

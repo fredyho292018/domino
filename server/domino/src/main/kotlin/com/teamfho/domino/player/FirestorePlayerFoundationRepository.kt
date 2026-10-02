@@ -66,7 +66,10 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                 var player = existingPlayer ?: Player(identity.uid, initialType, candidateDisplayName, initialLanguage,
                     PlayerStatus.ACTIVE, serverTime, serverTime, serverTime)
                 val wallet = existingWallet ?: Wallet(0, 0, 0, serverTime, serverTime)
-                val initializeOnboarding = onboardingBoundary?.let { FirestoreOnboardingFoundation(firestore, it).prepare(tx, player, now) }
+                val initializeOnboarding = if (existingPlayer == null) {
+                    if (existingWallet != null) throw PlayerFoundationException(FoundationError.PLAYER_STATE_CONFLICT)
+                    FirestoreOnboardingFoundation.prepareNew(firestore, tx, player, now)
+                } else null // Existing incomplete Players require separately authorized resolution.
                 if (existingPlayer == null) {
                     tx.create(playerRef, FirestoreFoundationMapping.newPlayer(player) + ("socialDefaultDiscoverable" to true))
                 } else {

@@ -21,6 +21,21 @@ internal object FoundationDocumentCodec {
 
 // Explicit boundary required; no scheduler, public endpoint, broad scan or automatic real backfill.
 class FirestoreOnboardingFoundation(private val db: Firestore, private val boundary: OnboardingRolloutBoundary) {
+    companion object {
+        // Only called after the Player root was observed absent in this same transaction.
+        // Orphan subdocuments are contradictory state, not permission to overwrite or repair.
+        internal fun prepareNew(db: Firestore, tx: Transaction, player: Player, at: Instant): () -> Unit {
+            val root = "players/${player.uid}"
+            val documents = listOf(
+                db.document("$root/preferences/current") to FoundationDocumentCodec.encode(PlayerPreferences(player.language, updatedAt = at)),
+                db.document("$root/dominoProfile/current") to FoundationDocumentCodec.encode(DominoProfile(updatedAt = at)),
+                db.document("$root/onboarding/current") to FoundationDocumentCodec.encode(PlayerOnboarding(updatedAt = at)))
+            documents.forEach { (ref, _) ->
+                if (tx.get(ref).get().exists()) throw PlayerFoundationException(FoundationError.PLAYER_STATE_CONFLICT)
+            }
+            return { documents.forEach { (ref, data) -> tx.create(ref, data) } }
+        }
+    }
     internal fun prepare(tx: Transaction, player: Player, at: Instant): () -> Unit {
         val root = "players/${player.uid}"
         val pref = db.document("$root/preferences/current")
