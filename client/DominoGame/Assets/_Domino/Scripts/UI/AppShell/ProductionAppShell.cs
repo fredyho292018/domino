@@ -41,7 +41,7 @@ namespace Domino.UI.AppShell
         readonly Label[] labels = new Label[5];
         VisualElement detail;
 
-        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null)
+        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null)
         {
             ProfileDataSource=profileDataSource??new DemoProfileDataSource();
             name = "ProductionAppShell"; style.flexGrow = 1; style.minHeight = 0;
@@ -52,7 +52,7 @@ namespace Domino.UI.AppShell
             BottomNavigation.style.height = BottomNavigation.style.minHeight = Theme.Sizing.BottomTabTouchHeight;
             BottomNavigation.style.flexShrink = 0; BottomNavigation.style.backgroundColor = Theme.Colors.Surface;
             Add(BottomNavigation);
-            pages = new ProductionRootPage[] { new ProductionHomePage(new DemoHomeDataSource(), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(new DemoPuzzlesDataSource(),()=>OpenRootDestination(RootDestination.Puzzle)), new ProductionLearnPage(new DemoLearnDataSource(new DemoHomeDataSource().Read().Coach),()=>OpenRootDestination(RootDestination.Lesson),()=>Select(ShellTab.Puzzles),()=>OpenRootDestination(RootDestination.CoachGames)), new ProductionWatchPage(new DemoWatchDataSource(),()=>OpenRootDestination(RootDestination.WatchGame)), new ProductionMenuPage(new DemoMenuDataSource(), OpenMenuDestination, signOut) };
+            pages = new ProductionRootPage[] { new ProductionHomePage(homeDataSource??new PlayerHomeDataSource(null), () => Select(ShellTab.Learn)), new ProductionPuzzlesPage(new DemoPuzzlesDataSource(),()=>OpenRootDestination(RootDestination.Puzzle)), new ProductionLearnPage(new DemoLearnDataSource(new DemoHomeDataSource().Read().Coach),()=>OpenRootDestination(RootDestination.Lesson),()=>Select(ShellTab.Puzzles),()=>OpenRootDestination(RootDestination.CoachGames)), new ProductionWatchPage(new DemoWatchDataSource(),()=>OpenRootDestination(RootDestination.WatchGame)), new ProductionMenuPage(menuDataSource??new PlayerMenuDataSource(null), OpenMenuDestination, signOut) };
             for (int i = 0; i < 5; i++)
             {
                 int target = i; PageHost.Add(pages[i]);

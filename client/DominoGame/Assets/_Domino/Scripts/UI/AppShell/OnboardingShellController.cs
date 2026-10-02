@@ -19,11 +19,13 @@ namespace Domino.UI.AppShell
         object PrepareComplete();
         Task<OnboardingStateDto> ExecuteFlowAsync(object operation, CancellationToken token);
     }
-    public sealed class OnboardingShellApiSource : IOnboardingShellSource, IOnboardingFlowSource, IBasicProfileSource, IExperienceSource, ICoachSource, IContactsSource, IMembershipSource
+    public sealed class OnboardingShellApiSource : IOnboardingShellSource, IOnboardingFlowSource, IBasicProfileSource, IExperienceSource, ICoachSource, IContactsSource, IMembershipSource, Domino.Player.IPlayerPresentationCatalogs
     {
         readonly OnboardingApiClient client;readonly CoachCatalogApiClient coachClient;readonly MembershipCatalogApiClient membershipClient;readonly TrialActivationApiClient trialClient;readonly Func<TrialEligibilityDto> trialEligibility;readonly Func<EntitlementSummaryDto> entitlements;
         public OnboardingShellApiSource(OnboardingApiClient client,CoachCatalogApiClient coachClient=null,MembershipCatalogApiClient membershipClient=null,TrialActivationApiClient trialClient=null,Func<TrialEligibilityDto> trialEligibility=null,Func<EntitlementSummaryDto> entitlements=null) { this.client=client ?? throw new ArgumentNullException(nameof(client));this.coachClient=coachClient;this.membershipClient=membershipClient;this.trialClient=trialClient;this.trialEligibility=trialEligibility;this.entitlements=entitlements; }
         public Task<CoachCatalogDto> LoadCoachesAsync(string locale,int? version,CancellationToken token)=>(coachClient??throw new InvalidOperationException("Coach catalog client required.")).LoadAsync(locale,version,token);
+        public Task<OnboardingCatalogDto> ReadPinnedOnboardingCatalogAsync(string locale,int version,CancellationToken token)=>client.PinnedCatalogAsync(locale,version,token);
+        public Task<CoachCatalogDto> ReadPinnedCoachCatalogAsync(string locale,int version,CancellationToken token)=>LoadCoachesAsync(locale,version,token);
         public TrialEligibilityDto TrialEligibility=>trialEligibility?.Invoke();
         public EntitlementSummaryDto CurrentEntitlements=>entitlements?.Invoke();
         public Task<MembershipCatalogDto> LoadMembershipAsync(string locale,int? version,CancellationToken token)=>(membershipClient??throw new InvalidOperationException("Membership catalog client required.")).LoadAsync(locale,version,token);

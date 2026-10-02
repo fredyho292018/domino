@@ -24,10 +24,13 @@ namespace Domino.UI.AppShell
         public string DisplayName { get; }
         public HomeCoachSummary Coach { get; }
         public HomeFriendsSummary Friends { get; }
-        public HomeSummary(HomeContentState state, string name="", HomeCoachSummary coach=null, HomeFriendsSummary friends=null)
-        { State=state; DisplayName=name; Coach=coach; Friends=friends; }
+        public string Greeting { get; }
+        public string CoachStatus { get; }
+        public HomeSummary(HomeContentState state, string name="", HomeCoachSummary coach=null, HomeFriendsSummary friends=null, string greeting=null, string coachStatus=null)
+        { State=state; DisplayName=name; Coach=coach; Friends=friends; Greeting=greeting; CoachStatus=coachStatus; }
     }
     public interface IHomeDataSource { HomeSummary Read(); }
+    public interface IObservableHomeDataSource : IHomeDataSource { event System.Action Changed; void SetLocale(string locale); }
 
     // Temporary composition input, not a service, session or real player identity.
     public sealed class DemoHomeDataSource : IHomeDataSource

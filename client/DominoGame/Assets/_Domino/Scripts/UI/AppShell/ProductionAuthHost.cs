@@ -12,13 +12,13 @@ namespace Domino.UI.AppShell
     {
         ProductionAuthRouter router;
         ProductionRoutingComposition composition;
-        // Shared identity source for subsequent shell consumer migrations; no visual binding in 01A.
+        // One host-scoped identity/catalog projection shared by Menu and Home.
         public PlayerPresentationSource PlayerPresentation { get; private set; }
         VisualElement isolatedRoot;
         VisualElement Root=>isolatedRoot??GetComponent<UIDocument>().rootVisualElement;
 #if UNITY_EDITOR
-        public void BindIsolated(VisualElement root,ProductionAuthRouter forms,ProductionRoutingComposition routing)
-        {isolatedRoot=root;router=forms;composition=routing;router.Changed+=Render;Render();}
+        public void BindIsolated(VisualElement root,ProductionAuthRouter forms,ProductionRoutingComposition routing,PlayerPresentationSource presentation=null)
+        {isolatedRoot=root;router=forms;composition=routing;PlayerPresentation=presentation;router.Changed+=Render;Render();}
 #endif
         ProductionWelcomeView welcome;
         ProductionAppShell shell;
@@ -27,7 +27,7 @@ namespace Domino.UI.AppShell
         VisualElement routingStatus;
         void Start(){ApplicationServices.SessionReplaced+=Rebind;Bind();}
         void Rebind(){PlayerPresentation?.Dispose();PlayerPresentation=null;if(logout!=null)logout.Changed-=RenderLogout;logout=null;if(router!=null)router.Changed-=Render;onboarding?.Dispose();onboarding=null;routingStatus=null;welcome=null;shell=null;email=null;Bind();}
-        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;if(composition!=null&&ApplicationServices.Player!=null)PlayerPresentation=new PlayerPresentationSource(ApplicationServices.Player,composition.Router);router.Changed+=Render;Render();_ = router.RestoreAsync();}
+        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;if(composition!=null&&ApplicationServices.Player!=null)PlayerPresentation=new PlayerPresentationSource(ApplicationServices.Player,composition.Router,()=>composition.Onboarding);router.Changed+=Render;Render();_ = router.RestoreAsync();}
         void Render(){
             if(logout!=null && (logout.State==LogoutState.Confirming||logout.State==LogoutState.LoggingOut||logout.State==LogoutState.Error)){RenderLogout();return;}
             var root=Root;root.style.flexGrow=1;
@@ -38,7 +38,7 @@ namespace Domino.UI.AppShell
             if(router.Route==ProductionAuthRoute.Loading||router.Route==ProductionAuthRoute.Error||router.Route==ProductionAuthRoute.UpdateRequired){
                 root.Clear();welcome=null;shell=null;email=null;routingStatus=new ProductionRoutingStatusView(router.Route,router.Message,()=>{_=router.RetryRoutingAsync();});root.Add(routingStatus);return;
             }
-            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(signOut:RequestLogout);root.Add(shell);welcome=null;email=null;}}
+            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(signOut:RequestLogout,menuDataSource:new PlayerMenuDataSource(PlayerPresentation),homeDataSource:new PlayerHomeDataSource(PlayerPresentation));root.Add(shell);welcome=null;email=null;}}
             else if(router.Route==ProductionAuthRoute.EmailEntry||router.Route==ProductionAuthRoute.Register||router.Route==ProductionAuthRoute.VerificationPending||router.Route==ProductionAuthRoute.EmailPlaceholder||router.Route==ProductionAuthRoute.EmailSignIn||router.Route==ProductionAuthRoute.ForgotPassword){
                 if(email==null||email.Route!=router.Route){root.Clear();welcome=null;shell=null;email=new ProductionEmailView(router.Route,router.NavigateEmail,(e,p,c)=>{_=router.RegisterAsync(e,p,c);},()=>{_=router.CheckVerificationAsync();},()=>{_=router.ResendVerificationAsync();},c=>{if(c)RequestLogout();},(e,p)=>{_=router.SignInEmailAsync(e,p);},e=>{_=router.ResetPasswordAsync(e);});root.Add(email);}
                 email.SetState(router.Busy,router.EmailState,router.Message,router.DisplayEmail,true,router.EmailError);

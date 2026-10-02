@@ -10,7 +10,25 @@ namespace Domino.UI.AppShell {
   object PrepareCoachBack();
   Task<OnboardingStateDto> ExecuteCoachAsync(object operation,CancellationToken token);
  }
- public sealed partial class OnboardingShellController {
+ public sealed partial class OnboardingShellController : Domino.Player.IPlayerPresentationCatalogs {
+  // Reuse already loaded immutable catalogs when their exact version/locale match.
+  // Otherwise read through the existing session-bound API adapters, without loading/reopening onboarding.
+  public async Task<OnboardingCatalogDto> ReadPinnedOnboardingCatalogAsync(string locale,int version,CancellationToken token){
+   if(disposed)throw new OperationCanceledException();
+   using var linked=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token,token);
+   linked.Token.ThrowIfCancellationRequested();
+   if(catalog?.catalogVersion==version && Locale==locale)return Copy(catalog);
+   var next=await ((Domino.Player.IPlayerPresentationCatalogs)source).ReadPinnedOnboardingCatalogAsync(locale,version,linked.Token);
+   linked.Token.ThrowIfCancellationRequested();return Copy(next);
+  }
+  public async Task<CoachCatalogDto> ReadPinnedCoachCatalogAsync(string locale,int version,CancellationToken token){
+   if(disposed)throw new OperationCanceledException();
+   using var linked=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token,token);
+   linked.Token.ThrowIfCancellationRequested();
+   if(coaches?.catalogVersion==version && coaches.resolvedLocale==locale)return Copy(coaches);
+   var next=await ((Domino.Player.IPlayerPresentationCatalogs)source).ReadPinnedCoachCatalogAsync(locale,version,linked.Token);
+   linked.Token.ThrowIfCancellationRequested();return Copy(next);
+  }
   string coachSelection;object pendingCoach;CoachCatalogDto coaches;
   public CoachCatalogDto Coaches=>Copy(coaches);
   public bool MissingSavedCoach=>coachSelection!=null&&!ValidCoach(coachSelection);

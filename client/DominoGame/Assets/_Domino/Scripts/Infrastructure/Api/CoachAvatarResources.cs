@@ -13,6 +13,11 @@ namespace Domino.Infrastructure.Api
             {"COACH_OMAR","AppShellMockCoaches/coach_omar"},{"COACH_SOFIA","AppShellMockCoaches/coach_sofia"}
         };
         public static string Path(string avatarKey)=>avatarKey!=null && Paths.TryGetValue(avatarKey,out var path)?path:null;
+        // Bundled portraits implement asset version 1. Do not silently display an older binary for a newer reference.
+        public static string VersionedPath(string avatarKey,int assetVersion,string storagePath) {
+            var path=Path(avatarKey);
+            return assetVersion==1 && path!=null && storagePath==path+".png" ? path : null;
+        }
         public static T Resolve<T>(string avatarKey,Func<string,T> load,T neutralFallback) where T:class {
             var path=Path(avatarKey);if(path==null)return neutralFallback;
             try{return load(path)??neutralFallback;}catch{return neutralFallback;}

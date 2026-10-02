@@ -15,6 +15,7 @@ namespace Domino.UI.AppShell
         { PlayerId=playerId;DisplayName=displayName;Avatar=avatar;MembershipLabel=membershipLabel;ClubLabel=clubLabel; }
     }
     public interface IMenuDataSource { MenuProfileSummary Read(); }
+    public interface IObservableMenuDataSource : IMenuDataSource { event System.Action Changed; }
     public sealed class DemoMenuDataSource : IMenuDataSource
     {
         public MenuProfileSummary Read()=>new MenuProfileSummary("demo-alex","Alex · Demo player",

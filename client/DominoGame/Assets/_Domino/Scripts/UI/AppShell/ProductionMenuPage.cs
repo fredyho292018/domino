@@ -2,32 +2,47 @@ using System;
 using Domino.UI.Theming;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace Domino.UI.AppShell
 {
     public sealed class ProductionMenuPage : ProductionRootPage
     {
         public AppTheme Theme => ThemeProvider.Current;
+        readonly IMenuDataSource source;
+        readonly Label displayName, membership;
+        readonly Image avatar;
         public static string Title(MenuDestination destination)=>destination==MenuDestination.Support?"Help & Support":destination.ToString();
         public ProductionMenuPage(IMenuDataSource source,Action<MenuDestination> navigate, Action signOut=null) : base("", "")
         {
             if(source==null)throw new ArgumentNullException(nameof(source));
             if(navigate==null)throw new ArgumentNullException(nameof(navigate));
+            this.source=source;
             Body.Clear();verticalScrollerVisibility=ScrollerVisibility.Hidden;
             var eyebrow=Text("YOUR CORNER",TextRole.Caption,Body,"MenuEyebrow");RootVisualRhythm.Eyebrow(eyebrow);
             eyebrow.style.marginBottom=Theme.Spacing.SM;
             Text("Menu",TextRole.PageTitle,Body,"MenuTitle").style.marginBottom=Theme.Spacing.MD;
-            var data=source.Read();
             var profile=new ThemeButton("",()=>navigate(MenuDestination.Profile)){name="MenuProfile",tooltip="Open Profile"};
             profile.style.flexDirection=FlexDirection.Row;profile.style.alignItems=Align.Center;
             profile.style.minHeight=Theme.Sizing.ProfileTouchHeight;profile.style.paddingTop=profile.style.paddingBottom=Theme.Spacing.SM;
             profile.style.marginBottom=Theme.Spacing.MD;
-            var avatar=new Image{vectorImage=data.Avatar,name="MenuAvatar"};ThemeStyles.Icon(avatar,false);
+            avatar=new Image{name="MenuAvatar"};ThemeStyles.Icon(avatar,false);
             avatar.style.width=avatar.style.height=48;avatar.style.marginRight=Theme.Spacing.IconTextGap;
             profile.Add(avatar);
             var info=new VisualElement{pickingMode=PickingMode.Ignore};info.style.flexGrow=1;info.style.minWidth=0;profile.Add(info);
-            Text(data.DisplayName,TextRole.ButtonSecondary,info,"MenuDisplayName");
-            Text(data.MembershipLabel+" · "+data.ClubLabel,TextRole.Secondary,info,"MenuMembership");
+            displayName=Text("",TextRole.ButtonSecondary,info,"MenuDisplayName");
+            membership=Text("",TextRole.Secondary,info,"MenuMembership");
+            RefreshIdentity();
+            RegisterCallback<AttachToPanelEvent>(_=>{
+                if(source is IObservableMenuDataSource observable)observable.Changed+=RefreshIdentity;
+                LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;
+                RefreshIdentity();
+            });
+            RegisterCallback<DetachFromPanelEvent>(_=>{
+                if(source is IObservableMenuDataSource observable)observable.Changed-=RefreshIdentity;
+                LocalizationSettings.SelectedLocaleChanged-=LocaleChanged;
+            });
             Body.Add(profile);
             var groups=new[]{"SOCIAL","ACTIVITY","PERSONALIZATION","APP"};
             var destinations=new[]{MenuDestination.Friends,MenuDestination.Messages,MenuDestination.Stats,MenuDestination.Coach,MenuDestination.Theme,MenuDestination.Membership,MenuDestination.Settings,MenuDestination.Support};
@@ -48,6 +63,14 @@ namespace Domino.UI.AppShell
                 ThemeStyles.RowContent(row,icon,"Sign Out","",Icon("chevron","LogoutChevron"),false);
                 Body.Add(row);
             }
+        }
+        void LocaleChanged(Locale ignored)=>RefreshIdentity();
+        void RefreshIdentity()
+        {
+            var data=source.Read();
+            displayName.text=data.DisplayName;
+            membership.text=string.IsNullOrEmpty(data.MembershipLabel)?data.ClubLabel:data.MembershipLabel+" · "+data.ClubLabel;
+            avatar.vectorImage=data.Avatar;
         }
         Label Text(string value,TextRole role,VisualElement parent,string elementName)
         {

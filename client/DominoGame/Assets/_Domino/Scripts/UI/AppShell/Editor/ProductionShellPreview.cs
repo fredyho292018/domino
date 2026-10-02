@@ -43,7 +43,7 @@ namespace Domino.Editor
             frame.style.height = frame.style.minHeight = frame.style.maxHeight = Sizes[index].y; frame.style.flexShrink = 0;
             float scale = Mathf.Min(1, Mathf.Min(position.width / Sizes[index].x, (position.height - 28) / Sizes[index].y));
             frame.style.transformOrigin = new TransformOrigin(0,0,0); frame.style.scale = new Scale(new Vector3(scale,scale,1));
-            rootVisualElement.Add(frame); shell = new ProductionAppShell(profileSource); frame.Add(shell);
+            rootVisualElement.Add(frame); shell = new ProductionAppShell(profileSource,menuDataSource:new DemoMenuDataSource(),homeDataSource:new DemoHomeDataSource()); frame.Add(shell);
             shell.SetSafeArea(0,24,0,24);
             shell.Select(route); if(detail) { if(rootDestination.HasValue)shell.OpenRootDestination(rootDestination.Value);else if(destination.HasValue)shell.OpenMenuDestination(destination.Value);else shell.OpenDetail(); if(destination==MenuDestination.Profile)shell.OpenProfileSection(profileSection); }
             if (test) rootVisualElement.schedule.Execute(Test).ExecuteLater(500);

@@ -490,3 +490,384 @@ DEPLOY=NO
 PLAYER_UI_01B_STARTED=NO
 NEXT=PLAYER-UI-01A IMPLEMENTATION REVIEW
 ```
+
+## PLAYER_UI_01B_MENU_BINDING
+
+Base: `9d3ce0225f7d30ad67d74a030821a5bd486d1e02`. Implemented and validated on 2026-10-02. This section supersedes the earlier Menu/demo observations only; Home, Profile and the other consumers retain their prior behavior.
+
+### Consumer ownership and binding
+
+The production view is `ProductionMenuPage`. `ProductionAppShell` owns the retained Menu page, navigation and existing logout callback; there is no separate Menu identity controller. Before this change it constructed `DemoMenuDataSource` directly. `ProductionAuthHost` now injects `PlayerMenuDataSource` over its existing single `PlayerPresentationSource`:
+
+`ApplicationServices.Player:PlayerService -> PlayerPresentationSource.Current:PlayerPresentationState -> PlayerMenuDataSource -> ProductionMenuPage`
+
+The adapter is stateless and never reads PlayerService, bootstraps, opens an API client or owns another Player cache. Menu subscribes while attached and unsubscribes when detached. It updates the existing labels and neutral avatar without rebuilding rows or changing styles. Reattachment rereads the current shared source. Session invalidation/disposal removes the previous identity; late responses from the prior service lifetime cannot supply a new session's Menu.
+
+The production shell's unconfigured/default Menu is neutral. The old demo provider remains available, and `ProductionShellPreview` explicitly injects it to preserve its existing fixture contract. App Shell Mock is unchanged.
+
+### Identity and membership presentation
+
+The name is the literal authoritative displayName, including legitimate server-generated aliases. It is never replaced with an email, UID or a synthetic personal name. Long valid names retain their entire value and use the existing wrap policy.
+
+| Presentation state | Menu membership |
+| --- | --- |
+| Confirmed Free | FREE in English; GRATIS in Spanish via existing `premium.free` copy |
+| Confirmed PremiumLegacy | PREMIUM via existing `premium.active` copy |
+| Confirmed Gold / Platinum / Diamond / Family | GOLD / PLATINUM / DIAMOND / FAMILY product labels |
+| Missing or unresolved entitlements | No membership claim; brand remains visible |
+| Empty / Loading / Unavailable | Neutral `profile.title` copy; no demo identity or fake FREE |
+
+`MenuPlayerText.ProductBrand` retains the existing `Cuban Domino Club` product copy outside entitlement state. The avatar remains `AppShellMockIcons/icon_menu_avatar`; no Coach portrait or Player-avatar implementation was added. Routing remains the failure authority. Locale updates use the existing localization tables when initialized, with equivalent neutral English/Spanish presentation fallbacks before initialization. Product labels without an existing localized entitlement key retain their stable commercial names.
+
+### Validation and evidence boundaries
+
+- `RunPlayerMenuBindingTests.ps1`: **60 passed**, no failures, isolated transport only. Covers all six memberships (including both legacy Premium wire aliases), literal names, localized neutral copy, missing/loading/failure state, logout, session replacement, restore, late prior-session response and zero additional requests from reading Menu presentation.
+- `PlayerMenuBindingValidation`: **1,221 Unity checks passed** at all eight established presets in English and Spanish. Includes a valid 16-character wide name, wrap/clipping/overlap, unchanged margins and neutral avatar dimensions, existing row order/height/touch targets, all nine Menu destinations and Back, fake logout callback, reattachment, actual `ProductionAuthHost` injection, missing entitlements and no demo fallback. Result: `Library/PlayerUi01B/Unity.validation.txt`, current passing run started at `2026-10-02T20:41:21.9753993Z`.
+- An earlier attempt overlapped ongoing script import and did not finish its viewport check. It is not counted as a pass. The complete run above started after import and passed every preset; no product geometry was changed to satisfy the test.
+- A subsequent live-inspection helper initially lacked an Editor-only namespace import; this was corrected before live execution. Product sources did not change after the passing Menu suite.
+- During final Console sampling, the Editor encountered one transient `IOException` because a request producer still held its local request file. This was a validation-tool issue, not a Menu/session error. Play was stopped without logout, request consumption was corrected to defer a locked file to the next Editor tick, and **three focused request-file checks passed**: locked request retained, released request consumed, missing request ignored. No second TEST startup was performed. The Menu suite was retained because product code was unchanged.
+
+Latest Unity import is complete. Compiler errors: **0**. Current Console warnings: **10**, comprising the **9 existing compiler warnings** plus **1 preexisting Firebase SDK Future-release warning on teardown** (the same warning pattern also exists earlier in the Editor log). New warnings originating in 01B source: **0**. Current Console errors and blocking exceptions after the final import: **0**. The earlier validation-tool exception is explicitly recorded above, not treated as if it never occurred. Final tooling evidence: `Library/PlayerUi01B/Preflight.txt` and `Tool.validation.txt`.
+
+### Authorized real TEST preview
+
+The user explicitly authorized the normal startup of the existing TEST session after being informed that bootstrap can update `lastSeenAt`, overriding the original zero-Player-write condition for that normal startup only. Exactly **one** real startup/bootstrap was observed and succeeded; no retry, login, logout, onboarding action or trial activation was performed. No live credential material or Player identifier was collected into the report.
+
+At `2026-10-02T20:47:12.4519835Z`, the existing production host rendered Menu in the real **393x852 Game View**. Its visible name matched `PlayerPresentationState.DisplayName`, its visible membership matched the server-derived membership projection, and its avatar was the neutral existing asset. The full card was also visually inspected after closing the separate isolated preview. The observer only selected the retained Menu and read its state; it did not fetch or bootstrap. The product source and observed startup log establish one successful bootstrap and no routing error. No independent backend write audit was performed, so **total real Player writes must not be reported as proven zero**: normal startup may have updated `lastSeenAt` under the existing 15-minute policy. Menu-originated Player writes are zero.
+
+Safe evidence: `Library/PlayerUi01B/Live.validation.txt`. Real displayName is deliberately omitted. The live pass is retained. Final state is Play OFF with the clearly labeled isolated Menu at 393x852 open; the persisted real authentication session was not cleared. No additional TEST startup was used to re-open the live card after the tooling correction.
+
+### Scope and protection
+
+Changed product files: `MenuData.cs`, `MenuPlayerText.cs` (+ meta), `PlayerMenuDataSource.cs` (+ meta), `ProductionMenuPage.cs`, `ProductionAppShell.cs`, `ProductionAuthHost.cs`. Changed validation/preview files: `Editor/ProductionShellPreview.cs`, new `Editor/PlayerMenuBindingValidation.cs` (+ meta), `Validation/PlayerMenuBindingTests.cs`, `Validation/RunPlayerMenuBindingTests.ps1`, and this report. **14 files total.** No changes to shared Player authority/model, backend, configuration, Home/Profile/other consumer bindings, App Shell Mock, or temporary SMOKE code. The Editor inspector rejects a runtime with test/SMOKE factories installed; production binding has no SMOKE dependency.
+
+All **132 preexisting pending files** retain their baseline contents and Git status; all **102 protected files** are unchanged. The scoped secret/identity scan finds no real emails, raw Firebase UIDs, passwords, JWTs, private keys, action URLs or mojibake. Nothing is staged; no commit, push or deploy was performed. PLAYER-UI-01C is not started.
+
+```text
+BASE_SHA=9d3ce0225f7d30ad67d74a030821a5bd486d1e02
+MENU_VIEW=ProductionMenuPage
+MENU_CONTROLLER=ProductionAppShell_RETAINED_PAGE
+CURRENT_MENU_DATA_PROVIDER=PlayerMenuDataSource
+PREVIOUS_MENU_DATA_PROVIDER=DemoMenuDataSource
+MENU_PLAYER_SOURCE=PlayerPresentationState
+MENU_PLAYER_SOURCE_COUNT=1
+MENU_PRIMARY_NAME_SOURCE=PLAYER_DISPLAY_NAME
+MENU_DEMO_NAME_VISIBLE=NO
+MENU_DEMO_PLAYER_COPY_VISIBLE=NO
+MENU_MEMBERSHIP_SOURCE=SERVER_DERIVED_ENTITLEMENT_STATE
+MISSING_ENTITLEMENT_RENDERS_FREE=NO
+PREMIUM_LEGACY_DISPLAY=PREMIUM
+PRODUCT_BRAND_SOURCE=EXISTING_PRODUCT_COPY
+MENU_AVATAR_SOURCE=NEUTRAL_EXISTING_ICON
+MENU_LOADING_DEMO_IDENTITY=NO
+MENU_LOADING_FAKE_MEMBERSHIP=NO
+MENU_FAILURE_FAKE_PLAYER=NO
+MENU_CLEARED_ON_SESSION_CHANGE=YES
+STALE_MENU_PLAYER_A_VISIBLE_FOR_B=NO
+MENU_SESSION_RESTORE_SUPPORTED=YES
+MENU_OPEN_PLAYER_NETWORK_REQUESTS=0
+MENU_LAYOUT_CHANGED=NO
+LONG_DISPLAY_NAME_OVERFLOW=0
+LONG_DISPLAY_NAME_OVERLAP=0
+MENU_EN=PASS
+MENU_ES=PASS
+MENU_ACCESSIBILITY_REGRESSION=PASS
+HOME_VISUAL_BINDING_CHANGED=NO
+PROFILE_VISUAL_BINDING_CHANGED=NO
+SHARED_PLAYER_BINDINGS_CHANGED=NO
+APP_SHELL_MOCK_CHANGED=NO
+MENU_BINDING_TESTS=60_PASS
+MENU_UNITY_CHECKS=1221_PASS
+VALIDATOR_REQUEST_LIFECYCLE_CHECKS=3_PASS
+MENU_DEMO_REGRESSION=PASS
+MENU_RESPONSIVE=8/8_PASS_EN_ES
+REAL_PLAYER_MENU_PREVIEW=PASS
+REAL_DISPLAY_NAME_VISIBLE=YES
+REAL_MEMBERSHIP_VISIBLE=YES
+UNITY_COMPILER_ERRORS=0
+UNITY_WARNINGS_CURRENT=10
+NEW_PLAYER_UI_01B_WARNINGS=0
+CURRENT_BLOCKING_EXCEPTIONS=0
+PLAYER_WRITES=NOT_ASSERTED_ZERO_AUTHORIZED_NORMAL_BOOTSTRAP
+MENU_PLAYER_WRITES=0
+NORMAL_BOOTSTRAP_COUNT=1
+NORMAL_BOOTSTRAP_LAST_SEEN_WRITE=POSSIBLE_NOT_SEPARATELY_AUDITED
+ONBOARDING_WRITES=0
+TRIAL_WRITES=0
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+PREEXISTING_PENDING_FILES_PRESERVED=132/132
+SMOKE_OBSERVER_DEPENDENCY=NO
+BACKEND_SOURCE_CHANGED=NO
+BACKEND_REDEPLOYED=NO
+SECRET_SCAN=PASS
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+PLAYER_UI_01B_SUCCESS=YES
+PLAYER_UI_01C_STARTED=NO
+NEXT=PLAYER-UI-01B VISUAL REVIEW
+```
+
+## PLAYER_UI_01C_HOME_BINDING
+
+The contract-review subsection below is historical. Its pending decision and unimplemented status are superseded by **Accepted version resolution and completed implementation** at the end of this section. The 01B evidence above remains retained.
+
+### Contract review before implementation — 2026-10-02
+
+Base: `9d3ce0225f7d30ad67d74a030821a5bd486d1e02`. The 14 files recorded by the final 01B evidence matched their SHA-256 hashes before this report-only append. Menu's approved implementation and its retained 60 mapping tests, 1,221 Unity checks and real TEST validation are unchanged. No tests or real startup were initiated during this contract review.
+
+`ProductionAppShell.cs:55` still constructs Home with `DemoHomeDataSource`; `HomeData.cs:35-36` supplies Alex, Amara and the fixed Coach greeting/portrait. Therefore `PREVIOUS_HOME_AMARA_SOURCE=DEMO_HARDCODED`. This proves presentation provenance, not the current authenticated Player's saved Coach. The prior audit's SOFIA/catalog-1 observation is historical and is not promoted to a current-session measurement.
+
+### Selection/version contract distinction
+
+| Existing contract | Saved Coach information available |
+| --- | --- |
+| `POST /api/v1/player/bootstrap` | Neither saved Coach key nor saved Coach catalog version (`PlayerBootstrapResponse.kt:13`) |
+| `GET /api/v1/player/onboarding` | `COACH_SELECTION` answer comes from `DominoProfile.preferredCoachKey`; domain revision is included. `selectedCoachCatalogVersion` is not serialized (`OnboardingProgressService.kt:32-50`; `OnboardingProgressModels.kt:13-19`) |
+| `GET /api/v1/onboarding/catalog?version=<onboarding version>` | Immutable onboarding publication's `coachCatalogVersion`; this is a different field from the Player's persisted selected version |
+| `GET /api/v1/player/profile` | Root identity/profile fields; no DominoProfile selection/version (`EntitlementConfiguration.kt:40-48`) |
+| Coach-step mutation response | `OnboardingMutationResponse.domino` can include the full saved key/version when the domain changes; it is not a read/restore mechanism (`OnboardingProgressService.kt:73`) |
+| `GET /api/v1/coaches?version=<coach version>&locale=<locale>` | Exact historical Coach catalog with localized name/descriptions and avatar reference; includes inactive entries with `selectable=false` (`CoachCatalogHttp.kt:14-20`; `CoachCatalog.kt:40-49`) |
+
+The existing client mirrors this distinction: `OnboardingStateDto` has answers but no DominoProfile, while `OnboardingMutationDto.domino` contains `DominoProfileDto.selectedCoachCatalogVersion` (`OnboardingDtos.cs:24-30`). `PlayerPresentationState` currently has no Coach selection. The existing `CoachCatalogApiClient` already supports a requested version and rejects a mismatching returned version; no Home-specific API client is needed.
+
+The earlier audit proposed an **indirect, completed-FLOW-only** resolution: confirmed saved Coach answer + pinned onboarding publication + that publication's Coach catalog version. Backend save and complete enforce the relationship between the saved selection version and the pinned publication (`OnboardingProgressService.kt:156-160,207-208`). However, restored GET does not independently return or recheck equality of the persisted selected version; it returns the answer and onboarding version. This strategy must be described as contract-derived provenance, never as a direct read of `selectedCoachCatalogVersion`. Unpinned/legacy-exempt or otherwise unsupported cases must remain unavailable.
+
+The current authorization specifically names the Player's saved key and selected version as authority. A clarification is pending on whether the previously audited indirect strategy is acceptable for completed FLOW, or direct serialization is required. Product implementation is paused at this decision; no backend change was made or implicitly authorized.
+
+### Minimal direct-contract alternative — design only
+
+If direct provenance is required, add a nullable saved Coach projection (`preferredCoachKey`, `selectedCoachCatalogVersion`, `revision`) to the existing onboarding response, taken from the **already-read** `Snapshot.domino`. Do not change storage/schema, routing policy, selections, trial state or GET side effects. Add the corresponding client DTO fields and ingest the confirmed pair into the existing Player/presentation authority with session and monotonic-revision guards. Older responses lacking the projection remain Coach-unavailable.
+
+Resolve that exact version through the existing catalog infrastructure; match the exact key, allow historical inactive entries for presentation, and never substitute the first/current/default Coach. Resolve supported bundled avatar key/version references; unsupported asset versions receive a neutral portrait, not another Coach. All async completion must be rejected after session/owner/selection/version/locale invalidation. Neither Home nor Menu should fetch a separate Player, bootstrap again or maintain another Player store. Learn, Profile and Mock stay unchanged.
+
+Required checks after a strategy is authorized: all ten keys; requested-version mismatch; missing/invalid key and version; inactive historical selection; unavailable catalog/avatar; EN/ES and all eight viewports; long/missing name; loading/failure; session A-to-B and late A completion; retained Menu regression; one current TEST inspection that reports only the Coach key/version and comparison booleans. No mutation request may be used to obtain the saved selection.
+
+### Current gate
+
+Unity was already in Play when inspected; Game View shows 393x852 and the existing demo-backed Home. No Play transition, retry, logout, account switch, import or real API operation was initiated. That screen is not evidence of real Home binding. The current screenshot's Console counters show 0 errors and 3 warnings; this is not a new compiler/test run and does not replace the previous 01B Console classification.
+
+Fresh baseline comparison confirmed all 132 preexisting files preserve their bytes and Git status, including all 102 protected files. Nothing is staged. Only this report is being updated by 01C so far.
+
+```text
+PLAYER_UI_01C_STATUS=PENDING_COACH_VERSION_PROVENANCE_DECISION
+MENU_REAL_BINDING_PRESERVED=YES
+MENU_REAL_DISPLAY_NAME=PASS_RETAINED_01B
+MENU_REAL_MEMBERSHIP=PASS_RETAINED_01B
+HOME_CURRENT_SOURCE=DemoHomeDataSource
+PREVIOUS_HOME_AMARA_SOURCE=DEMO_HARDCODED
+HOME_TARGET_SOURCE=PlayerPresentationState
+HOME_COACH_CATALOG_SOURCE=EXISTING_CoachCatalogApiClient_PROPOSED
+HOME_SPECIFIC_COACH_API_CLIENT_CREATED=NO
+SELECTED_COACH_VERSION_DIRECT_READ_CONTRACT_AVAILABLE=NO
+COMPLETED_FLOW_INDIRECT_VERSION_STRATEGY=PREVIOUSLY_AUDITED_PENDING_CLARIFICATION
+REAL_PLAYER_COACH_KEY=NOT_MEASURED_CURRENT_SESSION
+REAL_PLAYER_COACH_RESOLUTION=NOT_RUN
+REAL_HOME_COACH_MATCHES_PLAYER_SELECTION=NOT_VALIDATED
+HOME_NAME_BINDING_TESTS=NOT_RUN
+HOME_COACH_BINDING_TESTS=NOT_RUN
+HOME_RESPONSIVE=NOT_RUN
+HOME_REAL_DISPLAY_NAME_VISIBLE=NO_DEMO_REMAINS
+HOME_REAL_COACH_MATCHES_SAVED_SELECTION=NOT_VALIDATED
+HOME_FRIENDS_DEMO_CONTENT=DEFERRED
+MENU_LAYOUT_CHANGED=NO
+LEARN_PAGE_BEHAVIOR_CHANGED=NO
+PROFILE_VISUAL_BINDING_CHANGED=NO
+PRODUCT_SOURCE_FILES_CHANGED_THIS_REVIEW=0
+BACKEND_SOURCE_CHANGED=NO
+APP_SHELL_MOCK_CHANGED=NO
+REAL_OPERATIONS_INITIATED_THIS_REVIEW=0
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+PREEXISTING_PENDING_FILES_PRESERVED=132/132
+SECRET_SCAN=PASS_REPORT_SCOPE
+STAGED_FILES=0
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+PLAYER_UI_01C_SUCCESS=NO
+NEXT=COACH_VERSION_PROVENANCE_DECISION
+```
+
+### Accepted version resolution and completed implementation — 2026-10-02
+
+The owner explicitly accepted the indirect authoritative contract. Home now uses the same `PlayerPresentationState` exposed by the host's single `PlayerPresentationSource` as Menu. The source adds an immutable, session-scoped Coach presentation; Home holds no separate Player store or Coach domain authority.
+
+The saved `COACH_SELECTION` answer in the confirmed onboarding read is the server projection of `DominoProfile.preferredCoachKey`. Resolution reads that Player's pinned onboarding publication, follows its explicit `coachCatalogVersion`, and reads that exact Coach catalog. It never equates the two version numbers, uses the current Coach pointer, reopens onboarding, or performs a selection write. This is contract-derived provenance, not a newly exposed direct read of `selectedCoachCatalogVersion`.
+
+`PLAYER_UI_01C_DIRECT_COACH_VERSION_API=DEFERRED_NOT_REQUIRED`. A direct saved-version projection can be reconsidered if more consumers make indirect resolution unnecessarily complex. There is no backend contract, schema, source or deployment change in this task.
+
+The existing `OnboardingApiClient` gains an explicit versioned catalog read; the existing `OnboardingShellController` exposes read-only access through its existing catalog infrastructure and reuses matching loaded catalogs. It does not modify the controller's onboarding state. Both COMPLETED and IN_PROGRESS with a saved selection and pinned context are supported by the resolver; normal production routing is unchanged.
+
+Missing or inconsistent context, missing key, mismatching catalog versions and failed reads render neutral/unavailable Coach presentation. An inactive historical Coach remains the selected Coach for display. Missing or unsupported bundled avatar versions receive a neutral icon, never another Coach. Async results are discarded after session, owner, route, selection, version or locale invalidation. Home greeting and catalog copy disable rich-text interpretation of names. Opening Home or Menu does not bootstrap or fetch a separate Player.
+
+The prior production Home's Alex and Amara came from `DemoHomeDataSource`. Production now receives `PlayerHomeDataSource`; the explicit development preview keeps its existing demo source, and Learn's existing demo provider is untouched. The existing Home geometry, navigation, buttons and five fictional friends remain unchanged. Menu's dedicated source, presentation, page and tests match their 01B hashes; only the shared host/shell composition is extended to inject Home from the same source.
+
+### Current validation evidence
+
+| Validation | Current result | Scope |
+| --- | --- | --- |
+| Home pure binding/contract suite | 222 PASS, 0 FAIL | Name 39; Coach 82; version resolution 73; session/I/O 28 |
+| Shared Player presentation regression | 104 PASS | Retains previous 90 checks and adds 14 assertions for the authorized immutable Coach projection |
+| Menu mapping regression | 60 PASS | Dedicated 01B binding implementation unchanged |
+| Unity Home validation | 598 PASS, 0 FAIL | Eight logical presets in EN/ES, geometry, reachability, no clipping/overlap, attached-state refresh, same-source Menu, actual host injection and all ten correct portraits |
+| Real TEST Home | PASS | Existing restored session, one normal bootstrap, actual Game View 393x852, current name/Coach/avatar equality |
+
+The version tests deliberately use onboarding version 2 with Coach version 7, require explicit query versions, and reject mismatching returned versions. Coverage includes all ten keys, long/missing names, invalid/duplicate/missing Coach data, inactive Coach, unsupported avatar, loading/failure, IN_PROGRESS, locale changes, session A-to-B and late completion from a replaced session. No network or real writes occur in these isolated tests.
+
+The eight Unity presets are 375x667, 393x852, 412x915, 430x932, 480x1040, 600x960, 768x1024 and 834x1194, each in EN and ES. The production Home and Menu use the same real display name in the checks. Continue Learning retains its prior route and behavior.
+
+Initial test-only corrections were necessary: enum casing and invalid empty snapshot construction, then a fixture response missing the required `requiredCapabilities` collection. The first Unity attempt used an older imported fixture assembly and failed before completion; it is not counted as passing evidence. After explicit Refresh imported the final fixture, the complete Unity run started at `2026-10-02T22:18:41Z` and passed all 598 checks. Product source did not change after that passing run.
+
+### Current real TEST observation
+
+At `2026-10-02T22:25:15Z`, the read-only runtime observer compared the actual host's presentation with its confirmed onboarding state and the rendered Home. It reported:
+
+```text
+ENVIRONMENT=TEST
+SCREEN=393x852
+REAL_PLAYER_COACH_KEY=SOFIA
+REAL_PINNED_ONBOARDING_VERSION=2
+REAL_RESOLVED_COACH_CATALOG_VERSION=1
+REAL_HOME_COACH_KEY=SOFIA
+NAME_MATCH=YES
+COACH_KEY_MATCH=YES
+COACH_COPY_AVATAR_MATCH=YES
+BOTH_VISIBLE=YES
+MENU_PRESERVED=YES
+```
+
+The real screenshot confirms Home with the authenticated Player's greeting, localized Sofía name/description and matching portrait. Firebase UID, Player ID, email and credentials are deliberately omitted from this report. The restored locale is Spanish. This is a current runtime observation, not the earlier historical SOFIA audit or an isolated fixture. The owner subsequently approved the real Home at 393x852: visible display name `Guest-QFTC85G`, Coach `Sofía`, matching avatar visible, and no Amara displayed.
+
+One authorized normal bootstrap started and succeeded during this run. Home catalog reads use the existing authenticated API infrastructure. No retry, logout, account switch, profile edit, onboarding submission, Coach selection or trial activation was initiated. The normal bootstrap may update `lastSeenAt`; that write was authorized and was not separately audited in Firestore. No additional Player writes were introduced by Home.
+
+Fresh Console sampling at `2026-10-02T22:25:49Z`: Play ON, compilation/import idle, 0 errors and 2 runtime warnings. These are the existing PanelSettings message about no Theme Style Sheet and Firebase's missing Database URL configuration warning; the messages predate 01C and their originating paths were not changed here. The compilation gate before Play had 9 existing compiler warnings and 0 errors. Entering Play clears the Console according to its existing setting, so these counts describe different scopes; they do not imply that the previous warnings disappeared from the session history. No new 01C warnings or blocking exceptions were observed. No settings were changed to suppress warnings.
+
+### Scope and protection
+
+There are 35 pending paths owned jointly by 01B/01C: the previously recorded 14 paths plus 21 additional paths. The 132 preexisting pending files retain their bytes and Git status, including all 102 protected files. No paths are staged. Backend, configuration, App Shell Mock, Learn and Profile source remain untouched. The explicit development shell preview alone retains a demo Home adapter; production does not depend on it.
+
+The scoped final scan covers the complete contents of all 35 owned paths, including this report, tests and validators. It checks real email addresses, raw Firebase UIDs, JWT/token or password literals, private/signing key material, credential URLs and mojibake. Matched test placeholders, if any, must be identified as fixtures without printing sensitive material. Final scan result and file hashes are retained in ignored `Validation/Generated/PlayerUi01C/implementation-result.json`.
+
+```text
+PLAYER-UI-01C HOME REAL BINDING
+BASE_SHA=9d3ce0225f7d30ad67d74a030821a5bd486d1e02
+MENU_REAL_BINDING_PRESERVED=YES
+HOME_PLAYER_SOURCE=PlayerPresentationState
+HOME_GREETING_NAME_SOURCE=PLAYER_DISPLAY_NAME
+COACH_KEY_SOURCE=PLAYER_PREFERRED_COACH_KEY
+COACH_VERSION_SOURCE=AUTHORITATIVE_PINNED_ONBOARDING_CONTEXT
+COACH_VERSION_DERIVATION=PINNED_ONBOARDING_VERSION_TO_EXPLICIT_COACH_CATALOG_REFERENCE
+COACH_VERSION_RESOLUTION=PINNED_ONBOARDING_EXPLICIT_REFERENCE
+CURRENT_COACH_CATALOG_POINTER_USED_AS_VERSION_AUTHORITY=NO
+HOME_COACH_SELECTION_SOURCE=PLAYER_PREFERRED_COACH_KEY
+HOME_COACH_VERSION_SOURCE=PINNED_ONBOARDING_EXPLICIT_COACH_REFERENCE
+HOME_COACH_NAME_SOURCE=VERSIONED_COACH_CATALOG
+HOME_COACH_AVATAR_SOURCE=VERSIONED_BUNDLED_RESOURCE_REFERENCE
+REAL_PLAYER_COACH_KEY=SOFIA
+REAL_PINNED_ONBOARDING_VERSION=2
+REAL_RESOLVED_COACH_CATALOG_VERSION=1
+REAL_HOME_COACH_KEY=SOFIA
+REAL_HOME_COACH_MATCHES_PLAYER_SELECTION=YES
+PREVIOUS_HOME_AMARA_SOURCE=DEMO_HARDCODED
+HOME_AMARA_HARDCODE_DEPENDENCY=NO
+MISSING_PINNED_COACH_VERSION_FALLBACK_TO_CURRENT=NO
+MISSING_PINNED_COACH_VERSION_SUBSTITUTES_AMARA=NO
+COMPLETED_PLAYER_COACH_RESOLUTION=SUPPORTED
+IN_PROGRESS_SAVED_COACH_RESOLUTION=SUPPORTED
+BACKEND_CONTRACT_CHANGE_REQUIRED_FOR_01C=NO
+PLAYER_UI_01C_DIRECT_COACH_VERSION_API=DEFERRED_NOT_REQUIRED
+HOME_SPECIFIC_COACH_STATE_OWNER_CREATED=NO
+HOME_SPECIFIC_COACH_API_CLIENT_CREATED=NO
+HOME_NAME_BINDING_TESTS=PASS
+HOME_COACH_BINDING_TESTS=PASS
+COACH_VERSION_RESOLUTION_TESTS=PASS
+HOME_PURE_CHECKS=222_PASS
+PLAYER_PRESENTATION_REGRESSION=104_PASS
+MENU_MAPPING_REGRESSION=60_PASS
+HOME_UNITY_CHECKS=598_PASS
+HOME_RESPONSIVE=8/8_PASS_EN_ES
+COACH_AVATARS=10/10_PASS
+HOME_REAL_DISPLAY_NAME_VISIBLE=YES
+HOME_REAL_COACH_VISIBLE=YES
+HOME_REAL_COACH_MATCHES_SAVED_SELECTION=YES
+HOME_LOADING_DEMO_NAME=NO
+HOME_LOADING_DEMO_COACH=NO
+HOME_FAILURE_FAKE_PLAYER=NO
+HOME_FAILURE_FAKE_COACH=NO
+STALE_HOME_PLAYER_A_NAME_VISIBLE_FOR_B=NO
+STALE_HOME_PLAYER_A_COACH_VISIBLE_FOR_B=NO
+HOME_FRIENDS_DEMO_CONTENT=DEFERRED
+PROFILE_VISUAL_BINDING_CHANGED=NO
+LEARN_PAGE_BEHAVIOR_CHANGED=NO
+MENU_LAYOUT_CHANGED=NO
+APP_SHELL_MOCK_CHANGED=NO
+BACKEND_SOURCE_CHANGED=NO
+BACKEND_REDEPLOYED=NO
+UNITY_COMPILER_ERRORS=0
+UNITY_WARNINGS_CURRENT=2
+UNITY_WARNINGS_BEFORE_PLAY=9_EXISTING_COMPILER_WARNINGS
+NEW_PLAYER_UI_01C_WARNINGS=0
+CURRENT_BLOCKING_EXCEPTIONS=0
+NORMAL_BOOTSTRAP_COUNT=1
+NORMAL_BOOTSTRAP_LAST_SEEN_WRITE=POSSIBLE_NOT_SEPARATELY_AUDITED
+PLAYER_WRITES=0_EXCEPT_AUTHORIZED_BOOTSTRAP_LAST_SEEN
+ONBOARDING_WRITES=0
+TRIAL_WRITES=0
+COACH_SELECTION_WRITES=0
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+PREEXISTING_PENDING_FILES_PRESERVED=132/132
+SECRET_SCAN=PASS
+STAGED_FILES=0
+MANUAL_HOME_VISUAL_REVIEW=PASS
+FINAL_VIEW=REAL_TEST_HOME_393x852
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+NEXT=AWAIT_EXPLICIT_NEXT_BLOCK_SELECTION
+```
+
+### Manual approval and final checkpoint review
+
+The owner approved the final real Home presentation and requested closure of PLAYER-UI-01C. No product, layout, localization, friends-demo, Menu, Profile, Learn, backend or API changes were made during this checkpoint review. All approved implementation hashes matched the preceding evidence before this report update. The retained 222 Home checks, 104 shared-presentation checks, 60 Menu checks and 598 Unity checks remain applicable; the large suites are not being repeated.
+
+The exact candidate inventory is 35 paths: 25 Home/shared paths and 10 dedicated 01B Menu paths. Because 01B was not committed and Home depends on its approved presentation helpers and shared composition, the owner explicitly authorized including those 10 previously validated Menu paths as dependencies. This does not authorize further Menu changes. The 132 historical pending paths, including the 102 protected paths, remain excluded and unchanged.
+
+The checkpoint review identified and resolved a separate tooling dependency: both `PlayerHomeBindingValidation.cs` and `PlayerMenuBindingValidation.cs` directly accessed `ApplicationServices.ValidationSmokeTransportFactory`. That field exists only in the excluded historical SMOKE observer changes, not in HEAD. The owner explicitly authorized a minimal correction in these two validators. They now inspect the optional public static field without a compile-time dependency, still reject an active hook, and retain the existing Firebase test-factory guard. No historical SMOKE file is included. The product implementation and all other validation code remain byte-for-byte unchanged from the approved evidence.
+
+A clean candidate assembled from HEAD plus exactly the 35 approved paths, excluding the 132 historical pending files, compiled successfully: 166 runtime sources and 240 combined Editor sources, zero errors. Twelve focused checks extracted the exact guard expressions from the two candidate validators and verified absent, null and active SMOKE hooks with inactive/active Firebase test factories. All passed. The large visual and functional suites were retained, not rerun.
+
+Unity imported the corrected validators with Play OFF. The Editor assembly was rebuilt at `2026-10-02T23:23:39Z`; the completed import snapshot at `2026-10-02T23:23:48Z` reports zero errors and ten existing warnings (the nine compiler warnings plus the Firebase disposal warning). No additional live bootstrap, logout or account change was performed for the checkpoint. The safe final Editor state is outside Play; this does not invalidate the owner's approved Home screenshot.
+
+The checkpoint uses the message `feat(player-ui): bind home to real player and selected coach`. Its exact SHA and remote verification are reported after commit/push rather than embedded in the commit's own content. The containing Git commit is the authoritative checkpoint identifier. Final index review and secret scanning are required before publication; no deployment or subsequent block is authorized here.
+
+```text
+PLAYER_UI_01C=COMPLETE
+MANUAL_HOME_REAL_PLAYER_VISUAL=PASS
+MANUAL_HOME_REAL_COACH_VISUAL=PASS
+MANUAL_VISUAL_REVIEW=PASS
+VISIBLE_PLAYER_NAME=Guest-QFTC85G
+VISIBLE_COACH_NAME=Sofía
+VISIBLE_COACH_AVATAR=YES
+VISIBLE_AMARA=NO
+HOME_FRIENDS_DEMO_CONTENT=DEFERRED_UNCHANGED
+CHECKPOINT_CANDIDATE_FILES=35
+VALIDATED_01B_DEPENDENCY_FILES_AUTHORIZED=10
+CHECKPOINT_GATE=PASS
+PRODUCT_SOURCE_CHANGED_DURING_CHECKPOINT=NO
+VALIDATOR_ONLY_FILES_CORRECTED=2
+CLEAN_CANDIDATE_RUNTIME_COMPILE=PASS
+CLEAN_CANDIDATE_EDITOR_COMPILE=PASS
+VALIDATOR_GUARD_CHECKS=12_PASS
+LARGE_SUITES_REPEATED=NO
+UNITY_COMPILER_ERRORS=0
+UNITY_WARNINGS_CURRENT=10_EXISTING
+NEW_CHECKPOINT_WARNINGS=0
+UNITY_PLAY_MODE=OFF
+PROTECTED_FILES_MODIFIED=0/102
+PENDING_FILES_PRESERVED=132/132
+COMMIT_MESSAGE=feat(player-ui): bind home to real player and selected coach
+CHECKPOINT_IDENTIFIER=CONTAINING_GIT_COMMIT
+COMMIT_AND_REMOTE_SHA=REPORTED_AFTER_PUBLICATION
+DEPLOY=NO
+NEXT=AWAIT_EXPLICIT_NEXT_BLOCK_SELECTION
+```

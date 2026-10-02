@@ -2,6 +2,8 @@ using System;
 using Domino.UI.Theming;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace Domino.UI.AppShell
 {
@@ -26,7 +28,17 @@ namespace Domino.UI.AppShell
             this.continueLearning=continueLearning ?? throw new ArgumentNullException(nameof(continueLearning));
             verticalScrollerVisibility=ScrollerVisibility.Hidden;
             Refresh();
+            RegisterCallback<AttachToPanelEvent>(_=>{
+                if(source is IObservableHomeDataSource observable)observable.Changed+=Refresh;
+                LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;
+                LocaleChanged(LocalizationSettings.SelectedLocale);
+            });
+            RegisterCallback<DetachFromPanelEvent>(_=>{
+                if(source is IObservableHomeDataSource observable)observable.Changed-=Refresh;
+                LocalizationSettings.SelectedLocaleChanged-=LocaleChanged;
+            });
         }
+        void LocaleChanged(Locale locale) { if(locale!=null && source is IObservableHomeDataSource observable)observable.SetLocale(locale.Identifier.Code); Refresh(); }
         Label Text(string value, TextRole role, VisualElement parent, string elementName="")
         {
             var label=new Label(value){name=elementName};ThemeStyles.Text(label,role);
@@ -41,13 +53,14 @@ namespace Domino.UI.AppShell
         }
         public void Refresh()
         {
+            var previousScroll=scrollOffset;
             Body.Clear();var data=source.Read();ContentState=data?.State ?? HomeContentState.Empty;
             var identity=Text("CUBAN DOMINO CLUB",TextRole.Caption,Body,"HomeIdentity");RootVisualRhythm.Eyebrow(identity);
             if(ContentState!=HomeContentState.Content)
             {
                 Text(ContentState==HomeContentState.Loading?"Loading…":ContentState==HomeContentState.Error?"Unable to load Home.":"Nothing here yet.",TextRole.Body,Body,"HomeStatus");return;
             }
-            Text("Hola, "+data.DisplayName+".",TextRole.PageTitle,Body,"HomeGreeting");
+            Text(data.Greeting ?? "Hola, "+data.DisplayName+".",TextRole.PageTitle,Body,"HomeGreeting").enableRichText=false;
             Text("Una buena partida empieza con una buena mesa.",TextRole.Secondary,Body,"HomeSubtitle").style.marginBottom=Theme.Spacing.SectionGap;
             var play=Card("¿Jugamos?","Strategy, connection and a little Cuban spirit.","HomePlayCard");
             var notice=new Label("Coming Soon"){name="HomePlayNotice"};ThemeStyles.Text(notice,TextRole.Secondary);notice.style.display=DisplayStyle.None;
@@ -55,12 +68,18 @@ namespace Domino.UI.AppShell
             if(data.Coach!=null)
             {
                 var coach=Card(data.Coach.DisplayName,data.Coach.Greeting,"HomeCoachCard");
+                var labels=coach.Query<Label>().ToList();labels[0].name="HomeCoachName";labels[1].name="HomeCoachDescription";
+                labels[0].enableRichText=labels[1].enableRichText=false;
                 var portrait=new VisualElement{name="HomeCoachPortrait"};portrait.style.width=portrait.style.height=120;portrait.style.flexShrink=0;
                 portrait.style.marginTop=Theme.Spacing.MD;portrait.style.alignSelf=Align.Center;portrait.style.overflow=Overflow.Hidden;ThemeStyles.Round(portrait,60);
-                var image=new Image{image=data.Coach.Avatar,scaleMode=ScaleMode.ScaleAndCrop};image.style.width=image.style.height=Length.Percent(100);portrait.Add(image);coach.Add(portrait);
+                var image=new Image{image=data.Coach.Avatar,scaleMode=ScaleMode.ScaleAndCrop,name="HomeCoachAvatar"};
+                if(data.Coach.Avatar==null){image.vectorImage=Resources.Load<VectorImage>("AppShellMockIcons/icon_menu_avatar");image.scaleMode=ScaleMode.ScaleToFit;}
+                image.style.width=image.style.height=Length.Percent(100);portrait.Add(image);coach.Add(portrait);
             }
+            else if(!string.IsNullOrEmpty(data.CoachStatus))Text(data.CoachStatus,TextRole.Secondary,Body,"HomeCoachStatus");
             var learning=new ThemeButton("Continue Learning",continueLearning){name="HomeContinueLearning"};RootVisualRhythm.Cta(learning);learning.style.marginBottom=Theme.Spacing.SectionGap;Body.Add(learning);
             if(data.Friends!=null)Card("Your table of friends",data.Friends.Count+" "+data.Friends.Description,"HomeFriendsCard");
+            schedule.Execute(()=>scrollOffset=previousScroll);
         }
     }
 }

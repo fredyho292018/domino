@@ -20,15 +20,17 @@ namespace Domino.Player
         public PlayerTrialState Trial { get; }
         public bool? TrialConsumed { get; }
         public DateTimeOffset? TrialEndsAt { get; }
+        public PlayerCoachPresentation Coach { get; }
 
         PlayerPresentationState(PlayerPresentationAvailability availability, PlayerSnapshot player = null,
-            string locale = null, EntitlementSummaryDto envelope = null)
+            string locale = null, EntitlementSummaryDto envelope = null, PlayerCoachPresentation coach = null)
         {
             Availability = availability;
             if (availability != PlayerPresentationAvailability.Ready) return;
             DisplayName = string.IsNullOrWhiteSpace(player?.DisplayName) ? null : player.DisplayName;
             AccountType = player?.AccountType;
             PreferredLocale = locale ?? player?.Language;
+            Coach = coach;
             var value = envelope?.availability == "AVAILABLE" ? envelope.snapshot : null;
             if (value == null) return;
             // Current backend emits FREE/PREMIUM. Future commercial keys are presentation only,
@@ -49,7 +51,7 @@ namespace Domino.Player
         }
 
         internal static PlayerPresentationState Empty(PlayerPresentationAvailability state) => new PlayerPresentationState(state);
-        internal static PlayerPresentationState FromConfirmed(PlayerSnapshot player, string locale, EntitlementSummaryDto entitlements) =>
-            new PlayerPresentationState(PlayerPresentationAvailability.Ready, player, locale, entitlements);
+        internal static PlayerPresentationState FromConfirmed(PlayerSnapshot player, string locale, EntitlementSummaryDto entitlements, PlayerCoachPresentation coach = null) =>
+            new PlayerPresentationState(PlayerPresentationAvailability.Ready, player, locale, entitlements, coach);
     }
 }

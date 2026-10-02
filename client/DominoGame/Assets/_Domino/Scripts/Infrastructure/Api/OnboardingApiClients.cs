@@ -29,6 +29,12 @@ namespace Domino.Infrastructure.Api
             return result;
         }
         OnboardingStateDto Ready(){session.EnsureCurrent();return state ?? throw new InvalidOperationException("Load onboarding state first.");}
+        public async Task<OnboardingCatalogDto> PinnedCatalogAsync(string locale,int version,CancellationToken token) {
+            if(version<=0)throw new ArgumentOutOfRangeException(nameof(version));
+            var result=await session.Send<OnboardingCatalogDto>("GET","onboarding/catalog"+OnboardingApiSession.Query(locale,version),null,token);
+            if(result.catalogVersion!=version || result.steps==null)throw new DominoApiException(ApiFailure.Contract);
+            return result;
+        }
         static string Id()=>Guid.NewGuid().ToString("D");
         public OnboardingOperation PrepareStart() {
             var s=Ready();var id=Id();return new OnboardingOperation(this,"POST","player/onboarding/start",new OnboardingStartDto{operationId=id,expectedRevision=s.revision},id);
