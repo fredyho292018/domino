@@ -22,6 +22,9 @@ namespace Domino.UI.AppShell
             if(host)return;
             host=new GameObject("Production Auth");host.SetActive(false);Object.DontDestroyOnLoad(host);
             panel=ScriptableObject.CreateInstance<PanelSettings>();panel.scaleMode=PanelScaleMode.ConstantPixelSize;
+            // Runtime-created panels do not receive the Editor's default theme automatically.
+            // UI Toolkit popups need its root/style infrastructure to attach and render.
+            panel.themeStyleSheet=Resources.Load<ThemeStyleSheet>("Domino/ProductionRuntimeTheme");
             var document=host.AddComponent<UIDocument>();document.panelSettings=panel;
             host.AddComponent<ProductionAuthHost>();host.SetActive(true);
         }
