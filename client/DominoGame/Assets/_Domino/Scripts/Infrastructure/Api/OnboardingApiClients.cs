@@ -5,11 +5,17 @@ using System.Threading.Tasks;
 
 namespace Domino.Infrastructure.Api
 {
+    [Serializable] public sealed class AliasAvailabilityDto { public string state; }
     public sealed class OnboardingApiClient
     {
         readonly OnboardingApiSession session;
         readonly SemaphoreSlim writes=new SemaphoreSlim(1,1);
         OnboardingStateDto state;
+        public async Task<string> AliasAvailabilityAsync(string candidate,CancellationToken token) {
+            var result=await session.Send<AliasAvailabilityDto>("POST","player/display-name/availability",OnboardingApiSession.Serialize(new {displayName=candidate}),token);
+            if(result.state!="AVAILABLE"&&result.state!="TAKEN")throw new DominoApiException(ApiFailure.Contract);
+            return result.state;
+        }
         public OnboardingApiClient(OnboardingApiSession session){this.session=session;}
         public OnboardingStateDto State { get { session.EnsureCurrent(); return state==null?null:OnboardingApiSession.Decode<OnboardingStateDto>(OnboardingApiSession.Serialize(state)); } }
         void Apply(OnboardingStateDto value) {

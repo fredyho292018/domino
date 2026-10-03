@@ -19,7 +19,7 @@ namespace Domino.UI.AppShell
         object PrepareComplete();
         Task<OnboardingStateDto> ExecuteFlowAsync(object operation, CancellationToken token);
     }
-    public sealed class OnboardingShellApiSource : IOnboardingShellSource, IOnboardingFlowSource, IBasicProfileSource, IExperienceSource, ICoachSource, IContactsSource, IMembershipSource, Domino.Player.IPlayerPresentationCatalogs
+    public sealed class OnboardingShellApiSource : IOnboardingShellSource, IOnboardingFlowSource, IAliasAvailabilitySource, IBasicProfileSource, IExperienceSource, ICoachSource, IContactsSource, IMembershipSource, Domino.Player.IPlayerPresentationCatalogs
     {
         readonly OnboardingApiClient client;readonly CoachCatalogApiClient coachClient;readonly MembershipCatalogApiClient membershipClient;readonly TrialActivationApiClient trialClient;readonly Func<TrialEligibilityDto> trialEligibility;readonly Func<EntitlementSummaryDto> entitlements;
         public OnboardingShellApiSource(OnboardingApiClient client,CoachCatalogApiClient coachClient=null,MembershipCatalogApiClient membershipClient=null,TrialActivationApiClient trialClient=null,Func<TrialEligibilityDto> trialEligibility=null,Func<EntitlementSummaryDto> entitlements=null) { this.client=client ?? throw new ArgumentNullException(nameof(client));this.coachClient=coachClient;this.membershipClient=membershipClient;this.trialClient=trialClient;this.trialEligibility=trialEligibility;this.entitlements=entitlements; }
@@ -43,6 +43,7 @@ namespace Domino.UI.AppShell
         public object PrepareExperience(string questionKey,string optionKey)=>client.PrepareSave("EXPERIENCE_STEP","SAVE",new[]{OnboardingApiClient.Experience(questionKey,optionKey)});
         public object PrepareExperienceBack()=>client.PrepareCursor("BASIC_PROFILE_STEP");
         public async Task<OnboardingStateDto> ExecuteExperienceAsync(object operation,CancellationToken token)=>(await client.ExecuteAsync((OnboardingOperation)operation,token)).onboarding;
+        public Task<string> CheckAliasAsync(string candidate,CancellationToken token)=>client.AliasAvailabilityAsync(candidate,token);
         public object PrepareProfile(OnboardingAnswerDto[] answers,string zone)=>client.PrepareSave("BASIC_PROFILE_STEP","SAVE",answers,zone);
         public async Task<OnboardingStateDto> SaveProfileAsync(object operation,CancellationToken token)=>(await client.ExecuteAsync((OnboardingOperation)operation,token)).onboarding;
         public Task<OnboardingStateDto> LoadAsync(CancellationToken token)=>client.LoadAsync(token);
@@ -136,6 +137,6 @@ namespace Domino.UI.AppShell
             if(c.steps.Any(x=>!allowed.Contains(x.key))||(c.catalogVersion==1&&c.steps.Any(x=>x.key=="BASIC_PROFILE_STEP"))||
                 (s.status=="IN_PROGRESS"&&!c.steps.Any(x=>x.key==s.currentStepKey)))throw new InvalidOperationException();
         }
-        public void Dispose(){if(disposed)return;disposed=true;lifetime.Cancel();state=null;catalog=null;draft=null;pendingFlow=null;pendingProfile=null;pendingExperience=null;experienceSelection=null;pendingCoach=null;pendingContacts=null;pendingMembership=null;pendingTrial=null;membership=null;coachSelection=null;coaches=null;ProfileConfirmed=null;Changed=null;}
+        public void Dispose(){if(disposed)return;disposed=true;CancelAliasCheck();lifetime.Cancel();state=null;catalog=null;draft=null;pendingFlow=null;pendingProfile=null;pendingExperience=null;experienceSelection=null;pendingCoach=null;pendingContacts=null;pendingMembership=null;pendingTrial=null;membership=null;coachSelection=null;coaches=null;ProfileConfirmed=null;AliasChanged=null;Changed=null;}
     }
 }

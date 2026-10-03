@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Domino.Infrastructure.Api;
 namespace Domino.UI.AppShell
 {
+ public interface IAliasAvailabilitySource { Task<string> CheckAliasAsync(string candidate,CancellationToken token); }
+ public enum AliasCheckState { UnchangedOrIdle, Invalid, Checking, Available, Taken, CheckFailed }
  public interface IBasicProfileSource {
   object PrepareProfile(OnboardingAnswerDto[] answers,string detectedTimeZone);
   Task<OnboardingStateDto> SaveProfileAsync(object operation,CancellationToken token);
@@ -28,6 +30,36 @@ namespace Domino.UI.AppShell
  }
  public sealed partial class OnboardingShellController {
   BasicProfileDraft draft;object pendingProfile;
+  CancellationTokenSource aliasCheck;
+  long aliasGeneration;
+  string checkedAlias;
+  public const int AliasDebounceMilliseconds=450;
+  public AliasCheckState AliasState {get;private set;}=AliasCheckState.UnchangedOrIdle;
+  public event Action AliasChanged;
+  static string AliasKey(string value)=>BasicProfileRules.Normalize(value).ToLowerInvariant();
+  bool AliasValid=>draft!=null&&!BasicProfileRules.Errors(draft).Contains("DISPLAY_NAME");
+  public bool AliasCanContinue=>AliasValid && (AliasKey(draft.DisplayName)==AliasKey(state?.basicProfile?.displayName) && AliasState!=AliasCheckState.Taken ||
+   !(source is IAliasAvailabilitySource) && AliasState!=AliasCheckState.Taken || checkedAlias==AliasKey(draft.DisplayName) && (AliasState==AliasCheckState.Available||AliasState==AliasCheckState.CheckFailed));
+  void CancelAliasCheck(){aliasGeneration++;aliasCheck?.Cancel();aliasCheck?.Dispose();aliasCheck=null;}
+  void ResetAliasCheck(){CancelAliasCheck();checkedAlias=null;AliasState=AliasCheckState.UnchangedOrIdle;}
+  public async Task ChangeProfileAliasAsync(string value){
+   if(disposed||ProfileLocked||draft==null)return;
+   draft.DisplayName=value;CancelAliasCheck();var generation=aliasGeneration;
+   checkedAlias=AliasKey(value);ProfileFeedback="";ProfileErrors=ProfileErrors.Where(x=>x!="DISPLAY_NAME").ToArray();
+   if(!AliasValid){AliasState=AliasCheckState.Invalid;AliasChanged?.Invoke();return;}
+   if(checkedAlias==AliasKey(state?.basicProfile?.displayName)){AliasState=AliasCheckState.UnchangedOrIdle;AliasChanged?.Invoke();return;}
+   if(!(source is IAliasAvailabilitySource checker)){AliasState=AliasCheckState.CheckFailed;AliasChanged?.Invoke();return;}
+   aliasCheck=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);var token=aliasCheck.Token;
+   AliasState=AliasCheckState.Checking;AliasChanged?.Invoke();
+   try{
+    await Task.Delay(AliasDebounceMilliseconds,token);
+    var result=await checker.CheckAliasAsync(BasicProfileRules.Normalize(value),token);
+    token.ThrowIfCancellationRequested();if(disposed||generation!=aliasGeneration||draft==null||AliasKey(draft.DisplayName)!=checkedAlias)return;
+    if(result!="AVAILABLE"&&result!="TAKEN")throw new DominoApiException(ApiFailure.Contract);
+    AliasState=result=="AVAILABLE"?AliasCheckState.Available:AliasCheckState.Taken;
+   }catch(OperationCanceledException){return;}catch{if(disposed||generation!=aliasGeneration)return;AliasState=AliasCheckState.CheckFailed;}
+   if(!disposed&&generation==aliasGeneration)AliasChanged?.Invoke();
+  }
   public event Action<OnboardingStateDto> ProfileConfirmed;
   void NotifyProfileConfirmed(OnboardingStateDto confirmed){if(ProfileConfirmed==null)return;foreach(Action<OnboardingStateDto> listener in ProfileConfirmed.GetInvocationList())try{listener(Copy(confirmed));}catch{ /* A presentation listener cannot turn a confirmed save into a retry. */ }}
   public BasicProfileDraft Profile=>draft;
@@ -35,7 +67,7 @@ namespace Domino.UI.AppShell
   public string[] ProfileErrors {get;private set;}=Array.Empty<string>();
   public bool ProfileLocked=>busy||pendingProfile!=null||Phase==OnboardingShellPhase.UpdateRequired;
   public bool ProfileRetry=>pendingProfile!=null&&!busy;
-  void InitializeProfile(){if(state?.currentStepKey!="BASIC_PROFILE_STEP")return;var p=state.basicProfile;draft=new BasicProfileDraft{FirstName=p?.firstName??"",LastName=p?.lastName??"",DisplayName=p?.displayName??"",Country=p?.countryCode??"",Language=p?.preferredLocale??""};}
+  void InitializeProfile(){ResetAliasCheck();if(state?.currentStepKey!="BASIC_PROFILE_STEP")return;var p=state.basicProfile;draft=new BasicProfileDraft{FirstName=p?.firstName??"",LastName=p?.lastName??"",DisplayName=p?.displayName??"",Country=p?.countryCode??"",Language=p?.preferredLocale??""};}
   public async Task ChangeProfileLocaleAsync(string value){
    if(ProfileLocked||disposed||draft==null||(value!="en"&&value!="es"))return;
    draft.Language=value;busy=true;ProfileFeedback="LOCALIZING";Changed?.Invoke();
@@ -45,6 +77,7 @@ namespace Domino.UI.AppShell
   }
   public async Task SaveProfileAsync(){
    if(disposed||busy||lifetime.IsCancellationRequested||Phase!=OnboardingShellPhase.InProgress||state?.currentStepKey!="BASIC_PROFILE_STEP"||!(source is IBasicProfileSource writer))return;
+   if(pendingProfile==null && !AliasCanContinue){ProfileErrors=new[]{"DISPLAY_NAME"};Changed?.Invoke();return;}
    if(pendingProfile==null){ProfileErrors=BasicProfileRules.Errors(draft);if(ProfileErrors.Length>0){ProfileFeedback="VALIDATION";Changed?.Invoke();return;}}
    busy=true;ProfileFeedback="SAVING";ProfileErrors=Array.Empty<string>();Changed?.Invoke();
    try{
@@ -55,7 +88,7 @@ namespace Domino.UI.AppShell
    }catch(OperationCanceledException){}
    catch(DominoApiException e){
     if(e.ServerErrorCode=="CLIENT_UPDATE_REQUIRED"){pendingProfile=null;Phase=OnboardingShellPhase.UpdateRequired;}
-    else if(e.ServerErrorCode=="DISPLAY_NAME_TAKEN"||e.ServerErrorCode=="DISPLAY_NAME_RESERVATIONS_NOT_READY"){pendingProfile=null;ProfileFeedback=e.ServerErrorCode;ProfileErrors=new[]{"DISPLAY_NAME"};}
+    else if(e.ServerErrorCode=="DISPLAY_NAME_TAKEN"||e.ServerErrorCode=="DISPLAY_NAME_RESERVATIONS_NOT_READY"){pendingProfile=null;ProfileFeedback=e.ServerErrorCode;ProfileErrors=new[]{"DISPLAY_NAME"};if(e.ServerErrorCode=="DISPLAY_NAME_TAKEN"){CancelAliasCheck();checkedAlias=AliasKey(draft.DisplayName);AliasState=AliasCheckState.Taken;}}
     else if(new[]{"REVISION_MISMATCH","ONBOARDING_REVISION_MISMATCH","DOMAIN_REVISION_MISMATCH","ONBOARDING_CATALOG_VERSION_MISMATCH"}.Contains(e.ServerErrorCode)){
      pendingProfile=null;ProfileFeedback="CONFLICT";
      try{var next=await source.LoadAsync(lifetime.Token);var c=await source.CatalogAsync(Locale,lifetime.Token);lifetime.Token.ThrowIfCancellationRequested();Validate(next,c);if(next.revision<state.revision)throw new InvalidOperationException();state=Copy(next);catalog=Copy(c);Phase=next.status=="COMPLETED"?OnboardingShellPhase.Completed:next.status=="NOT_STARTED"?OnboardingShellPhase.NotStarted:OnboardingShellPhase.InProgress;}

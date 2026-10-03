@@ -74,6 +74,19 @@ static class OnboardingClientTests
         string owner="fixture-a";var tokens=new Tokens();var wire=new Wire();using var lifetime=new CancellationTokenSource();
         using var session=new OnboardingApiSession(new DominoApiConfiguration(true,"https://example.test"),tokens,wire,()=>owner,lifetime.Token);
         var client=new OnboardingApiClient(session);wire.Reply=(m,u,j)=>Task.FromResult(Ok(State()));await client.LoadAsync(default);
+        foreach(var availability in new[]{"AVAILABLE","TAKEN"}) {
+            wire.Reply=(m,u,j)=>Task.FromResult(Ok("{\"state\":\""+availability+"\"}"));
+            Check(await client.AliasAvailabilityAsync("FixtureAlias",default)==availability,"availability contract");
+            Check(wire.Calls.Last().method=="POST"&&wire.Calls.Last().uri.AbsolutePath=="/api/v1/player/display-name/availability"&&wire.Calls.Last().uri.Query=="","availability private request path");
+            Check((string)JObject.Parse(wire.Calls.Last().body)["displayName"]=="FixtureAlias","availability request body");
+        }
+        foreach(var malformed in new[]{"{}","{\"state\":true}","{\"state\":\"UNKNOWN\"}"}){
+            wire.Reply=(m,u,j)=>Task.FromResult(Ok(malformed));await Fails(()=>client.AliasAvailabilityAsync("FixtureAlias",default));
+        }
+        foreach(var code in new[]{"DISPLAY_NAME_TAKEN","DISPLAY_NAME_RESERVATIONS_NOT_READY"}) {
+            wire.Reply=(m,u,j)=>Task.FromResult(new ApiHttpResponse(409,"{\"code\":\""+code+"\"}"));
+            await Fails(()=>client.AliasAvailabilityAsync("FixtureAlias",default),code);
+        }
         Check(client.State.status=="NOT_STARTED","initial state");
         var start=client.PrepareStart();wire.Reply=(m,u,j)=>Task.FromResult(Ok(State(1,"IN_PROGRESS",1)));await client.ExecuteAsync(start,default);
         Check(client.State.catalogVersion==1,"start bare response/pinning");Check(JObject.Parse(wire.Calls.Last().body).Properties().Count()==2,"start exact request");

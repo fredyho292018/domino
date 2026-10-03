@@ -40,6 +40,7 @@ class BasicProfileOnboardingTests {
     }
     @Test fun `alias conflict rolls back every basic profile field and preserves retry state`() {
         val initial=start()
+        assertEquals("AVAILABLE",AliasAvailability.check(user.uid,"Fixture_2"){repo.docs[it]}.state)
         repo.docs[PlayerAliasReservations.path("Fixture_2")]=mapOf("state" to "CLAIMED","playerId" to "another-fixture","normalizationVersion" to 1L)
         val before=repo.docs.toMap()
         fail("DISPLAY_NAME_TAKEN"){save(initial)}

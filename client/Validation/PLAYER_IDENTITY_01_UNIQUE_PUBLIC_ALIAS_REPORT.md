@@ -241,3 +241,136 @@ ROOT_CAUSE_CLASSIFICATION=TEST_FIXTURE_FAILURE. CI_FAILURE_REPRODUCED_LOCALLY=YE
 ## CI fixture checkpoint review
 
 Reviewed ten unchanged validated test files: nine call-site fixture replacements plus EmulatorPlayerFixture.kt. Scope is emulator READY setup and distinct valid Guest alias generation; no assertion or product changes. Retain 60/60 emulator and 1/1 isolated causal test evidence without rerun. Explicit checkpoint scope: ten tests plus this durable report. Exclude 132 historical files and three future PLAYER_UI_01E files. Protected102/102 unchanged; unclassified files0. Production READY enforcement, transactional single-winner claims and Basic Profile atomicity remain unchanged. No real Firestore access, deploy or real registration during this checkpoint. New push-triggered CI result must be observed separately; failed run16 will not be manually rerun.
+
+## PLAYER_IDENTITY_01_REAL_ALIAS_FLOW
+
+Source HEAD1438ab0f48e12f2e28d0a742bebb5a7fb3be0fed; deployed product57db81a600a59921eab5af0c4a77d50d9f2a75aa. Preflight passed: API/Redis healthy, READY/version1, 226 Players/reservations, zero duplicate groups/owner mismatches/missing reservations. Unity TEST preflight: PlayOFF, compiling/importingNO, Consoleerrors0,warnings3.
+
+STOP during clean-session gate: the scoped local Firebase persistence reader returned LOCAL_SESSION_PRESENT=NO (including outside sandbox), but entering Play restored an existing non-anonymous session. Unity logged bootstrap starting at02:16:44 and succeeded at02:16:46. Play was stopped immediately upon observing the unexpected restoration. The preflight reader was insufficient to establish NO_SESSION; exact cause (reader scope versus SDK in-memory persistence) remains unproven. No account registration, profile save, onboarding progression, trial activation or duplicate-alias test was attempted. No speculative fix applied.
+
+Post-stop read-only audit:226 Players,226 reservations,READY/version1,all alias inconsistency counts0. Both protected Player root hashes unchanged from preflight. The restored account was not identified; its bootstrap may have updated lastSeen, so PREVIOUS_PLAYER_DOMAIN_MUTATIONS=UNKNOWN, not0. HTTPstatus was not independently captured; Unity bootstrap success alone is not recorded as HTTP200 evidence.
+
+NEW_TEST_ACCOUNT_REGISTERED=NO. PLAYER_IDENTITY_01_LIVE_COMPLETE=NO. VALIDATION_STATUS=PARTIAL_STOPPED. SOURCE_CHANGED=NO. COMMIT=NONE. PUSH=NONE. DEPLOY=NO. PLAYER_UI_01E_RESUMED=NO. NEXT=READ_ONLY CLEAN SESSION PREFLIGHT DISCREPANCY REVIEW.
+
+
+## PLAYER_IDENTITY_01C_ALIAS_AVAILABILITY_UX
+
+Implementation and isolated validation, 2026-10-03. Base `1438ab0f48e12f2e28d0a742bebb5a7fb3be0fed`; TEST deployment remains `57db81a600a59921eab5af0c4a77d50d9f2a75aa`. No deployment or real alias change in this task. The user reports REAL_NEW_USER_FLOW=MANUALLY_OBSERVED_PASS, REAL_DUPLICATE_ALIAS_REJECTION=MANUALLY_OBSERVED_PASS and DUPLICATE_ALIAS_PERSISTED=NO; these are human observations, not a new live test by this implementation task.
+
+### Audit and implementation
+
+No availability endpoint existed before this change. Added authenticated `POST /api/v1/player/display-name/availability` with JSON body `{displayName: candidate}` and response `{state: AVAILABLE|TAKEN}`. POST avoids putting candidate aliases in URL query/access logs. The endpoint only reads the existing readiness marker and canonical reservation; it never repairs, reserves or writes Player/onboarding/alias documents. Existing authenticated rate counters may change in normal deployed operation. Authentication is covered by the existing `/api/**` security policy and an HTTP test. No owner ID, reservation key, email or other owner information is returned. Malformed/unready reservations fail closed as an availability-check failure, not a fabricated TAKEN result.
+
+Availability calls the existing DisplayNameRules validator and PlayerAliasReservations.path/canonical: trim, NFC and Locale.ROOT lowercase. Current owner can reuse its alias. Final Basic Profile save and the transactional reservation code are unchanged and remain the uniqueness authority. The advisory response cannot prevent another player from winning a later claim.
+
+Root cause of generic duplicate feedback: `OnboardingApiSession.KnownErrors` omitted `DISPLAY_NAME_TAKEN`, stripping that code before the controller's existing field-conflict branch. Added both DISPLAY_NAME_TAKEN and DISPLAY_NAME_RESERVATIONS_NOT_READY to the whitelist. Actual transport parsing tests cover both codes, malformed availability responses and the request contract.
+
+Controller states: UnchangedOrIdle / Invalid / Checking / Available / Taken / CheckFailed. Local length, ASCII character and reserved-name validation precedes network access. Debounce is 450 ms; cancellation plus generation/current-candidate checks discard stale responses. Disposal cancels checks and clears listeners. Unchanged own alias requires no lookup. Production uses the existing session-bound API transport; older isolated sources without the optional advisory interface retain final-save validation.
+
+Continue is disabled for invalid/checking/taken candidates. CHECK_FAILED preserves the draft and permits authoritative final save, with localized warning that availability will be checked when saving. Failure never implies TAKEN. Final 409 identifies and focuses the alias field, preserves first/last name, alias, country and language, remains on Basic Profile, clears generic retry state and requires correction. The availability feedback uses existing semantic components below the alias helper. Field order and existing input/selector geometry are unchanged.
+
+Rate policy: existing authenticated SocialOperation.PROFILE bucket; Redis 60/minute, burst 60, shared with profile reads. Existing degraded READ fallback 12/minute, burst 4, with existing circuit/capacity behavior; 429/503 are neutral check failures. No new rate infrastructure.
+
+### Current validation
+
+- Backend: 41 tests PASS, 0 failures/errors/skipped: availability6, reservations5, BasicProfile domain26, HTTP3, Firestore SDK transaction fixture1. Covers available/taken/own/case/whitespace/reserved/invalid/no disclosure, HTTP authentication, concurrent single-winner claim and whole-document rollback after available-then-claimed conflict. This is local fixture evidence; no real Firestore or emulator experiment is claimed for this task.
+- Client availability:20 PASS; API contracts:125 PASS; Basic Profile:49 PASS; onboarding shell:93 PASS; full flow:407 PASS; bootstrap:31 PASS. The full-flow fixture now models the read-only advisory endpoint and simulates alias editing through the controller before save.
+- Menu binding60 PASS; Home binding222 PASS; Profile binding80 PASS. No product changes to these views.
+- Unity current isolated availability validation:1795 PASS, FAIL=0. All four feedback states across eight established viewports in EN/ES (64 cases); reduced-height keyboard fixture, alias focus, Continue scrolling/reachability, wrapping, no horizontal overflow or clipping. Final save conflict focus and absence of generic retry feedback verified. Validation uses only a fixture source and no real session/network. Earlier validator-only encoding and self-focus assertion defects were corrected; superseded failed runs are not counted as passes.
+- Unity Play stopped before import; current Play OFF, import/compile idle, Console errors0 and warnings9. No new 01C warning or current blocking exception. The earlier Play-stop snapshot contained10 warnings, including Firebase Future release warnings; these are not concealed or attributed to the new alias component. Final current warnings are existing compiler warnings.
+- Final preview: isolated v2 Basic Profile / TAKEN /393x852/en, visible inline conflict, preserved fixture fields, Continue disabled. Manual visual approval remains pending.
+- Historical132/132 hashes and protected102/102 hashes unchanged. Scoped diff whitespace check PASS. Scoped secret/identity indicator scan PASS. No production credentials, identity values or network response dumps were added.
+
+```text
+BASE_SHA=1438ab0f48e12f2e28d0a742bebb5a7fb3be0fed
+DISPLAY_NAME_AVAILABILITY_ENDPOINT_EXISTS=NO_BEFORE_CHANGE
+DISPLAY_NAME_AVAILABILITY_ENDPOINT=POST /api/v1/player/display-name/availability
+DISPLAY_NAME_AVAILABILITY_RESPONSE_CONTRACT=state:AVAILABLE|TAKEN
+DISPLAY_NAME_AVAILABILITY_IS_ADVISORY=YES
+FINAL_ALIAS_CLAIM_RECHECK=YES
+DISPLAY_NAME_CLAIM_TRANSACTIONAL=YES
+AVAILABILITY_NORMALIZER_SHARED_WITH_CLAIM=YES
+INVALID_ALIAS_AVAILABILITY_REQUESTS=0
+OWN_CURRENT_ALIAS_AVAILABLE_TO_OWNER=YES
+ALIAS_AVAILABILITY_DEBOUNCE_MS=450
+AVAILABILITY_REQUEST_PER_KEYSTROKE=NO
+STALE_ALIAS_AVAILABILITY_RESPONSE_APPLIED=NO
+ALIAS_AVAILABILITY_STATE_EXPLICIT=YES
+ALIAS_INPUT_PRESERVED_WHILE_CHECKING=YES
+AVAILABLE_ALIAS_INLINE_FEEDBACK=YES
+TAKEN_ALIAS_INLINE_ERROR=YES
+TAKEN_ALIAS_GENERIC_ERROR=NO
+AVAILABILITY_CHECK_FAILURE_POLICY=PRESERVE_INPUT_ALLOW_AUTHORITATIVE_SAVE_WITH_WARNING
+CONTINUE_ENABLED_WHEN_INVALID=NO
+CONTINUE_ENABLED_WHEN_CHECKING=NO
+CONTINUE_ENABLED_WHEN_TAKEN=NO
+CONTINUE_ENABLED_WHEN_AVAILABLE=YES
+KEEP_GUEST_CONTINUE_SUPPORTED=YES
+ALIAS_CHECK_MUTATES_OTHER_FIELDS=NO
+AVAILABILITY_TO_SAVE_RACE_SAFE=YES_LOCAL_FIXTURE
+DISPLAY_NAME_TAKEN_FIELD_MAPPING=PLAYER_ALIAS
+DISPLAY_NAME_TAKEN_FORM_PRESERVED=YES
+DISPLAY_NAME_TAKEN_ROUTE=BASIC_PROFILE
+DISPLAY_NAME_TAKEN_FIELD_IDENTIFIED=YES
+FIRST_NAME_PARTIAL_WRITE=NO
+LAST_NAME_PARTIAL_WRITE=NO
+COUNTRY_PARTIAL_WRITE=NO
+LANGUAGE_PARTIAL_WRITE=NO
+DISPLAY_NAME_PARTIAL_WRITE=NO
+ALIAS_OWNER_INFORMATION_EXPOSED=NO
+ALIAS_AVAILABILITY_RATE_LIMIT_POLICY=EXISTING_AUTHENTICATED_PROFILE_READ_BUCKET
+BASIC_PROFILE_FIELD_ORDER_CHANGED=NO
+ALIAS_AVAILABILITY_EN=PASS
+ALIAS_AVAILABILITY_ES=PASS
+ALIAS_AVAILABILITY_RESPONSIVE=8/8_PASS_EN_ES
+ALIAS_AVAILABILITY_FOCUS_SCROLL=PASS
+HORIZONTAL_OVERFLOW=0
+TEXT_CLIPPING=0
+ALIAS_AVAILABILITY_BACKEND_TESTS=PASS
+ALIAS_AVAILABILITY_CLIENT_TESTS=PASS
+ALIAS_AVAILABILITY_RACE_TEST=PASS_LOCAL_FIXTURE
+KEEP_GUEST_ALIAS_REGRESSION=PASS
+CUSTOM_ALIAS_SAVE_REGRESSION=PASS
+CONCURRENT_ALIAS_CLAIM_REGRESSION=PASS
+ONBOARDING_FLOW_REGRESSION=PASS
+MENU_REAL_BINDING_REGRESSION=PASS
+HOME_REAL_BINDING_REGRESSION=PASS
+PROFILE_REAL_BINDING_REGRESSION=PASS
+REAL_NEW_USER_FLOW=MANUALLY_OBSERVED_PASS
+REAL_DUPLICATE_ALIAS_REJECTION=MANUALLY_OBSERVED_PASS
+DUPLICATE_ALIAS_PERSISTED=NO
+DUPLICATE_ALIAS_ERROR_MAPPING_BEFORE=GENERIC_RETRY_INSTEAD_OF_FIELD_ERROR
+DUPLICATE_ALIAS_ERROR_MAPPING_AFTER=FIELD_ERROR_ISOLATED_VALIDATED
+REAL_PLAYER_ALIAS_MUTATIONS=0
+BACKEND_DEPLOY_REQUIRED_FOR_AVAILABILITY=YES
+UNITY_COMPILER_ERRORS=0
+UNITY_WARNINGS_CURRENT=9
+NEW_PLAYER_IDENTITY_01C_WARNINGS=0
+CURRENT_BLOCKING_EXCEPTIONS=0
+UNITY_ALIAS_CHECKS=1795_PASS
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+HISTORICAL_PENDING_FILES_PRESERVED=132/132
+SECRET_SCAN=PASS_SCOPED_INDICATORS
+PLAYER_UI_01E_RESUMED=NO
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+PLAYER_IDENTITY_01C_SUCCESS=YES_IMPLEMENTATION_AND_ISOLATED_VALIDATION
+MANUAL_VISUAL_REVIEW=PENDING
+NEXT=MANUAL ALIAS AVAILABILITY UX REVIEW
+```
+
+
+## PLAYER_IDENTITY_01C_FINAL_CHECKPOINT_REVIEW
+
+Owner authorization confirms MANUAL_TAKEN_VISUAL_REVIEW=PASS and MANUAL_AVAILABLE_VISUAL_REVIEW=PASS. TAKEN inline error, disabled Continue and preserved form are approved. AVAILABLE inline success, no red/taken error, enabled Continue and preserved form are approved. CHECK_FAILED remains a distinct warning and allows authoritative final save. These approvals supersede the pending manual-review status in the implementation section above.
+
+Branch main and pre-checkpoint HEAD1438ab0f48e12f2e28d0a742bebb5a7fb3be0fed verified. Durable product hashes match the validated implementation: CHECKPOINT_TESTS_REPEATED=NO. Retain backend41 PASS, Unity1795 PASS, eight sizes EN/ES and all recorded race/regression evidence. Final claim, READY gate and atomic save are unchanged. Backend deployment is still required for the new endpoint; this checkpoint performs no deployment or live alias flow.
+
+Explicit durable checkpoint inventory:16 files (backend product1, client product5, tests9, report1). Tests include the existing isolated transport fixture's advisory response, which is required by the full-flow regression and does not depend on the temporary selector. The entire untracked ProductionAliasAvailabilityPreview.cs and its .meta remain local, classified TEMPORARY_VALIDATION_PREVIEW and excluded. Production has no reference to that preview. No temporary validation source is included.
+
+Pending inventory classification before checkpoint: backend product1, client product5, tests9, report1, temporary preview2, protected102, other historical19, temporary smoke11, future PLAYER_UI_01E3. All153 pending files classified; historical132/132 and protected102/102 hashes unchanged. No unrelated or unclassified files. Scoped diff/secret/privacy review passed; staged equivalents must pass before commit. No credentials or real identities added. Synthetic fixture identifiers only.
+
+PREVIEW_STATE_SELECTOR_STAGED=NO. TEMPORARY_PREVIEW_FILES_STAGED=0. UNRELATED_FILES_STAGED=0. PROTECTED_FILES_STAGED=0. PLAYER_UI_01E_FILES_STAGED=0. UNCLASSIFIED_STAGED_FILES=0. PRODUCTION_DEPENDS_ON_PREVIEW_SELECTOR=NO. REAL_PLAYER_ALIAS_MUTATIONS=0. REAL_ALIAS_FLOW_EXECUTED=NO. PLAYER_UI_01E_RESUMED=NO. BACKEND_DEPLOY_REQUIRED_FOR_AVAILABILITY=YES. BACKEND_REDEPLOYED=NO. DEPLOY=NO.
+
+Approved commit message: feat: add player alias availability feedback. Publish to origin/main only after staged gates, observe the newly triggered Backend CI without manually rerunning historical workflows, and stop. The commit containing this review is the PLAYER_IDENTITY_01C_TEST_DEPLOY_SHA; actual commit/remote SHA and CI result are recorded in the final checkpoint delivery after publication.

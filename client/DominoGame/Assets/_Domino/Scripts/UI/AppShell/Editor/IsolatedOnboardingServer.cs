@@ -39,6 +39,7 @@ namespace Domino.Editor
             string path=url.AbsolutePath.Split('/').Last();Requests.Add(method+" "+path);
             if(Hold!=null)await Hold.Task;
             var locale=url.Query.Contains("locale=es")?"es":"en";
+            if(method=="POST"&&url.AbsolutePath.EndsWith("/player/display-name/availability"))return Ok(new AliasAvailabilityDto{state="AVAILABLE"});
             if(method=="GET"){
                 if(path=="onboarding")return Ok(State);
                 if(path=="coaches")return Ok(coaches(locale));

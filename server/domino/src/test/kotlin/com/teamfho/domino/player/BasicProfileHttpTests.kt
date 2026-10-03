@@ -32,6 +32,13 @@ class BasicProfileHttpTests {
         repo.docs["onboardingCatalogs/2"]=GameCatalogCodec.map(OnboardingCatalogV2.canonical())
     }
     private val path="/api/v1/player/onboarding"
+    @Test fun `alias availability requires authentication and validates before database access`() {
+        val aliasPath="/api/v1/player/display-name/availability"
+        mvc.perform(post(aliasPath).contentType("application/json").content("""{"displayName":"Candidate"}"""))
+            .andExpect(status().isUnauthorized)
+        mvc.perform(post(aliasPath).header("Authorization","Bearer valid-guest").contentType("application/json").content("""{"displayName":"ADMIN"}"""))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.code").value("DISPLAY_NAME_RESERVED"))
+    }
     private fun start(){mvc.perform(post("$path/start").header("Authorization","Bearer valid-guest").contentType("application/json")
         .content(GameCatalogCodec.json(OnboardingStartRequest(UUID.randomUUID().toString(),0))))
         .andExpect(status().isOk).andExpect(jsonPath("$.currentStepKey").value("BASIC_PROFILE_STEP"))}
