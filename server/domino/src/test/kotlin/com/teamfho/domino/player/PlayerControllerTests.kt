@@ -63,7 +63,7 @@ class PlayerControllerTests {
         assertEquals("1",json["capabilities"]["trialActivationContractVersion"].asText())
         assertEquals(false,json["trialEligibility"]["eligible"].asBoolean())
         json.remove("capabilities");json.remove("trialEligibility")
-        assertEquals(mapper.readTree("""{"player":{"uid":"$uid","accountType":"$type","displayName":"$name","language":"es","status":"ACTIVE"},"wallet":{"coins":0}}"""), json)
+        assertEquals(mapper.readTree("""{"player":{"uid":"$uid","accountType":"$type","displayName":"$name","language":"es","status":"ACTIVE","createdAt":null},"wallet":{"coins":0}}"""), json)
     }
 
     @Test fun `absent body accepted without content type`() { call().andExpect(status().isOk).andExpect(jsonPath("$.player.language").value("en")) }
@@ -86,7 +86,12 @@ class PlayerControllerTests {
     @Test fun `repeated requests preserve initial language and name`() {
         val first = call("""{"language":"es"}""").andExpect(status().isOk).andReturn().response.contentAsString
         val second = call().andExpect(status().isOk).andReturn().response.contentAsString
-        assertEquals(mapper.readTree(first), mapper.readTree(second))
+        val firstJson=mapper.readTree(first); val secondJson=mapper.readTree(second)
+        assertTrue(firstJson["player"]["createdAt"].isNull)
+        assertEquals("2026-09-11T12:00:00Z",secondJson["player"]["createdAt"].asText())
+        (firstJson["player"] as tools.jackson.databind.node.ObjectNode).remove("createdAt")
+        (secondJson["player"] as tools.jackson.databind.node.ObjectNode).remove("createdAt")
+        assertEquals(firstJson,secondJson)
         assertEquals(5, repository.store.documents.size)
     }
 }

@@ -871,3 +871,208 @@ COMMIT_AND_REMOTE_SHA=REPORTED_AFTER_PUBLICATION
 DEPLOY=NO
 NEXT=AWAIT_EXPLICIT_NEXT_BLOCK_SELECTION
 ```
+
+## PLAYER_UI_01D_REAL_PROFILE
+
+Base: `a5614cc37930bae0415314aca94822bfda40e511`. Technical review completed on 2026-10-03 UTC (October 2 local time). Manual visual approval remains with the owner. No commit, push or deployment was performed.
+
+### Before and after
+
+Production previously inherited `DemoProfileDataSource` from the shell's default constructor: Alex, a fixed CU/Cuba value, January 21, 2022, a Coach portrait and five fictional match rows. Those were fixture data, not authenticated Player data. The explicit demo provider remains available unchanged for the existing isolated preview; App Shell Mock assets and code are untouched.
+
+`ProductionAuthHost` now injects `PlayerProfileDataSource` with the exact same `PlayerPresentationSource` used by Menu and Home. The sole domain owner remains `PlayerService`; Profile neither requests nor caches its own Player. Confirmed Basic Profile country is incorporated into the existing immutable `PlayerSnapshot`, with profile revision and session guards. Name/country updates retain the authoritative creation date. Disposal, failed routing and replacement sessions remove all prior identity fields from the visible presentation. Display name is rendered literally, without rich-text interpretation.
+
+The existing Profile card, 76-unit avatar area, header, spacing, Edit Profile and Share actions are retained. The avatar is the existing neutral person vector, never a Coach portrait. Edit Profile still opens Coming Soon; Share keeps its existing feedback. No Experience, Coach, Membership or profile editor was added. Production history shows a neutral unavailable message without fake match rows, counts, or a View All action that would suggest real history was loaded. This block makes no History API request and does not implement real History.
+
+### Creation-date contract
+
+The authoritative storage field is `players/{authenticated-player}/createdAt`, a Firestore Timestamp assigned by the server. `FoundationTimestamp.Recorded` contains that stored instant; `ServerAssigned` is an unresolved write sentinel. The previously consumed bootstrap `PlayerResponse` did not expose creation time. The existing GET player/profile already had a creation-date field, but using it separately would introduce an unnecessary per-view read.
+
+The minimal extension is nullable `PlayerResponse.createdAt`, an ISO-8601 instant projected by `PlayerBootstrapResponse.from`. There is no new endpoint, storage field, backfill, registration timestamp, onboarding completion timestamp, or change to timestamp writes. Missing/null historical creation time is accepted by the Player mapping and returned as null. Malformed present Firestore timestamps remain a domain conflict. The explicit historical onboarding initializer fails closed when a missing date prevents evaluating its boundary; it never substitutes today's date. Existing GET profile uses a safe nullable cast and remains read-only.
+
+The first creation transaction returns an unresolved server sentinel, so its response deliberately has `createdAt=null`. An ordinary subsequent bootstrap can return the recorded timestamp. No extra post-commit read or automatic refresh was introduced to populate Joined. The client accepts old responses without this optional field; invalid optional values render unavailable. Mandatory identity validation is unchanged. Fractional precision beyond DateTimeOffset's seven decimal places is truncated before parsing so rounding cannot move Joined into the next day. Presentation uses the stored instant's UTC calendar date with explicit en-US/es-ES date formatting, independent of device timezone. This does not modify stored timestamps.
+
+The backend contract is implemented and tested locally but is **not deployed**. The real Joined preview is therefore `PENDING_BACKEND_DEPLOY`; showing an unavailable date is intentional and is not proof that this Player lacks a stored timestamp.
+
+### Country and localization boundary
+
+Country comes exclusively from the saved `basicProfile.countryCode` received by the existing authenticated routing flow. The existing ISO-country allowlist and runtime RegionInfo metadata supply the label. Missing or unknown codes are neutral. A bundled CU flag is used only for a confirmed CU code. Other countries currently have no bundled flag in this asset set; the existing flag area stays empty instead of displaying Cuba's flag. No country/flag is inferred from language or timezone.
+
+Unity's Mono country metadata falls back to the existing English country names for combinations such as es-US/es-FR. This matches the current Basic Profile metadata mechanism; the runtime evidence records United States/France for these cases. Joined, unavailable country/date and history feedback have EN/ES presentation. Existing Profile headings and action labels were not broadly relocalized. The EN/ES gate verifies the affected presentation, layout and fallbacks, not a new complete Profile translation catalog.
+
+### Validation
+
+- Backend Player/bootstrap/foundation/explicit-trial and entitlement HTTP tests: **249 passed, 0 failed, 0 skipped**, including seven new creation-date cases. Coverage includes stored instant authority, null/unresolved compatibility, no backfill, unchanged writes, no extra read, malformed timestamp rejection and the existing read endpoint. An initial run exposed one outdated DTO-key assertion and an incomplete read mock; these were corrected in tests. The final root `:test` task passed. An intermediate unqualified Gradle task also visited the unrelated bot-swarm project, which had no matching tests; no load test ran.
+- Profile binding and timestamp checks: **80 passed** (8 identity, 23 creation date, 35 country, 14 session/read-only checks).
+- Shared Player presentation: **105 passed**; Menu mapping **60 passed**; Home/name/Coach/version/session checks **222 passed**.
+- Unity Profile validation: **809 passed**, eight presets in EN and ES. Actual attached UI checks cover long display names, date localization, country/fallbacks, neutral avatar, no clipping/horizontal overflow, action reachability, Edit/Back/Share, actual host injection, neutral loading/failure, immediate disposal, reattachment, replacement session and preservation of the explicit demo fixture. Navigation adds no Player or onboarding requests. The same run checks Menu/Home identity and real selected-Coach presentation.
+- Static runtime and Editor compilation passed. Actual Unity import finished with zero errors. Before live startup the Console contained the nine existing compiler warnings and one existing Firebase disposal warning. Current live Console: **0 errors, 2 preexisting runtime warnings** (PanelSettings theme sheet and Firebase database URL). No new 01D warning or current blocking exception was found. The isolated negative cases emit sanitized diagnostic log entries for their intentional failures; they are not live failures.
+
+Evidence is under `Validation/Generated/PlayerUi01D/` and `DominoGame/Library/PlayerUi01D/`. These local generated outputs are excluded from source control. No Firebase credential, real email, raw Player ID or UID is copied here.
+
+### Real TEST observation and final state
+
+Unity was found running the existing Menu session when brought to the foreground; Play was stopped to finish isolated validation. After all technical gates passed, one controlled normal startup was observed: one bootstrap start and one success, no Retry, logout or account change. The authorized bootstrap may update lastSeenAt; that server write was not independently inspected. Opening Profile and Edit Profile adds no Player/onboarding/trial/entitlement operations.
+
+At `2026-10-03T00:29:38Z`, the real host reported SCREEN=393x852. Its display name matched both `PlayerService` and Menu. Its saved country was US, rendered as United States, with no incorrect CU flag. The neutral Player avatar was visible. There were no fictional game rows. Joined displayed the localized unavailable state because the deployed bootstrap lacks the new field. Edit Profile displayed Coming Soon and returned to Profile. The real Profile is left open at 393x852 for manual review; this report does not grant manual visual approval.
+
+### Scope and preservation
+
+Thirty changed/new paths including this report: five backend production files, three backend test files, client DTO/codec/mapper and shared Player projection changes, Profile presentation/provider/text plus composition injection, the existing isolated fixture and focused validation. No Menu/Home page, Home friends demo, Learn, Mock, auth behavior, configuration or deployed service was changed. The shell default switches only the Profile provider to a neutral production source.
+
+SHA-256 and Git-status comparison against the task baseline preserved **132/132 historical pending files, including 102/102 protected files**. No files are staged. The scoped diff passes whitespace validation. The current scope scan finds zero real emails, raw UIDs, JWTs, credential literals, private keys, action URLs or mojibake. No live profile/onboarding/trial writes were issued by this feature.
+
+```text
+PLAYER_UI_01D_BASE_SHA=a5614cc37930bae0415314aca94822bfda40e511
+PROFILE_VIEW=ProductionProfilePage
+PROFILE_CONTROLLER=ProductionAppShell_EXISTING_NAVIGATION
+PROFILE_DATA_PROVIDER=PlayerProfileDataSource
+PROFILE_PLAYER_SOURCE=PlayerService->PlayerPresentationSource->PlayerPresentationState
+PROFILE_PLAYER_SOURCE_COUNT=1
+PROFILE_PRIMARY_NAME_SOURCE=PLAYER_DISPLAY_NAME
+PROFILE_IDENTITY_PRESENTATION_CONTRACT=DISPLAY_NAME_ONLY
+PROFILE_NAME_MATCHES_MENU_PLAYER=YES
+PROFILE_COUNTRY_SOURCE=REAL_PLAYER_BASIC_PROFILE_COUNTRY
+PROFILE_COUNTRY_FLAG_SOURCE=REAL_COUNTRY_METADATA_EXACT_ASSET_OR_NEUTRAL
+PROFILE_COUNTRY_MATCHES_PLAYER=YES
+PLAYER_CREATED_AT_STORAGE_FIELD=players/{player}/createdAt
+PLAYER_CREATED_AT_STORAGE_TYPE=FIRESTORE_TIMESTAMP
+PLAYER_CREATED_AT_AUTHORITY=STORED_SERVER_TIMESTAMP
+CREATED_AT_BACKEND_CONTRACT=EXISTING_PLAYER_READ_CONTRACT
+CREATED_AT_BACKEND_DTO=PlayerResponse.createdAt_NULLABLE_ISO8601
+CREATED_AT_CLIENT_CONTRACT=OPTIONAL_CREATED_AT_TO_NULLABLE_DATETIMEOFFSET
+CREATED_AT_CLIENT_FILES=PlayerBootstrapDtos;UnityApiJsonCodec;PlayerSnapshotMapper;PlayerSnapshot;PlayerPresentationState
+LEGACY_MISSING_CREATED_AT_SUPPORTED=YES
+LEGACY_CREATED_AT_REPAIR=NO
+GET_CREATED_AT_SIDE_EFFECTS=0
+JOINED_DATE_SOURCE=PLAYER_CREATED_AT
+JOINED_DATE_FORMATTING=CLIENT_LOCALIZED_PRESENTATION_UTC_CALENDAR_DATE
+PLAYER_AVATAR_IMPLEMENTED=NO
+PROFILE_AVATAR_SOURCE=NEUTRAL_PLAYER_FALLBACK
+COACH_PORTRAIT_USED_AS_PLAYER_AVATAR=NO
+PROFILE_EXPERIENCE_UI_EXPANDED=NO
+PROFILE_COACH_UI_EXPANDED=NO
+PROFILE_MEMBERSHIP_UI_EXPANDED=NO
+EDIT_PROFILE_IMPLEMENTED=NO
+EDIT_PROFILE_COMING_SOON_PRESERVED=YES
+PROFILE_SHARE_BEHAVIOR_CHANGED=NO
+PROFILE_GAME_HISTORY_SOURCE=UNAVAILABLE_NO_HISTORY_API
+PROFILE_HISTORY_TEMPORARY_POLICY=NEUTRAL_UNAVAILABLE
+FICTIONAL_GAME_HISTORY_PRESENTED_AS_REAL=NO
+PROFILE_VISIBLE_DEMO_IDENTITY=NO
+PROFILE_VISIBLE_DEMO_JOINED=NO
+PROFILE_VISIBLE_DEMO_AVATAR=NO
+PROFILE_LOADING_FAKE_PLAYER=NO
+PROFILE_FAILURE_FAKE_PLAYER=NO
+PROFILE_CLEARED_ON_SESSION_CHANGE=YES
+STALE_PROFILE_PLAYER_A_VISIBLE_FOR_B=NO
+PROFILE_IDENTITY_BINDING_TESTS=PASS
+CREATED_AT_BACKEND_TESTS=7_PASS_WITHIN_249_PASS
+CREATED_AT_CLIENT_TESTS=23_PASS_WITHIN_80_PASS
+PROFILE_DEMO_REGRESSION=PASS
+FICTIONAL_HISTORY_NOT_ATTRIBUTED_TO_REAL_PLAYER=PASS
+PROFILE_EN=PASS
+PROFILE_ES=PASS_EXISTING_COUNTRY_METADATA_FALLBACK_DISCLOSED
+PROFILE_RESPONSIVE=8/8_PASS_EN_ES
+PROFILE_HORIZONTAL_OVERFLOW=0
+PROFILE_TEXT_CLIPPING=0
+MENU_REAL_BINDING_REGRESSION=PASS
+HOME_REAL_BINDING_REGRESSION=PASS
+HOME_REAL_COACH_BINDING_REGRESSION=PASS
+BACKEND_DEPLOY_REQUIRED_FOR_JOINED_LIVE_TEST=YES
+REAL_PROFILE_DISPLAY_NAME_VISIBLE=YES
+REAL_PROFILE_COUNTRY_VISIBLE=YES
+REAL_PROFILE_NEUTRAL_AVATAR_VISIBLE=YES
+REAL_PROFILE_JOINED_VISIBLE=PENDING_BACKEND_DEPLOY
+EDIT_PROFILE_COMING_SOON_PREVIEW=PASS
+UNITY_COMPILER_ERRORS=0
+UNITY_WARNINGS_CURRENT=2_PREEXISTING_RUNTIME
+UNITY_WARNINGS_BEFORE_PLAY=9_EXISTING_COMPILER_PLUS_1_EXISTING_DISPOSAL
+NEW_PLAYER_UI_01D_WARNINGS=0
+CURRENT_BLOCKING_EXCEPTIONS=0
+PROFILE_PLAYER_WRITES=0
+PROFILE_ONBOARDING_WRITES=0
+PROFILE_TRIAL_WRITES=0
+PROFILE_ENTITLEMENT_WRITES=0
+NORMAL_BOOTSTRAP_COUNT=1
+NORMAL_BOOTSTRAP_LAST_SEEN_WRITE=POSSIBLE_AUTHORIZED_NOT_SEPARATELY_AUDITED
+APP_SHELL_MOCK_CHANGED=NO
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+PREEXISTING_PENDING_FILES_PRESERVED=132/132
+SECRET_SCAN=PASS
+STAGED_FILES=0
+FINAL_PREVIEW=REAL_TEST_PROFILE_393x852
+MANUAL_PROFILE_VISUAL_REVIEW=PENDING
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+PLAYER_UI_01D_SUCCESS=TECHNICAL_PASS_PENDING_MANUAL_REVIEW_AND_JOINED_DEPLOY
+NEXT=MANUAL_REAL_PROFILE_VISUAL_REVIEW
+```
+
+### PLAYER_UI_01D checkpoint and manual approval
+
+The owner approved the real Profile at 393x852: identity, saved country, neutral avatar and neutral history state all pass manual visual review. Joined's unavailable presentation is expected until the TEST backend receives the reviewed creation-date contract. This approval supersedes the pending manual-review status recorded above; it does not claim that live Joined has been validated.
+
+The checkpoint retains the approved implementation unchanged. SHA-256 comparison confirms that all 29 code, asset-metadata and test files are identical to the technical-review evidence. Only this report was updated during checkpoint preparation. No suites, Unity import, Play startup, backend call or session operation were repeated. The retained evidence is seven backend creation-date tests, 23 client creation-date checks, 249 backend tests, 80 Profile client checks, 809 Unity Profile checks, 60 Menu checks, 222 Home checks, 105 shared-presentation checks and eight responsive presets in EN/ES. Unity's retained state is zero compiler errors, two preexisting runtime warnings, zero new 01D warnings and zero blocking exceptions.
+
+All 162 pending paths were classified, with zero unclassified paths:
+
+| Classification | Paths | Checkpoint |
+| --- | ---: | --- |
+| PLAYER_UI_01D_BACKEND_PRODUCT | 5 | Include |
+| PLAYER_UI_01D_CLIENT_PRODUCT | 15 | Include |
+| PLAYER_UI_01D_TEST | 9 | Include |
+| PLAYER_UI_REPORT | 1 | Include |
+| TEMPORARY_VALIDATION | 2 | Exclude |
+| TEMPORARY_SMOKE | 11 | Exclude |
+| HISTORICAL_PENDING | 15 | Exclude |
+| UNRELATED | 2 | Exclude |
+| PROTECTED | 102 | Exclude |
+| PLAYER_UI_01E_FUTURE | 0 | Exclude |
+
+The reusable Editor Profile validator and its fixture are durable tests, following the existing Menu/Home checkpoint convention. Generated request markers, measurement output, scan inventories and checkpoint bookkeeping remain in ignored Library/Generated directories. They are not checkpoint candidates. The 132 preexisting paths retain both their baseline contents and Git status; all 102 protected files remain unchanged.
+
+The 30 explicit candidates preserve nullable ISO-8601 creation time from the stored Firestore timestamp, missing-date compatibility without repair, client DateTimeOffset projection and localized Joined formatting. Profile still consumes the shared authenticated Player source. No Profile editing, History API, avatar upload, trial activation or membership mutation was added. Menu/Home implementation, Mock and all server configuration remain unchanged. Current candidate scanning passes with zero credentials, private keys, raw UIDs, real emails, action URLs or mojibake. Publication requires the exact same 30 paths to pass the staged diff and staged secret scan.
+
+Commit message: `feat: bind profile to real player data`. The containing commit is the checkpoint identifier; its SHA and the matching `origin/main` SHA are reported after publication rather than embedded in the commit itself. That exact verified SHA becomes `PLAYER_UI_01D_TEST_DEPLOY_SHA`. This authorization performs no deployment and no Joined live test. The final 01D result remains pending the separate TEST deployment authorization.
+
+```text
+MANUAL_PROFILE_VISUAL_REVIEW=PASS
+PROFILE_IDENTITY_VISUAL=PASS
+PROFILE_COUNTRY_VISUAL=PASS
+PROFILE_NEUTRAL_AVATAR_VISUAL=PASS
+PROFILE_HISTORY_NEUTRAL_STATE_VISUAL=PASS
+JOINED_VISUAL=EXPECTED_UNAVAILABLE_PENDING_TEST_BACKEND
+CHECKPOINT_CANDIDATE_FILES=30
+SOURCE_FILES_CHANGED_DURING_CHECKPOINT=0
+CHECKPOINT_TESTS_REPEATED=NO
+CREATED_AT_BACKEND_TESTS=7_PASS_RETAINED
+CREATED_AT_CLIENT_TESTS=23_PASS_RETAINED
+BACKEND_TESTS=249_PASS_RETAINED
+PROFILE_CLIENT_CHECKS=80_PASS_RETAINED
+UNITY_PROFILE_CHECKS=809_PASS_RETAINED
+PROFILE_RESPONSIVE=8/8_PASS_EN_ES_RETAINED
+MENU_REAL_BINDING_REGRESSION=60_PASS_RETAINED
+HOME_CHECKS=222_PASS_RETAINED
+SHARED_PRESENTATION_CHECKS=105_PASS_RETAINED
+UNITY_COMPILER_ERRORS=0_RETAINED
+UNITY_WARNINGS_CURRENT=2_PREEXISTING_RETAINED
+NEW_PLAYER_UI_01D_WARNINGS=0
+CURRENT_BLOCKING_EXCEPTIONS=0_RETAINED
+UNCLASSIFIED_FILES=0
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+PREEXISTING_PENDING_FILES_PRESERVED=132/132
+SECRET_SCAN=PASS
+REAL_PROFILE_JOINED_VISIBLE=PENDING_BACKEND_DEPLOY
+PLAYER_UI_01D_FINAL_SUCCESS=NO_PENDING_JOINED_LIVE_TEST
+COMMIT_MESSAGE=feat: bind profile to real player data
+CHECKPOINT_IDENTIFIER=CONTAINING_GIT_COMMIT
+COMMIT_AND_REMOTE_SHA=REPORTED_AFTER_PUBLICATION
+PLAYER_UI_01D_TEST_DEPLOY_SHA=VERIFIED_CHECKPOINT_COMMIT
+DEPLOY=NO
+BACKEND_REDEPLOYED=NO
+PROD_DEPLOYMENT=NO
+PLAYER_UI_01E_STARTED=NO
+NEXT=PLAYER-UI-01D CREATED_AT TEST DEPLOY AUTHORIZATION
+```

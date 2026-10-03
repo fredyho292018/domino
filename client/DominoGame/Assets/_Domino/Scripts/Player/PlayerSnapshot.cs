@@ -11,13 +11,17 @@ namespace Domino.Player
         public string DisplayName { get; }
         public string Language { get; }
         public PlayerStatus Status { get; }
-        public PlayerSnapshot(string uid, PlayerAccountType accountType, string displayName, string language, PlayerStatus status)
+        public DateTimeOffset? CreatedAt { get; }
+        public string CountryCode { get; }
+        public PlayerSnapshot(string uid, PlayerAccountType accountType, string displayName, string language, PlayerStatus status,
+            DateTimeOffset? createdAt=null, string countryCode=null)
         {
             if (string.IsNullOrWhiteSpace(uid) || string.IsNullOrWhiteSpace(displayName) ||
                 (language != "en" && language != "es") || status != PlayerStatus.Active ||
                 (accountType != PlayerAccountType.Guest && accountType != PlayerAccountType.Registered))
                 throw new ArgumentException("Invalid player snapshot.");
             Uid = uid; AccountType = accountType; DisplayName = displayName; Language = language; Status = status;
+            CreatedAt=createdAt;CountryCode=countryCode;
         }
     }
 }

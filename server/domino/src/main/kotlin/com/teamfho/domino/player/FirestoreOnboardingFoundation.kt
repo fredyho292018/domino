@@ -48,6 +48,7 @@ class FirestoreOnboardingFoundation(private val db: Firestore, private val bound
         val created = when (val time = player.createdAt) {
             is FoundationTimestamp.Recorded -> time.instant
             FoundationTimestamp.ServerAssigned -> at
+            null -> throw PlayerFoundationException(FoundationError.PLAYER_STATE_CONFLICT)
         }
         val state = OnboardingInitialization.state(created, boundary, at)
         return {

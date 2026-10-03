@@ -20,7 +20,8 @@ namespace Domino.Infrastructure.Api
             return new PlayerBootstrapResponseDto {
                 player = new PlayerResponseDto {
                     uid = Text(player, "uid"), accountType = Text(player, "accountType"), displayName = Text(player, "displayName"),
-                    language = Text(player, "language"), status = Text(player, "status") },
+                    language = Text(player, "language"), status = Text(player, "status"),
+                    createdAt = player["createdAt"]?.Type == JTokenType.String ? player["createdAt"].Value<string>() : null },
                 wallet = new WalletResponseDto { coins = coins.Value<long>() },
                 trialEligibility = root["trialEligibility"]?.ToObject<TrialEligibilityDto>(),
                 capabilities = root["capabilities"]?.ToObject<System.Collections.Generic.Dictionary<string,string>>(),

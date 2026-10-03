@@ -16,11 +16,14 @@ namespace Domino.UI.AppShell
         public string CountryCode { get; }
         public string CountryName { get; }
         public VectorImage Flag { get; }
-        public DateTime JoinedAt { get; }
+        public DateTime? JoinedAt { get; }
+        public string JoinedLabel { get; }
+        public VectorImage AvatarIcon { get; }
         public bool IsOwnProfile { get; }
         public ProfileFriendState FriendState { get; }
-        public PlayerProfileViewModel(string id,string name,Texture2D avatar,string countryCode,string countryName,VectorImage flag,DateTime joined,bool own,ProfileFriendState state)
-        {PlayerId=id;DisplayName=name;Avatar=avatar;CountryCode=countryCode;CountryName=countryName;Flag=flag;JoinedAt=joined;IsOwnProfile=own;FriendState=state;}
+        public PlayerProfileViewModel(string id,string name,Texture2D avatar,string countryCode,string countryName,VectorImage flag,DateTime? joined,bool own,ProfileFriendState state,
+            string joinedLabel=null,VectorImage avatarIcon=null)
+        {PlayerId=id;DisplayName=name;Avatar=avatar;CountryCode=countryCode;CountryName=countryName;Flag=flag;JoinedAt=joined;IsOwnProfile=own;FriendState=state;JoinedLabel=joinedLabel;AvatarIcon=avatarIcon;}
     }
     public sealed class ProfileGameSummary
     {

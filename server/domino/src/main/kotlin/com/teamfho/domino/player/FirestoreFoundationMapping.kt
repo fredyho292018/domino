@@ -14,7 +14,7 @@ internal object FirestoreFoundationMapping {
             data["displayName"] as String,
             data["language"] as String,
             PlayerStatus.valueOf(data["status"] as String),
-            timestamp(data["createdAt"]), timestamp(data["updatedAt"]), timestamp(data["lastSeenAt"]),
+            data["createdAt"]?.let { timestamp(it) }, timestamp(data["updatedAt"]), timestamp(data["lastSeenAt"]),
             data["firstName"] as String?, data["lastName"] as String?, data["countryCode"] as String?,
             data["profileRevision"]?.let { integer(it) } ?: 0
         )

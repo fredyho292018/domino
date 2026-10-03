@@ -4,6 +4,8 @@ using System.Linq;
 using Domino.UI.Theming;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace Domino.UI.AppShell
 {
@@ -12,11 +14,14 @@ namespace Domino.UI.AppShell
         public const int MaxVisibleGames=5;
         public AppTheme Theme=>ThemeProvider.Current;
         public ProfileSection Section { get; }
-        public PlayerProfileViewModel Profile { get; }
+        public PlayerProfileViewModel Profile { get; private set; }
+        readonly IProfileDataSource source;
+        Label playerName,countryName,joined,historyUnavailable;
+        Image playerImage,countryFlag;
         public ProductionProfilePage(IProfileDataSource source,ProfileSection section,Action back,Action<ProfileSection> navigate):base("", "")
         {
             if(source==null)throw new ArgumentNullException(nameof(source));
-            Section=section;Profile=source.ReadProfile();Body.Clear();verticalScrollerVisibility=ScrollerVisibility.Hidden;
+            this.source=source;Section=section;Profile=source.ReadProfile();Body.Clear();verticalScrollerVisibility=ScrollerVisibility.Hidden;
             var header=new VisualElement();header.style.flexDirection=FlexDirection.Row;header.style.alignItems=Align.Center;header.style.marginBottom=Theme.Spacing.MD;
             var backButton=new Button(back){name="ShellBack"};var arrow=new Image();ThemeStyles.Back(backButton,arrow);backButton.Add(arrow);header.Add(backButton);
             var title=section==ProfileSection.Profile?"Profile":section==ProfileSection.EditProfile?"Edit Profile":section==ProfileSection.GameHistory?"Game History":"Game Details";
@@ -27,13 +32,13 @@ namespace Domino.UI.AppShell
             if(section==ProfileSection.Profile)
             {
                 var card=new VisualElement{name="ProfilePlayerCard"};ThemeStyles.Card(card);ThemeStyles.Pad(card,Theme.Spacing.MD);card.style.flexDirection=FlexDirection.Row;card.style.alignItems=Align.Center;card.style.flexShrink=0;card.style.marginBottom=Theme.Spacing.MD;Body.Add(card);
-                var avatar=Avatar(Profile.Avatar,76);avatar.style.marginRight=Theme.Spacing.MD;card.Add(avatar);
+                var avatar=Avatar(Profile.Avatar,76);playerImage=avatar.Q<Image>();playerImage.name="ProfilePlayerAvatarImage";avatar.style.marginRight=Theme.Spacing.MD;card.Add(avatar);
                 var info=new VisualElement{name="ProfileInfo"};info.style.flexGrow=1;info.style.flexShrink=1;info.style.minWidth=0;card.Add(info);
-                Text(Profile.DisplayName,TextRole.ButtonSecondary,info,"ProfilePlayerName");
+                playerName=Text(Profile.DisplayName,TextRole.ButtonSecondary,info,"ProfilePlayerName");playerName.enableRichText=false;
                 var country=new VisualElement();country.style.flexDirection=FlexDirection.Row;country.style.alignItems=Align.Center;info.Add(country);
-                var flag=new Image{vectorImage=Profile.Flag,name="ProfileFlag",tooltip=Profile.CountryName+" flag",pickingMode=PickingMode.Ignore};flag.style.width=24;flag.style.height=16;flag.style.flexShrink=0;flag.style.marginRight=Theme.Spacing.SM;country.Add(flag);
-                Text(Profile.CountryName,TextRole.Body,country,"ProfileCountry");
-                Text("Joined "+Profile.JoinedAt.ToString("MMMM d, yyyy",CultureInfo.GetCultureInfo("en-US")),TextRole.Caption,info,"ProfileJoined").style.marginTop=Theme.Spacing.SM;
+                countryFlag=new Image{vectorImage=Profile.Flag,name="ProfileFlag",pickingMode=PickingMode.Ignore};countryFlag.style.width=24;countryFlag.style.height=16;countryFlag.style.flexShrink=0;countryFlag.style.marginRight=Theme.Spacing.SM;country.Add(countryFlag);
+                countryName=Text(Profile.CountryName,TextRole.Body,country,"ProfileCountry");
+                joined=Text("",TextRole.Caption,info,"ProfileJoined");joined.style.marginTop=Theme.Spacing.SM;
                 var actions=new VisualElement{name="ProfileActions"};actions.style.flexDirection=FlexDirection.Row;actions.style.marginBottom=Theme.Spacing.MD;Body.Add(actions);
                 var notice=Text("",TextRole.Secondary,Body,"ProfileNotice");notice.style.display=DisplayStyle.None;
                 string action=Profile.IsOwnProfile?"Edit Profile":Profile.FriendState==ProfileFriendState.NotFriend?"Add Friend":Profile.FriendState==ProfileFriendState.RequestSent?"Request Sent":"Friends";
@@ -41,11 +46,31 @@ namespace Domino.UI.AppShell
                 var share=new ThemeButton("",()=>{notice.text="Sharing coming soon.";notice.style.display=DisplayStyle.Flex;}){name="ShareProfile",tooltip="Share Profile"};share.style.width=52;share.style.marginLeft=Theme.Spacing.SM;share.style.alignItems=Align.Center;share.style.justifyContent=Justify.Center;
                 var shareIcon=new Image{vectorImage=Resources.Load<VectorImage>("AppShellMockIcons/icon_share")};ThemeStyles.Icon(shareIcon);share.Add(shareIcon);actions.Add(share);
                 var historyHeading=new VisualElement();historyHeading.style.flexDirection=FlexDirection.Row;historyHeading.style.justifyContent=Justify.SpaceBetween;historyHeading.style.alignItems=Align.Center;Body.Add(historyHeading);
-                Text("Game History",TextRole.SectionTitle,historyHeading,"HistoryHeading");Text("Last 5 games",TextRole.Caption,historyHeading,"HistoryLimit");
+                Text("Game History",TextRole.SectionTitle,historyHeading,"HistoryHeading");
+                if(!(source is IObservableProfileDataSource))Text("Last 5 games",TextRole.Caption,historyHeading,"HistoryLimit");
             }
-            if(section==ProfileSection.GameHistory)Text(games.Count+" games",TextRole.Caption,Body,"HistoryCount").style.marginBottom=Theme.Spacing.SM;
+            if(source is IObservableProfileDataSource real)historyUnavailable=Text(real.HistoryUnavailableText,TextRole.Secondary,Body,"ProfileHistoryUnavailable");
+            else if(section==ProfileSection.GameHistory)Text(games.Count+" games",TextRole.Caption,Body,"HistoryCount").style.marginBottom=Theme.Spacing.SM;
             foreach(var game in games.Take(section==ProfileSection.Profile?MaxVisibleGames:games.Count))AddGame(game,()=>navigate(ProfileSection.GameDetails));
-            if(section==ProfileSection.Profile){var all=new ThemeButton("View All Games ›",()=>navigate(ProfileSection.GameHistory)){name="ViewAllGames",tooltip="View All Games"};all.style.marginTop=Theme.Spacing.MD;Body.Add(all);}
+            if(section==ProfileSection.Profile && !(source is IObservableProfileDataSource)){var all=new ThemeButton("View All Games ›",()=>navigate(ProfileSection.GameHistory)){name="ViewAllGames",tooltip="View All Games"};all.style.marginTop=Theme.Spacing.MD;Body.Add(all);}
+            RefreshIdentity();
+            RegisterCallback<AttachToPanelEvent>(_=>{if(source is IObservableProfileDataSource observable)observable.Changed+=RefreshIdentity;LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;RefreshIdentity();});
+            RegisterCallback<DetachFromPanelEvent>(_=>{if(source is IObservableProfileDataSource observable)observable.Changed-=RefreshIdentity;LocalizationSettings.SelectedLocaleChanged-=LocaleChanged;});
+        }
+        void LocaleChanged(Locale ignored)=>RefreshIdentity();
+        void RefreshIdentity()
+        {
+            Profile=source.ReadProfile();
+            if(playerName!=null) {
+                playerName.text=Profile.DisplayName;countryName.text=Profile.CountryName;
+                countryFlag.vectorImage=Profile.Flag;countryFlag.tooltip=Profile.Flag==null?null:Profile.CountryName;
+                countryFlag.style.visibility=Profile.Flag==null?Visibility.Hidden:Visibility.Visible;
+                joined.text=Profile.JoinedLabel??(Profile.JoinedAt.HasValue?"Joined "+Profile.JoinedAt.Value.ToString("MMMM d, yyyy",CultureInfo.GetCultureInfo("en-US")):"Joined date unavailable");
+                playerImage.image=Profile.Avatar;playerImage.vectorImage=Profile.AvatarIcon;
+                playerImage.scaleMode=Profile.AvatarIcon==null?ScaleMode.ScaleAndCrop:ScaleMode.ScaleToFit;
+                playerImage.tintColor=Profile.AvatarIcon==null?Color.white:Theme.Colors.IconInactive;
+            }
+            if(historyUnavailable!=null && source is IObservableProfileDataSource real)historyUnavailable.text=real.HistoryUnavailableText;
         }
         Label Text(string value,TextRole role,VisualElement parent,string elementName)
         {

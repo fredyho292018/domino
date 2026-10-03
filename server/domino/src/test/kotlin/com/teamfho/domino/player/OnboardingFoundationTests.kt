@@ -63,6 +63,6 @@ class OnboardingFoundationTests {
         assertEquals("Existing",player.displayName);assertEquals(FoundationTimestamp.Recorded(now),player.createdAt)
         assertNull(player.firstName);assertEquals(0L,player.profileRevision)
         val response=PlayerResponse(player.uid,player.accountType,player.displayName,player.language,player.status)
-        assertEquals(setOf("uid","accountType","displayName","language","status"),MatchCodec.map(response).keys)
+        assertEquals(setOf("uid","accountType","displayName","language","status","createdAt"),MatchCodec.map(response).keys)
     }
 }

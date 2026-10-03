@@ -16,7 +16,7 @@ namespace Domino.Infrastructure.Api
     [Serializable] public sealed class EntitlementLimitsDto { public EntitlementLimitDto FRIENDS_MAX, HISTORY_MAX, REPLAY_MAX; }
     [Serializable] public sealed class EntitlementLimitDto { public bool unlimited; public int maximum; }
     [Serializable] public sealed class PlayerResponseDto
-    { public string uid; public string accountType; public string displayName; public string language; public string status; }
+    { public string uid; public string accountType; public string displayName; public string language; public string status; public string createdAt; }
     [Serializable] public sealed class WalletResponseDto { public long coins = -1; }
     [Serializable] public sealed class ApiErrorDto { public string code; public string message; public string requestId; }
 }

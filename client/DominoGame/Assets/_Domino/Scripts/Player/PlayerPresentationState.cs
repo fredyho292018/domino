@@ -21,6 +21,8 @@ namespace Domino.Player
         public bool? TrialConsumed { get; }
         public DateTimeOffset? TrialEndsAt { get; }
         public PlayerCoachPresentation Coach { get; }
+        public string CountryCode { get; }
+        public DateTimeOffset? CreatedAt { get; }
 
         PlayerPresentationState(PlayerPresentationAvailability availability, PlayerSnapshot player = null,
             string locale = null, EntitlementSummaryDto envelope = null, PlayerCoachPresentation coach = null)
@@ -31,6 +33,7 @@ namespace Domino.Player
             AccountType = player?.AccountType;
             PreferredLocale = locale ?? player?.Language;
             Coach = coach;
+            CountryCode=player?.CountryCode;CreatedAt=player?.CreatedAt;
             var value = envelope?.availability == "AVAILABLE" ? envelope.snapshot : null;
             if (value == null) return;
             // Current backend emits FREE/PREMIUM. Future commercial keys are presentation only,

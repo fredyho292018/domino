@@ -72,7 +72,7 @@ static class PlayerPresentationTests
         Map(PlayerPresentationState.FromConfirmed(Snapshot("Guest-ABCDEFGH"), null, null).DisplayName == "Guest-ABCDEFGH", "confirmed_generated_alias_preserved");
         foreach (var property in typeof(PlayerPresentationState).GetProperties()) Map(property.SetMethod == null, "immutable_" + property.Name);
         // 01C explicitly adds an immutable Coach projection; identity/binary/other-page data remain excluded.
-        foreach (var forbidden in new[] { "Uid", "Email", "CreatedAt", "Country", "Experience", "Avatar", "Brand" })
+        foreach (var forbidden in new[] { "Uid", "Email", "Country", "Experience", "Avatar", "Brand" })
             Map(typeof(PlayerPresentationState).GetProperty(forbidden) == null, "minimal_no_" + forbidden);
         Map(typeof(PlayerPresentationState).GetProperty("Coach").PropertyType==typeof(PlayerCoachPresentation),"coach_projection_not_domain_dto");
         foreach(var property in typeof(PlayerCoachPresentation).GetProperties()) Map(property.SetMethod==null,"immutable_coach_"+property.Name);

@@ -43,7 +43,7 @@ namespace Domino.UI.AppShell
 
         public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null)
         {
-            ProfileDataSource=profileDataSource??new DemoProfileDataSource();
+            ProfileDataSource=profileDataSource??new PlayerProfileDataSource(null);
             name = "ProductionAppShell"; style.flexGrow = 1; style.minHeight = 0;
             style.backgroundColor = Theme.Colors.Background;
             PageHost.style.flexGrow = 1; PageHost.style.minHeight = 0;

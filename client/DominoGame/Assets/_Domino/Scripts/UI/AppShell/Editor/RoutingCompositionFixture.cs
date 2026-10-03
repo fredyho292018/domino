@@ -22,6 +22,7 @@ namespace Domino.Editor
         public readonly ProductionAuthRouter Forms;
         public int BootstrapCalls,StateCalls,AuthWrites;
         public string ErrorAt;
+        public string CreatedAt;
         public TaskCompletionSource<bool> Hold;
         public RoutingCompositionFixture(int version=2)
         {
@@ -53,7 +54,7 @@ namespace Domino.Editor
             var path=url.AbsolutePath;
             if(path.EndsWith("/bootstrap")){
                 BootstrapCalls++;if(ErrorAt=="BOOTSTRAP"||ErrorAt=="UPDATE")return new ApiHttpResponse(ErrorAt=="UPDATE"?409:503,JsonConvert.SerializeObject(new{requestId="00000000-0000-0000-0000-000000000001",code=ErrorAt=="UPDATE"?"CLIENT_UPDATE_REQUIRED":"DEPENDENCY_UNAVAILABLE"}));
-                return new ApiHttpResponse(200,JsonConvert.SerializeObject(new PlayerBootstrapResponseDto{player=new PlayerResponseDto{uid=Session.Uid,status="ACTIVE",accountType=Session.IsAnonymous?"GUEST":"REGISTERED",language="en",displayName="Fixture"},wallet=new WalletResponseDto{coins=0},trialEligibility=Server.Eligibility,entitlements=Server.Access}));
+                return new ApiHttpResponse(200,JsonConvert.SerializeObject(new PlayerBootstrapResponseDto{player=new PlayerResponseDto{uid=Session.Uid,status="ACTIVE",accountType=Session.IsAnonymous?"GUEST":"REGISTERED",language="en",displayName="Fixture",createdAt=CreatedAt},wallet=new WalletResponseDto{coins=0},trialEligibility=Server.Eligibility,entitlements=Server.Access}));
             }
             if(path.EndsWith("/onboarding")){StateCalls++;if(ErrorAt=="ONBOARDING")return new ApiHttpResponse(503,"{\"code\":\"DEPENDENCY_UNAVAILABLE\"}");}
             return await Server.SendAsync(method,url,body,bearer,timeout,token);

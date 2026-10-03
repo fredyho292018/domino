@@ -9,7 +9,7 @@ data class Player(
     val displayName: String,
     val language: String,
     val status: PlayerStatus,
-    val createdAt: FoundationTimestamp,
+    val createdAt: FoundationTimestamp?,
     val updatedAt: FoundationTimestamp,
     val lastSeenAt: FoundationTimestamp,
     val firstName: String? = null,

@@ -43,7 +43,7 @@ class EntitlementController(private val entitlements:EntitlementService,private 
         if(data==null) ResponseEntity.status(404).body(mapOf("code" to "PROFILE_NOT_FOUND")) else {
             val p=FirestoreFoundationMapping.player(data,identity.uid)
             ResponseEntity.ok(mapOf("uid" to p.uid,"displayName" to p.displayName,"language" to p.language,
-                "accountType" to p.accountType,"createdAt" to (p.createdAt as FoundationTimestamp.Recorded).instant))
+                "accountType" to p.accountType,"createdAt" to (p.createdAt as? FoundationTimestamp.Recorded)?.instant))
         }
     } catch(_:Exception) {ResponseEntity.status(503).body(mapOf("code" to "PROFILE_UNAVAILABLE"))}
 }

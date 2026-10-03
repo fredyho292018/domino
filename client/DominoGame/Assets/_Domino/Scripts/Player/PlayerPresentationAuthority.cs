@@ -24,12 +24,12 @@ namespace Domino.Player
                     string.IsNullOrWhiteSpace(profile.displayName) ||
                     (profile.preferredLocale != "en" && profile.preferredLocale != "es")) return false;
                 if (confirmedProfileRevision.HasValue && (revisions.profile < confirmedProfileRevision.Value ||
-                    revisions.profile == confirmedProfileRevision.Value && (requireNewerProfile || profile.displayName != Player.DisplayName))) return false;
+                    revisions.profile == confirmedProfileRevision.Value && (requireNewerProfile || profile.displayName != Player.DisplayName || profile.countryCode != Player.CountryCode))) return false;
                 if (confirmedPreferencesRevision.HasValue && (revisions.preferences < confirmedPreferencesRevision.Value ||
                     revisions.preferences == confirmedPreferencesRevision.Value && profile.preferredLocale != PreferredLocale)) return false;
-                bool changed = Player.DisplayName != profile.displayName || PreferredLocale != profile.preferredLocale;
-                if (Player.DisplayName != profile.displayName)
-                    Player = new PlayerSnapshot(Player.Uid, Player.AccountType, profile.displayName, Player.Language, Player.Status);
+                bool changed = Player.DisplayName != profile.displayName || Player.CountryCode != profile.countryCode || PreferredLocale != profile.preferredLocale;
+                if (Player.DisplayName != profile.displayName || Player.CountryCode != profile.countryCode)
+                    Player = new PlayerSnapshot(Player.Uid, Player.AccountType, profile.displayName, Player.Language, Player.Status,Player.CreatedAt,profile.countryCode);
                 PreferredLocale = profile.preferredLocale;
                 confirmedProfileRevision = revisions.profile;
                 confirmedPreferencesRevision = revisions.preferences;

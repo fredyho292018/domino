@@ -108,6 +108,8 @@ namespace Domino.Player
                     player.AccountType != Player.AccountType || player.Language != Player.Language || player.Status != Player.Status))
                     throw new DominoApiException(ApiFailure.Contract, 200);
                 if (Player != null && Player.DisplayName != player.DisplayName) requireNewerProfile = true;
+                if (Player != null) player = new PlayerSnapshot(player.Uid,player.AccountType,player.DisplayName,player.Language,
+                    player.Status,player.CreatedAt,Player.CountryCode); // Bootstrap has no country; retain confirmed profile enrichment.
                 Player = player;
                 if (PreferredLocale == null) PreferredLocale = player.Language;
                 if(!IsSaving) { ReceiveEntitlements(user.Uid,result.entitlements);TrialEligibility=result.trialEligibility; }
