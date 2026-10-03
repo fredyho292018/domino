@@ -47,7 +47,7 @@ class SocialTransactionRetryEmulatorTests {
     }
     private fun player(db:Firestore):PublicPlayerIdentity {
         val uid="a2r-${UUID.randomUUID()}"
-        FirestorePlayerFoundationRepository(db,Clock.systemUTC()).ensure(FirebaseIdentity(uid,true),"en","Guest-ABCDEFGH")
+        com.teamfho.domino.player.ensureEmulatorPlayer(db,FirebaseIdentity(uid,true),Clock.systemUTC())
         return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)
     }
     @Test fun `fifty concurrent follow or unfollow versus block races preserve all projections`()=db().use {db->

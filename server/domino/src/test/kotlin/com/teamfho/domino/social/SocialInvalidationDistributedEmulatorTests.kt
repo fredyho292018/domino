@@ -22,7 +22,7 @@ class SocialInvalidationDistributedEmulatorTests {
         val db=FirestoreOptions.newBuilder().setProjectId("demo-domino-f0").setEmulatorHost("127.0.0.1:18085").setCredentials(FirestoreOptions.EmulatorCredentials()).build().service
         val factory=LettuceConnectionFactory("127.0.0.1",16379);factory.afterPropertiesSet();factory.start();val redis=StringRedisTemplate(factory)
         try {
-            fun player():PublicPlayerIdentity {val uid="a3distributed-${UUID.randomUUID()}";FirestorePlayerFoundationRepository(db,Clock.systemUTC()).ensure(FirebaseIdentity(uid,true),"en","Guest-ABCDEFGH");return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)}
+            fun player():PublicPlayerIdentity {val uid="a3distributed-${UUID.randomUUID()}";com.teamfho.domino.player.ensureEmulatorPlayer(db,FirebaseIdentity(uid,true),Clock.systemUTC());return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)}
             val a=player();val b=player();val pair=SocialPairIdentity.id(a.uid,b.uid)
             val reader=SocialAuthorizationReader {viewer,target->db.runTransaction {tx->
                 val revision=tx.get(db.document("socialPairs/$pair")).get().getLong("authorizationRevision")?:0

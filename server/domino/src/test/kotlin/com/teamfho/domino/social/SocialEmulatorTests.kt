@@ -18,7 +18,7 @@ class SocialEmulatorTests {
         return FirestoreOptions.newBuilder().setProjectId("demo-domino-f0").setEmulatorHost("127.0.0.1:18085")
             .setCredentials(FirestoreOptions.EmulatorCredentials()).build().service
     }
-    private fun player(db:Firestore,uid:String) = FirestorePlayerFoundationRepository(db,Clock.systemUTC()).ensure(FirebaseIdentity(uid,true),"en","Guest-ABCDEFGH")
+    private fun player(db:Firestore,uid:String) = com.teamfho.domino.player.ensureEmulatorPlayer(db,FirebaseIdentity(uid,true),Clock.systemUTC())
     @Test fun `concurrent creation atomic immutable linked identity and alias projection`()=database().use { db->
         val uid="s11-${UUID.randomUUID()}";player(db,uid);val repo=FirestoreSocialRepository(db);val s=PublicPlayerIdentityService(repo)
         val pool=Executors.newFixedThreadPool(4)

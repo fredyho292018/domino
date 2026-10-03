@@ -15,7 +15,7 @@ import kotlin.test.*
 @Tag("EMULATOR")
 class FriendshipEmulatorTests {
     private fun db():Firestore {check(System.getenv("FIRESTORE_EMULATOR_HOST")=="127.0.0.1:18085");return FirestoreOptions.newBuilder().setProjectId("demo-domino-f0").setEmulatorHost("127.0.0.1:18085").setCredentials(FirestoreOptions.EmulatorCredentials()).build().service}
-    private fun player(db:Firestore):PublicPlayerIdentity {val uid="s12-${UUID.randomUUID()}";FirestorePlayerFoundationRepository(db,Clock.systemUTC()).ensure(FirebaseIdentity(uid,true),"en","Guest-ABCDEFGH");return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)}
+    private fun player(db:Firestore):PublicPlayerIdentity {val uid="s12-${UUID.randomUUID()}";com.teamfho.domino.player.ensureEmulatorPlayer(db,FirebaseIdentity(uid,true),Clock.systemUTC());return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)}
     private fun count(db:Firestore,uid:String)=db.document("players/$uid/socialCounters/current").get().get().getLong("friendCount")?:0L
     @Test fun `real transactions last free premium slot and two grant snapshots`()=db().use {db->
         for(premium in listOf(false,true)) {

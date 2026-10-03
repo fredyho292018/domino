@@ -165,3 +165,79 @@ Retained evidence: backend 879 PASS; emulator concurrency PASS; Unity 2704 PASS;
 Generated executors, credential bootstrap code, migration tests and process checks are TEMPORARY_MIGRATION, not staged. The server-only recovery artifact is SENSITIVE_ROLLBACK, not a Git candidate. Sanitized execution evidence is copied into the Validation report convention; ignored Generated outputs are not force-added. No durable migration tool is promoted in this checkpoint.
 
 REAL_PLAYER_ALIAS_MUTATIONS_DURING_CHECKPOINT=0. APP_SHELL_MOCK_CHANGED=NO. PLAYER_UI_01E_RESUMED=NO. DEPLOY=NO. Live completion awaits TEST deployment and real alias validation. Commit/remote verification will be recorded separately after publication.
+
+## PLAYER_IDENTITY_01_LIVE_TEST
+
+Current deployment evidence: exact committed source `57db81a600a59921eab5af0c4a77d50d9f2a75aa` was archived independently of pending files, built successfully, and deployed to local TEST Docker. API-only replacement passed; local/public health UP, startup blocking errors 0, deployed JAR hash verified. Previous image remains available for rollback. API operational configuration and catalog hashes are unchanged.
+
+Redis container ID and startedAt are identical before/after deployment; Redis remains healthy and was not restarted. Pre/post read-only alias audits each found 226 Players and 226 claimed reservations, duplicate groups 0, missing reservations 0, owner mismatches 0. Both protected Player root hashes remain unchanged.
+
+At the initial post-deploy gate (superseded by the authorized marker gate below), `systemConfig/playerAliases` was absent. `PlayerAliasReservations.prepare` requires status READY and normalizationVersion 1; otherwise the deployed contract rejects new foundation/alias writes with DISPLAY_NAME_RESERVATIONS_NOT_READY. No registration or trial has been attempted in this phase. The prepared activation would create only that TEST operational marker after an atomic re-audit; it has not been executed. Explicit confirmation is requested because this global configuration document is outside the listed new-account/onboarding writes.
+
+SOURCE_CHANGED_DURING_LIVE_TEST=NO. NEW_TEST_ACCOUNT_REGISTERED=NOT_RUN. REAL_DUPLICATE_ALIAS_TEST=NOT_RUN. CUSTOM_ALIAS_SESSION_RESTORE=NOT_RUN. PLAYER_IDENTITY_01_LIVE_COMPLETE=NO. COMMIT=NONE. PUSH=NONE. PROD_DEPLOYMENT=NO. PLAYER_UI_01E_RESUMED=NO.
+
+### TEST alias READY marker — authorized configuration gate
+
+The subsequent explicit authorization permits only creation of `systemConfig/playerAliases` in TEST. The pre-write audit and the repeated audit inside the write transaction each verified 226 Players, 226 unique reservation keys, zero Players without aliases, zero normalized duplicate groups, zero owner mismatches and zero missing reservations. Marker before: MISSING.
+
+Created exactly one document with exactly `status="READY"` and integer `normalizationVersion=1`, guarded by an exists=false precondition. FIRESTORE_DOCUMENTS_CREATED=1; UPDATED=0; DELETED=0. No Player, reservation, onboarding, entitlement or trial write was issued. Independent read-only readback checked exact field equality; subsequent audit again returned 226/226 and all inconsistency counts zero. Both protected Player root hashes match the pre-deploy and pre-write values.
+
+API and Redis remain healthy, with identical container IDs and start times before/after this configuration gate. Deployed image remains `57db81a600a59921eab5af0c4a77d50d9f2a75aa`; no redeploy/restart occurred. Temporary executor changes are confined to ignored validation tooling; product source is unchanged.
+
+NEW_ACCOUNT_REGISTERED=NO. BOOTSTRAP_EXECUTED=NO. BASIC_PROFILE_REAL_EXECUTIONS=0. PLAYER_UI_01E_RESUMED=NO. BACKEND_CI_57DB81A_STATUS=FAILED_PENDING_REVIEW (user-reported, not investigated or rerun here). COMMIT=NONE. PUSH=NONE. BACKEND_REDEPLOYED=NO. PROD_DEPLOYMENT=NO. GCP_DEPLOYMENT=NO. NEXT=BACKEND CI FAILURE REVIEW.
+
+## BACKEND_CI_16_FAILURE_DIAGNOSIS
+
+Target commit: `57db81a600a59921eab5af0c4a77d50d9f2a75aa`. Run: https://github.com/fredyho292018/domino/actions/runs/37102010761 (Backend CI #16). No CI rerun. No downloadable test artifacts were published; exact CI failures were obtained from the emulator step log. CI reports 60 tests completed, 35 failed; no skipped tests reported (25 non-failing).
+
+First causal failure: `:emulatorTest`, `com.teamfho.domino.entitlement.EntitlementEmulatorTests.testAccountExcluded()`, `PlayerFoundationException` at `PlayerAliasReservations.kt:23`. Local XML confirms DISPLAY_NAME_RESERVATIONS_NOT_READY. That fixture creates a new Player without initializing its emulator READY marker. The new PlayerAliasEmulatorTests initializes the marker later, so unrelated tests had an ordering dependency. Further Social failures at line 32 are DISPLAY_NAME_TAKEN: the old fixtures reused Guest-ABCDEFGH across different owners. These are independent fixture incompatibilities, not cleanup failures, production marker bypass requirements or evidence of flakiness.
+
+Pre-fix local full suite reproduced 34 identical failures, 25 passes, 1 skip (distributed Redis environment flag omitted in first reproduction). Post-fix validation enables that flag with a disposable loopback Redis. CI uses Ubuntu/Temurin 21; local uses Windows/JDK21. Both use Gradle wrapper 9.7.1, the same SHA256-pinned Firestore emulator 1.22.0, project demo-domino-f0, host127.0.0.1:18085, startup timeout45s, no real credentials and default test parallelism. No Firebase CLI is used. The relevant earlier-validation difference was scope: only PlayerAliasEmulatorTests ran locally; the 879 standard tests exclude EMULATOR. The 35 CI failures were not covered by that checkpoint evidence.
+
+Minimal fix: test-only ensureEmulatorPlayer prepares READY/version1 on the guarded emulator project and calls the existing production foundation repository with a generated unique Guest alias. Nine fixture consumers updated; assertions and production uniqueness/atomicity enforcement unchanged. Real TEST migration data is neither read nor required. Production source and CI workflow unchanged.
+
+Exact CI failed tests:
+
+- `EntitlementEmulatorTests > testAccountExcluded()`
+- `EntitlementEmulatorTests > concurrentActivation()`
+- `EntitlementEmulatorTests > bootstrapNoTrialWrites()`
+- `FollowEmulatorTests > twenty row batched pages stable cursor and renamed profiles()`
+- `FollowEmulatorTests > follow persistence privacy revision and measured lifecycle()`
+- `FollowEmulatorTests > real concurrency directional shared counters block and privacy()`
+- `FollowEmulatorTests > block write budget stranger one way mutual friend and pending()`
+- `FriendshipEmulatorTests > real transactions last free premium slot and two grant snapshots()`
+- `FriendshipEmulatorTests > twenty row pages and blocking friendship costs()`
+- `FriendshipEmulatorTests > emulator lifecycle costs and current profiles()`
+- `FriendshipEmulatorTests > accept races block with inverse and projections consistent()`
+- `SocialEmulatorTests > collisions leave no partial reservations and exhaustion bounded()`
+- `SocialEmulatorTests > concurrent block unblock preserve inverse relation and hidden target can be unblocked()`
+- `SocialEmulatorTests > legacy privacy code lookup revisions inverse blocks and current test marker filtering()`
+- `SocialEmulatorTests > search bounded paging and emulator operation counts()`
+- `SocialEmulatorTests > concurrent creation atomic immutable linked identity and alias projection()`
+- `SocialInvalidationDistributedEmulatorTests > two instances share emulator and Redis with lost publication durable recovery()`
+- `SocialInvalidationEmulatorTests > atomic lifecycle noops legacy revision and precise costs()`
+- `SocialInvalidationEmulatorTests > concurrent duplicate blocks increment exactly once and retry deterministic event id()`
+- `SocialInvalidationEmulatorTests > missed publication recovered with pagination and retained published events()`
+- `SocialInvalidationEmulatorTests > SDK retry commits one logical outbox and invokes local invalidation once()`
+- `SocialInvalidationEmulatorTests > all five mutation transactions abort outbox and changes together()`
+- `SocialInvalidationEmulatorTests > dispatch batch costs and duplicate publishers never remove durable events()`
+- `SocialInvalidationEmulatorTests > reauthorization coalesces one twenty and fifty identical subscriptions()`
+- `SocialInvalidationEmulatorTests > complex block and accept preserve limits with outbox()`
+- `SocialPresenceEmulatorTests > authorization read cost has zero writes()`
+- `SocialPresenceEmulatorTests > measure public resolution and consistent permissions for bounded desired sets(int) > [1] count = 1`
+- `SocialPresenceEmulatorTests > measure public resolution and consistent permissions for bounded desired sets(int) > [2] count = 20`
+- `SocialPresenceEmulatorTests > measure public resolution and consistent permissions for bounded desired sets(int) > [3] count = 50`
+- `SocialPresenceEmulatorTests > both block directions test accounts and missing players are denied()`
+- `SocialPresenceEmulatorTests > follow never authorizes friends presence and activity privacy is independent()`
+- `SocialRateGateEmulatorTests > Redis down privacy direction no partial writes noop and revision race()`
+- `SocialRateGateEmulatorTests > Redis down acceptance retains atomic free final slot and durable send quota()`
+- `SocialRateGateEmulatorTests > Redis down HTTP full lifecycle keeps durable graph and rejects discovery follow()`
+- `SocialTransactionRetryEmulatorTests > fifty concurrent follow or unfollow versus block races preserve all projections()`
+
+Validation after fixture fix: full :emulatorTest = 60 PASS, 0 FAIL, 0 SKIPPED, including distributed Redis and transactional single-winner alias coverage. Independent first causal test in a fresh emulator = 1 PASS. Test result XML retained in ignored PlayerIdentity01CI evidence folder. No standard-test rerun required: changes only affect EMULATOR fixture callers. Emulators stopped and loopback ports released after both runs.
+
+ROOT_CAUSE_CLASSIFICATION=TEST_FIXTURE_FAILURE. CI_FAILURE_REPRODUCED_LOCALLY=YES. PRODUCTION_SOURCE_FIX_REQUIRED=NO. TEST_FIXTURE_FIX_REQUIRED=YES. CI_CONFIGURATION_FIX_REQUIRED=NO. PRODUCTION_READY_GATE_WEAKENED=NO. REAL_TEST_FIRESTORE_MUTATIONS=0. BACKEND_REDEPLOYED=NO. NEW_REAL_ALIAS_TEST_ACCOUNT_CREATED=NO. PLAYER_UI_01E_RESUMED=NO. SOURCE_CHANGED=TEST_ONLY (nine existing test files plus one new test helper; report updated separately). Historical pending files preserved132/132 including protected102/102. SECRET_SCAN=PASS (scoped indicator scan). COMMIT=NONE. PUSH=NONE. DEPLOY=NO. NEXT=CI FIX REVIEW.
+
+## CI fixture checkpoint review
+
+Reviewed ten unchanged validated test files: nine call-site fixture replacements plus EmulatorPlayerFixture.kt. Scope is emulator READY setup and distinct valid Guest alias generation; no assertion or product changes. Retain 60/60 emulator and 1/1 isolated causal test evidence without rerun. Explicit checkpoint scope: ten tests plus this durable report. Exclude 132 historical files and three future PLAYER_UI_01E files. Protected102/102 unchanged; unclassified files0. Production READY enforcement, transactional single-winner claims and Basic Profile atomicity remain unchanged. No real Firestore access, deploy or real registration during this checkpoint. New push-triggered CI result must be observed separately; failed run16 will not be manually rerun.

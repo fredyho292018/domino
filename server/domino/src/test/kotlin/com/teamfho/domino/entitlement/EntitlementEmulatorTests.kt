@@ -19,7 +19,7 @@ class EntitlementEmulatorTests {
     }
     @Test fun concurrentActivation() = database().use { db ->
         val id=FirebaseIdentity("trial-fixture-"+UUID.randomUUID(),true);val clock=EntitlementClock()
-        FirestorePlayerFoundationRepository(db,clock).ensure(id,"en","Guest-ABCDEFGH")
+        com.teamfho.domino.player.ensureEmulatorPlayer(db,id,clock)
         val service=TrialActivationService(FirestoreOnboardingProgressRepository(db),clock=clock)
         val pool=Executors.newFixedThreadPool(6)
         try {
@@ -30,7 +30,7 @@ class EntitlementEmulatorTests {
     }
     @Test fun testAccountExcluded() = database().use { db ->
         val id=FirebaseIdentity("trial-fixture-"+UUID.randomUUID(),true)
-        FirestorePlayerFoundationRepository(db,java.time.Clock.systemUTC()).ensure(id,"en","Guest-ABCDEFGH")
+        com.teamfho.domino.player.ensureEmulatorPlayer(db,id,java.time.Clock.systemUTC())
         db.document("developmentTestAccounts/${id.uid}").set(mapOf("isTestAccount" to true)).get()
         val service=TrialActivationService(FirestoreOnboardingProgressRepository(db))
         assertEquals("TRIAL_NOT_ELIGIBLE",assertFailsWith<OnboardingFailure>{service.activate(id,TrialActivationRequest(UUID.randomUUID().toString(),1))}.code)
@@ -38,7 +38,7 @@ class EntitlementEmulatorTests {
     }
     @Test fun bootstrapNoTrialWrites() = database().use { db ->
         val id=FirebaseIdentity("trial-fixture-"+UUID.randomUUID(),true)
-        FirestorePlayerFoundationRepository(db,java.time.Clock.systemUTC()).ensure(id,"en","Guest-ABCDEFGH")
+        com.teamfho.domino.player.ensureEmulatorPlayer(db,id,java.time.Clock.systemUTC())
         val service=EntitlementService(SubscriptionPolicyService({SubscriptionPolicy()}),FirestoreEntitlements(db))
         repeat(2){assertFalse(service.bootstrap(id).trialGranted)}
         assertFalse(db.document("players/${id.uid}/entitlementState/current").get().get().exists())

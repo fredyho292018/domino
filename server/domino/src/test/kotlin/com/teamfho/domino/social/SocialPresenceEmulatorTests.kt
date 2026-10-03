@@ -18,7 +18,7 @@ class SocialPresenceEmulatorTests {
     }
     private fun player(db:Firestore):PublicPlayerIdentity {
         val uid="s14b-${UUID.randomUUID()}"
-        FirestorePlayerFoundationRepository(db,Clock.systemUTC()).ensure(FirebaseIdentity(uid,true),"en","Guest-ABCDEFGH")
+        com.teamfho.domino.player.ensureEmulatorPlayer(db,FirebaseIdentity(uid,true),Clock.systemUTC())
         return PublicPlayerIdentityService(FirestoreSocialRepository(db)).ensure(uid)
     }
     @Test fun `follow never authorizes friends presence and activity privacy is independent`()=db().use { db->
