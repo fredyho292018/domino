@@ -18,7 +18,7 @@ namespace Domino.Editor {
    bool es=locale=="es";
    BasicNeed(view.Q<Label>("OnboardingEyebrow").text==(es?"TU PERFIL":"YOUR PROFILE"),"EYEBROW_COPY");
    BasicNeed(view.Q<Label>("OnboardingTitle").text==(es?"Cuéntanos sobre ti":"Tell us about you"),"TITLE_COPY");
-   var expected=es?new[]{"Nombre","Apellidos","Nombre de jugador","País","Idioma preferido"}:new[]{"First name","Last name","Display name","Country","Preferred language"};
+   var expected=es?new[]{"Nombre","Apellidos","Alias de jugador","País","Idioma preferido"}:new[]{"First name","Last name","Player alias","Country","Preferred language"};
    var keys=new[]{"FIRST_NAME","LAST_NAME","DISPLAY_NAME","COUNTRY","PREFERRED_LANGUAGE"};
    for(int i=0;i<keys.Length;i++)BasicNeed(view.Q<Label>(keys[i]+"Label").text==expected[i],"LABEL_COPY");
    BasicNeed(view.Q<Label>("DisplayNameHelp").text==(es?"Este es el nombre que verán los demás jugadores.":"This is the name other players will see."),"HELP_COPY");
@@ -53,7 +53,7 @@ namespace Domino.Editor {
    }).StartingIn(200);
   }
   bool basicTesting;int basicChecks;
-  static BasicProfileDto ProfileFixture(string state){if(state=="BASIC_PROFILE_EMPTY"||!state.StartsWith("BASIC_PROFILE_"))return new BasicProfileDto();if(state=="BASIC_PROFILE_PARTIAL")return new BasicProfileDto{displayName="FixturePlayer"};return new BasicProfileDto{firstName="Prueba",lastName="Validación",displayName="FixturePlayer",countryCode="ES",preferredLocale="en",timeZone="UTC"};}
+  static BasicProfileDto ProfileFixture(string state){if(state=="BASIC_PROFILE_EMPTY"||!state.StartsWith("BASIC_PROFILE_"))return new BasicProfileDto{displayName="Guest-ABCDEFGH"};if(state=="BASIC_PROFILE_PARTIAL")return new BasicProfileDto{displayName="FixturePlayer"};return new BasicProfileDto{firstName="Prueba",lastName="Validación",displayName="FixturePlayer",countryCode="ES",preferredLocale="en",timeZone="UTC"};}
   async Task LoadFixture(){await controller.LoadAsync(locale);if(selected>=13&&selected<=16)await controller.SaveProfileAsync();if(selected>=22&&selected<=25)await controller.SaveExperienceAsync();if(selected==31||selected==32||selected==33||selected==36)await controller.SaveCoachAsync();if(selected>=39&&selected<=41)await controller.ContinueContactsAsync();await LoadMembershipFixture();}
   [InitializeOnLoadMethod]static void BasicRequests(){EditorApplication.update+=()=>{
    if(EditorApplication.isCompiling||EditorApplication.isUpdating||EditorApplication.isPlayingOrWillChangePlaymode)return;
@@ -66,7 +66,8 @@ namespace Domino.Editor {
    foreach(var key in new[]{"FIRST_NAME","LAST_NAME","DISPLAY_NAME","COUNTRY","PREFERRED_LANGUAGE"}){var f=form.Q(key);BasicNeed(f!=null&&Mathf.Abs(f.layout.height-48)<.1f,"FIELD_HEIGHT");BasicNeed(f.worldBound.xMin>=view.worldBound.xMin&&f.worldBound.xMax<=view.worldBound.xMax+.1f,"OVERFLOW");BasicNeed(form.Q<Label>(key+"Label")?.text.Length>0,"LABEL");}
    var action=form.Q<Button>("BasicProfileContinue");BasicNeed(action.layout.height>=44,"CTA_TOUCH");BasicNeed(view.verticalScroller.highValue>=0,"SCROLL");view.ScrollTo(action);
    BasicNeed(action.worldBound.yMax<=view.contentViewport.worldBound.yMax+1,"CTA_REACHABLE");
-   if(selected==10)BasicNeed(form.Q<TextField>("FIRST_NAME").value==""&&form.Q<TextField>("DISPLAY_NAME").value=="","EMPTY");
+   if(selected==10)BasicNeed(form.Q<TextField>("FIRST_NAME").value==""&&form.Q<TextField>("DISPLAY_NAME").value=="Guest-ABCDEFGH","EMPTY_WITH_GENERATED_ALIAS");
+   if(selected==10){var alias=form.Q<TextField>("DISPLAY_NAME");alias.value="x";BasicNeed(!action.enabledSelf,"INVALID_ALIAS_DISABLED");alias.value="Guest-ABCDEFGH";BasicNeed(action.enabledSelf,"VALID_GUEST_CAN_CONTINUE");BasicNeed(form.Q<Label>("DISPLAY_NAMELabel").text==(locale=="es"?"Alias de jugador":"Player alias"),"ALIAS_LOCALIZATION");}
    if(selected==11)BasicNeed(form.Q<TextField>("DISPLAY_NAME").value=="FixturePlayer","PREFILL");
    if(selected==14)BasicNeed(controller.Busy&&!action.enabledSelf,"LOADING");
    if(selected==15)BasicNeed(controller.ProfileRetry,"UNCERTAIN_RETRY");

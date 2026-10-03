@@ -28,6 +28,8 @@ class ProgressMemory:OnboardingProgressRepository {
     }
     fun initialize(id:String="fixture-player") {
         val at=Instant.parse("2026-01-01T00:00:00Z");val ts=Timestamp.ofTimeSecondsAndNanos(at.epochSecond,0)
+        docs[PlayerAliasReservations.rolloutPath]=mapOf("status" to "READY", "normalizationVersion" to 1L)
+        docs[PlayerAliasReservations.path("Fixture")]=mapOf("state" to "CLAIMED", "playerId" to id, "normalizationVersion" to 1L)
         val root="players/$id"
         docs[root]=mapOf("uid" to id,"accountType" to "GUEST","displayName" to "Fixture","status" to "ACTIVE","language" to "en","createdAt" to ts,"updatedAt" to ts,"lastSeenAt" to ts)
         docs["$root/preferences/current"]=FoundationDocumentCodec.encode(PlayerPreferences("en",updatedAt=at))

@@ -21,13 +21,15 @@ namespace Domino.UI.AppShell
   public static readonly string[] Countries=("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW").Split(' ');
   public static string Normalize(string s)=>(s??"").Trim().Normalize(NormalizationForm.FormC);
   public static bool Name(string s){var n=Normalize(s);return new StringInfo(n).LengthInTextElements>=1&&new StringInfo(n).LengthInTextElements<=80&&!n.Any(c=>char.IsControl(c)||(c>='\u202a'&&c<='\u202e')||(c>='\u2066'&&c<='\u2069')||c=='\u200e'||c=='\u200f'||c=='\u061c');}
-  public static string[] Errors(BasicProfileDraft d){var r=new List<string>();if(!Name(d.FirstName))r.Add("FIRST_NAME");if(!Name(d.LastName))r.Add("LAST_NAME");if(!Regex.IsMatch(d.DisplayName??"",@"^[A-Za-z0-9_-]{3,16}$")||new[]{"admin","administrator","moderator","support","teamfho","system"}.Contains((d.DisplayName??"").ToLowerInvariant()))r.Add("DISPLAY_NAME");if(!Countries.Contains(d.Country))r.Add("COUNTRY");if(d.Language!="en"&&d.Language!="es")r.Add("PREFERRED_LANGUAGE");return r.ToArray();}
+  public static string[] Errors(BasicProfileDraft d){var r=new List<string>();if(!Name(d.FirstName))r.Add("FIRST_NAME");if(!Name(d.LastName))r.Add("LAST_NAME");if(!Regex.IsMatch(Normalize(d.DisplayName),@"^[A-Za-z0-9_-]{3,16}$")||new[]{"admin","administrator","moderator","support","teamfho","system"}.Contains(Normalize(d.DisplayName).ToLowerInvariant()))r.Add("DISPLAY_NAME");if(!Countries.Contains(d.Country))r.Add("COUNTRY");if(d.Language!="en"&&d.Language!="es")r.Add("PREFERRED_LANGUAGE");return r.ToArray();}
   public static OnboardingAnswerDto[] Answers(BasicProfileDraft d)=>new[]{
-   new OnboardingAnswerDto{questionKey="FIRST_NAME",type="TEXT",textValue=Normalize(d.FirstName)},new OnboardingAnswerDto{questionKey="LAST_NAME",type="TEXT",textValue=Normalize(d.LastName)},new OnboardingAnswerDto{questionKey="DISPLAY_NAME",type="TEXT",textValue=d.DisplayName},new OnboardingAnswerDto{questionKey="COUNTRY",type="COUNTRY_SELECT",optionKey=d.Country},new OnboardingAnswerDto{questionKey="PREFERRED_LANGUAGE",type="LOCALE_SELECT",optionKey=d.Language}};
+   new OnboardingAnswerDto{questionKey="FIRST_NAME",type="TEXT",textValue=Normalize(d.FirstName)},new OnboardingAnswerDto{questionKey="LAST_NAME",type="TEXT",textValue=Normalize(d.LastName)},new OnboardingAnswerDto{questionKey="DISPLAY_NAME",type="TEXT",textValue=Normalize(d.DisplayName)},new OnboardingAnswerDto{questionKey="COUNTRY",type="COUNTRY_SELECT",optionKey=d.Country},new OnboardingAnswerDto{questionKey="PREFERRED_LANGUAGE",type="LOCALE_SELECT",optionKey=d.Language}};
   public static string DetectedZone(){var z=TimeZoneInfo.Local.Id;return z=="UTC"||z.Contains("/")?z:null;}
  }
  public sealed partial class OnboardingShellController {
   BasicProfileDraft draft;object pendingProfile;
+  public event Action<OnboardingStateDto> ProfileConfirmed;
+  void NotifyProfileConfirmed(OnboardingStateDto confirmed){if(ProfileConfirmed==null)return;foreach(Action<OnboardingStateDto> listener in ProfileConfirmed.GetInvocationList())try{listener(Copy(confirmed));}catch{ /* A presentation listener cannot turn a confirmed save into a retry. */ }}
   public BasicProfileDraft Profile=>draft;
   public string ProfileFeedback {get;private set;}="";
   public string[] ProfileErrors {get;private set;}=Array.Empty<string>();
@@ -49,10 +51,11 @@ namespace Domino.UI.AppShell
     if(pendingProfile==null)pendingProfile=writer.PrepareProfile(BasicProfileRules.Answers(draft),string.IsNullOrEmpty(state.basicProfile?.timeZone)?BasicProfileRules.DetectedZone():null);
     var next=await writer.SaveProfileAsync(pendingProfile,lifetime.Token);lifetime.Token.ThrowIfCancellationRequested();Validate(next,catalog);
     if(next.revision<state.revision)throw new DominoApiException(ApiFailure.Contract);
-    state=Copy(next);SynchronizeExperience();pendingProfile=null;ProfileFeedback="";Phase=next.status=="COMPLETED"?OnboardingShellPhase.Completed:OnboardingShellPhase.InProgress;
+    state=Copy(next);SynchronizeExperience();pendingProfile=null;NotifyProfileConfirmed(next);ProfileFeedback="";Phase=next.status=="COMPLETED"?OnboardingShellPhase.Completed:OnboardingShellPhase.InProgress;
    }catch(OperationCanceledException){}
    catch(DominoApiException e){
     if(e.ServerErrorCode=="CLIENT_UPDATE_REQUIRED"){pendingProfile=null;Phase=OnboardingShellPhase.UpdateRequired;}
+    else if(e.ServerErrorCode=="DISPLAY_NAME_TAKEN"||e.ServerErrorCode=="DISPLAY_NAME_RESERVATIONS_NOT_READY"){pendingProfile=null;ProfileFeedback=e.ServerErrorCode;ProfileErrors=new[]{"DISPLAY_NAME"};}
     else if(new[]{"REVISION_MISMATCH","ONBOARDING_REVISION_MISMATCH","DOMAIN_REVISION_MISMATCH","ONBOARDING_CATALOG_VERSION_MISMATCH"}.Contains(e.ServerErrorCode)){
      pendingProfile=null;ProfileFeedback="CONFLICT";
      try{var next=await source.LoadAsync(lifetime.Token);var c=await source.CatalogAsync(Locale,lifetime.Token);lifetime.Token.ThrowIfCancellationRequested();Validate(next,c);if(next.revision<state.revision)throw new InvalidOperationException();state=Copy(next);catalog=Copy(c);Phase=next.status=="COMPLETED"?OnboardingShellPhase.Completed:next.status=="NOT_STARTED"?OnboardingShellPhase.NotStarted:OnboardingShellPhase.InProgress;}

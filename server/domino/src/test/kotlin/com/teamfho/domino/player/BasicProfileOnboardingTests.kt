@@ -38,6 +38,22 @@ class BasicProfileOnboardingTests {
         return service().save(user,"COACH_STEP",SaveStepRequest(op(),experience.revision,2,mapOf("domino" to experience.domainRevisions.domino),OnboardingStepAction.SAVE,
             listOf(OnboardingAnswer("COACH_SELECTION",OnboardingQuestionType.COACH_SELECT,"SOFIA")))).onboarding
     }
+    @Test fun `alias conflict rolls back every basic profile field and preserves retry state`() {
+        val initial=start()
+        repo.docs[PlayerAliasReservations.path("Fixture_2")]=mapOf("state" to "CLAIMED","playerId" to "another-fixture","normalizationVersion" to 1L)
+        val before=repo.docs.toMap()
+        fail("DISPLAY_NAME_TAKEN"){save(initial)}
+        assertEquals(before,repo.docs)
+        assertEquals(initial,service().get(user))
+    }
+    @Test fun `keeping own alias preserves reservation and saves private fields`() {
+        val initial=start()
+        val reservation=repo.docs[PlayerAliasReservations.path("Fixture")]
+        val result=service().save(user,"BASIC_PROFILE_STEP",request(initial,answers().map{if(it.questionKey=="DISPLAY_NAME")it.copy(textValue=" Fixture ")else it})).onboarding
+        assertEquals("Fixture",result.basicProfile!!.displayName)
+        assertEquals("José",result.basicProfile.firstName)
+        assertEquals(reservation,repo.docs[PlayerAliasReservations.path("Fixture")])
+    }
     @Test fun `new v2 starts basic without assuming alias completes profile`() {
         val s=start();assertEquals("BASIC_PROFILE_STEP",s.currentStepKey);assertEquals(2,s.catalogVersion)
         assertTrue(s.completedStepKeys.isEmpty());assertEquals("Fixture",s.basicProfile!!.displayName)

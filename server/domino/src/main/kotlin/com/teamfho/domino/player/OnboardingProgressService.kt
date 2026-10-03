@@ -172,6 +172,12 @@ class OnboardingProgressService(private val repository: OnboardingProgressReposi
                         }
                     }
                 }
+                if (basic) {
+                    try {
+                        PlayerAliasReservations.prepare(tx::read, identity.uid, s.player.displayName, player.displayName)
+                            .forEach { (path, value) -> tx.write(path, value) }
+                    } catch (e: PlayerFoundationException) { throw OnboardingFailure(e.code.name, 409) }
+                }
                 if(player!=s.player) player=player.copy(profileRevision=Math.addExact(player.profileRevision,1),updatedAt=FoundationTimestamp.Recorded(now))
                 if(preferences!=s.preferences) preferences=preferences.copy(revision=Math.addExact(preferences.revision,1),updatedAt=now)
                 if(domino!=s.domino) domino=domino.copy(revision=Math.addExact(domino.revision,1),updatedAt=now)

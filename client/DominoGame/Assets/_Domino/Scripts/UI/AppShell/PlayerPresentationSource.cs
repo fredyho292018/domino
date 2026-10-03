@@ -16,6 +16,7 @@ namespace Domino.UI.AppShell
         readonly Func<IPlayerPresentationCatalogs> catalogs;
         CancellationTokenSource coachLifetime;
         PlayerCoachPresentation coach;
+        OnboardingShellController profileController;
         string coachRequest, locale;
         long coachGeneration;
         public Task CoachResolutionTask { get; private set; } = Task.CompletedTask;
@@ -57,6 +58,12 @@ namespace Domino.UI.AppShell
         {
             if (disposed) return;
             invalidProfile = false;
+            var currentController = catalogs?.Invoke() as OnboardingShellController;
+            if(currentController != profileController) {
+                if(profileController!=null)profileController.ProfileConfirmed-=ProfileConfirmed;
+                profileController=currentController;
+                if(profileController!=null)profileController.ProfileConfirmed+=ProfileConfirmed;
+            }
             if (routing.Route == AuthenticatedRoute.Home && player.IsCurrentSession)
             {
                 var confirmed = routing.Onboarding;
@@ -65,6 +72,11 @@ namespace Domino.UI.AppShell
                 finally { receivingProfile = false; }
             }
             Publish();
+        }
+        void ProfileConfirmed(OnboardingStateDto confirmed)
+        {
+            if(disposed || routing.Route!=AuthenticatedRoute.Onboarding || !player.IsCurrentSession)return;
+            player.ReceiveConfirmedProfile(player.Player,confirmed.basicProfile,confirmed.domainRevisions);
         }
         void PlayerChanged(PlayerSnapshot ignored) => Publish();
         void SyncChanged(PlayerSyncState ignored) => Publish();
@@ -120,6 +132,8 @@ namespace Domino.UI.AppShell
         public void Dispose()
         {
             if (disposed) return;
+            if(profileController!=null)profileController.ProfileConfirmed-=ProfileConfirmed;
+            profileController=null;
             player.SnapshotChanged -= PlayerChanged;
             player.SyncStateChanged -= SyncChanged;
             player.EntitlementsChanged -= Publish;

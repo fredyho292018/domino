@@ -45,7 +45,8 @@ class BasicProfileFirestoreTests {
                 OnboardingAnswer("PREFERRED_LANGUAGE",com.teamfho.domino.catalog.OnboardingQuestionType.LOCALE_SELECT,"es")))
         val result=service.save(user,"BASIC_PROFILE_STEP",request)
         val written=traces.last().filter{it.startsWith("write:")}
-        assertEquals(setOf("write:players/fixture-player/onboarding/current","write:players/fixture-player","write:players/fixture-player/preferences/current","write:players/fixture-player/mutationReceipts/${request.operationId}"),written.toSet())
+        assertEquals(setOf("write:players/fixture-player/onboarding/current","write:players/fixture-player","write:players/fixture-player/preferences/current","write:players/fixture-player/mutationReceipts/${request.operationId}"),written.filterNot { it.startsWith("write:playerAliases/") }.toSet())
+        assertEquals(2,written.count { it.startsWith("write:playerAliases/") })
         assertEquals(result,service.save(user,"BASIC_PROFILE_STEP",request))
         assertTrue(traces.last().none{it.startsWith("write:")})
         assertEquals("EXPERIENCE_STEP",service.get(user).currentStepKey)

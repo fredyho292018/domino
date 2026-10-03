@@ -13,7 +13,7 @@ namespace Domino.UI.AppShell {
   public static string Field(string locale,string key){bool es=locale=="es";switch(key){
    case "FIRST_NAME":return es?"Nombre":"First name";
    case "LAST_NAME":return es?"Apellidos":"Last name";
-   case "DISPLAY_NAME":return es?"Nombre de jugador":"Display name";
+   case "DISPLAY_NAME":return es?"Alias de jugador":"Player alias";
    case "COUNTRY":return es?"País":"Country";
    case "PREFERRED_LANGUAGE":return es?"Idioma preferido":"Preferred language";
    default:return null;
@@ -22,12 +22,14 @@ namespace Domino.UI.AppShell {
  public sealed class ProductionBasicProfileView:VisualElement {
   readonly OnboardingShellController controller;
   readonly bool es;
+  ThemeButton submit;
+  void RefreshSubmit(){if(submit==null)return;submit.SetEnabled(!controller.Busy&&(controller.ProfileRetry||!BasicProfileRules.Errors(controller.Profile).Contains("DISPLAY_NAME")));submit.RefreshState();}
   public ProductionBasicProfileView(OnboardingShellController controller){
    this.controller=controller;es=controller.Locale=="es";name="BASIC_PROFILE_STEP";style.flexShrink=0;
    var d=controller.Profile;
    Field("FIRST_NAME",es?"Nombre":"First name",d.FirstName,v=>d.FirstName=v);
    Field("LAST_NAME",es?"Apellidos":"Last name",d.LastName,v=>d.LastName=v);
-   Field("DISPLAY_NAME",es?"Nombre de jugador":"Display name",d.DisplayName,v=>d.DisplayName=v);
+   Field("DISPLAY_NAME",es?"Alias de jugador":"Player alias",d.DisplayName,v=>d.DisplayName=v);
    Label(es?"Este es el nombre que verán los demás jugadores.":"This is the name other players will see.","DisplayNameHelp",TextRole.Secondary);
    var countries=new List<string>{""};countries.AddRange(BasicProfileRules.Countries);
    Select("COUNTRY",es?"País":"Country",countries,d.Country,CountryName,v=>d.Country=v);
@@ -35,11 +37,12 @@ namespace Domino.UI.AppShell {
    var feedback=new AuthStatusMessage{name="ProfileFeedback"};Add(feedback);
    var key=controller.ProfileFeedback;
    if(key.Length>0){var variant=key=="SAVING"||key=="LOCALIZING"?AuthStatusVariant.Loading:key=="CONFLICT"?AuthStatusVariant.Warning:AuthStatusVariant.Error;
-    var message=key=="SAVING"?(es?"Guardando perfil…":"Saving profile…"):key=="LOCALIZING"?(es?"Cargando idioma…":"Loading language…"):key=="CONFLICT"?(es?"El perfil cambió. Revisa tus datos antes de guardar otra vez.":"Your profile changed. Review your entries before saving again."):key=="NETWORK"?(es?"No se pudo confirmar el guardado. Reintenta la misma solicitud.":"Could not confirm the save. Retry the same request."):key=="LOCALE_ERROR"?(es?"No se pudo cargar el idioma. Vuelve a seleccionarlo.":"Could not load the language. Select it again."):(es?"Revisa los campos marcados. El nombre público admite 3–16 letras sin acentos, números, _ o -.":"Review the marked fields. Display name needs 3–16 letters, numbers, _ or -.");feedback.PresentSemantic(variant,message);
+    var message=key=="DISPLAY_NAME_TAKEN"?(es?"Ese alias ya está en uso.":"That alias is already taken."):key=="DISPLAY_NAME_RESERVATIONS_NOT_READY"?(es?"El registro de alias aún no está disponible. Tus datos no se han guardado.":"Alias registration is not available yet. Your entries have not been saved."):key=="SAVING"?(es?"Guardando perfil…":"Saving profile…"):key=="LOCALIZING"?(es?"Cargando idioma…":"Loading language…"):key=="CONFLICT"?(es?"El perfil cambió. Revisa tus datos antes de guardar otra vez.":"Your profile changed. Review your entries before saving again."):key=="NETWORK"?(es?"No se pudo confirmar el guardado. Reintenta la misma solicitud.":"Could not confirm the save. Retry the same request."):key=="LOCALE_ERROR"?(es?"No se pudo cargar el idioma. Vuelve a seleccionarlo.":"Could not load the language. Select it again."):(es?"Revisa los campos marcados. El nombre público admite 3–16 letras sin acentos, números, _ o -.":"Review the marked fields. Display name needs 3–16 letters, numbers, _ or -.");feedback.PresentSemantic(variant,message);
    }
-   var submit=new ThemeButton(controller.ProfileRetry?(es?"Reintentar":"Retry"):(es?"Continuar":"Continue"),()=>{_ =controller.SaveProfileAsync();},true){name="BasicProfileContinue"};submit.SetEnabled(!controller.Busy);submit.RefreshState();Add(submit);
+   submit=new ThemeButton(controller.ProfileRetry?(es?"Reintentar":"Retry"):(es?"Continuar":"Continue"),()=>{_ =controller.SaveProfileAsync();},true){name="BasicProfileContinue"};RefreshSubmit();Add(submit);
+   if(controller.ProfileErrors.Contains("DISPLAY_NAME"))schedule.Execute(()=>this.Q<TextField>("DISPLAY_NAME")?.Focus());
   }
-  void Label(string value,string key,TextRole role=TextRole.Body){var l=new Label(value){name=key};ThemeStyles.Text(l,role);l.style.whiteSpace=WhiteSpace.Normal;l.style.unityTextAlign=TextAnchor.MiddleLeft;l.style.marginBottom=6;Add(l);}
+  void Label(string value,string key,TextRole role=TextRole.Body){var l=new Label(value){name=key,enableRichText=false};ThemeStyles.Text(l,role);l.style.whiteSpace=WhiteSpace.Normal;l.style.unityTextAlign=TextAnchor.MiddleLeft;l.style.marginBottom=6;Add(l);}
   string Caption(string key,string fallback)=>BasicProfileCopy.Field(controller.Locale,key) ?? controller.CurrentStep?.questions?.FirstOrDefault(x=>x.key==key)?.title??fallback;
   void Decorate(VisualElement field,string key,string label){
    field.name=key;field.tooltip=label;field.style.height=field.style.minHeight=48;field.style.flexShrink=0;field.style.marginLeft=field.style.marginRight=field.style.marginTop=0;field.style.marginBottom=12;field.style.minWidth=0;
@@ -47,8 +50,8 @@ namespace Domino.UI.AppShell {
    var error=controller.ProfileErrors.Contains(key);void Border(bool focused)=>ThemeStyles.Border(input,error?ThemeProvider.Current.Colors.Error:focused?ThemeProvider.Current.Colors.Primary:ThemeProvider.Current.Colors.Surface,2);
    Border(false);field.RegisterCallback<FocusInEvent>(_=>{Border(true);schedule.Execute(()=>GetFirstAncestorOfType<ScrollView>()?.ScrollTo(field));});field.RegisterCallback<FocusOutEvent>(_=>Border(false));field.SetEnabled(!controller.ProfileLocked);Add(field);
   }
-  void Field(string key,string caption,string value,Action<string> changed){caption=Caption(key,caption);Label(caption,key+"Label");var f=new TextField{value=value??"",isPasswordField=false};Decorate(f,key,caption);f.RegisterValueChangedCallback(e=>changed(e.newValue));}
-  void Select(string key,string caption,List<string> choices,string value,Func<string,string> format,Action<string> changed){caption=Caption(key,caption);Label(caption,key+"Label");var field=new PopupField<string>(choices,Math.Max(0,choices.IndexOf(value)),format,format);Decorate(field,key,caption);var text=field.Q<TextElement>();if(text!=null){text.style.overflow=Overflow.Hidden;text.style.textOverflow=TextOverflow.Ellipsis;text.style.minWidth=0;text.style.flexShrink=1;}field.RegisterValueChangedCallback(e=>changed(e.newValue));}
+  void Field(string key,string caption,string value,Action<string> changed){caption=Caption(key,caption);Label(caption,key+"Label");var f=new TextField{value=value??"",isPasswordField=false};Decorate(f,key,caption);f.RegisterValueChangedCallback(e=>{changed(e.newValue);RefreshSubmit();});}
+  void Select(string key,string caption,List<string> choices,string value,Func<string,string> format,Action<string> changed){caption=Caption(key,caption);Label(caption,key+"Label");var field=new PopupField<string>(choices,Math.Max(0,choices.IndexOf(value)),format,format);Decorate(field,key,caption);var text=field.Q<TextElement>();if(text!=null){text.style.overflow=Overflow.Hidden;text.style.textOverflow=TextOverflow.Ellipsis;text.style.minWidth=0;text.style.flexShrink=1;}field.RegisterValueChangedCallback(e=>{changed(e.newValue);RefreshSubmit();});}
   string CountryName(string code){if(code=="")return es?"Selecciona un país":"Select a country";try{return new RegionInfo(code).EnglishName+" ("+code+")";}catch(ArgumentException){return code;}}
  }
 }

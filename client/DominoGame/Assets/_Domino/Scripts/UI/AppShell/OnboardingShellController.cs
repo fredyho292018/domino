@@ -136,6 +136,6 @@ namespace Domino.UI.AppShell
             if(c.steps.Any(x=>!allowed.Contains(x.key))||(c.catalogVersion==1&&c.steps.Any(x=>x.key=="BASIC_PROFILE_STEP"))||
                 (s.status=="IN_PROGRESS"&&!c.steps.Any(x=>x.key==s.currentStepKey)))throw new InvalidOperationException();
         }
-        public void Dispose(){if(disposed)return;disposed=true;lifetime.Cancel();state=null;catalog=null;draft=null;pendingFlow=null;pendingProfile=null;pendingExperience=null;experienceSelection=null;pendingCoach=null;pendingContacts=null;pendingMembership=null;pendingTrial=null;membership=null;coachSelection=null;coaches=null;Changed=null;}
+        public void Dispose(){if(disposed)return;disposed=true;lifetime.Cancel();state=null;catalog=null;draft=null;pendingFlow=null;pendingProfile=null;pendingExperience=null;experienceSelection=null;pendingCoach=null;pendingContacts=null;pendingMembership=null;pendingTrial=null;membership=null;coachSelection=null;coaches=null;ProfileConfirmed=null;Changed=null;}
     }
 }

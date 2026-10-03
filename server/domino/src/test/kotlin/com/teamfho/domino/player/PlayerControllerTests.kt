@@ -92,6 +92,6 @@ class PlayerControllerTests {
         (firstJson["player"] as tools.jackson.databind.node.ObjectNode).remove("createdAt")
         (secondJson["player"] as tools.jackson.databind.node.ObjectNode).remove("createdAt")
         assertEquals(firstJson,secondJson)
-        assertEquals(5, repository.store.documents.size)
+        assertEquals(5, repository.store.documents.keys.count { it.startsWith("players/") })
     }
 }

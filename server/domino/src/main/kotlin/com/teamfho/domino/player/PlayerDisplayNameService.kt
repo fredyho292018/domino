@@ -16,9 +16,10 @@ class DisplayNameException(val reserved: Boolean = false) : RuntimeException("Di
 object DisplayNameRules {
     private val protectedNames = setOf("admin", "administrator", "moderator", "support", "teamfho", "system")
     fun validate(value: String?): String {
-        if (value == null || !Regex("[A-Za-z0-9_-]{3,16}").matches(value)) throw DisplayNameException()
-        if (value.lowercase(Locale.ROOT) in protectedNames) throw DisplayNameException(true)
-        return value
+        val accepted = value?.let { java.text.Normalizer.normalize(it.trim(), java.text.Normalizer.Form.NFC) }
+        if (accepted == null || !Regex("[A-Za-z0-9_-]{3,16}").matches(accepted)) throw DisplayNameException()
+        if (accepted.lowercase(Locale.ROOT) in protectedNames) throw DisplayNameException(true)
+        return accepted
     }
 }
 

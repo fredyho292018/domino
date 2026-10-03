@@ -1,6 +1,8 @@
 package com.teamfho.domino.common
 
 enum class ApiErrorCode(val status: Int, val publicMessage: String) {
+    DISPLAY_NAME_TAKEN(409, "That alias is already taken."),
+    DISPLAY_NAME_RESERVATIONS_NOT_READY(409, "Alias registration is not available yet."),
     DISPLAY_NAME_INVALID(400, "Display name is invalid."),
     DISPLAY_NAME_RESERVED(400, "Display name is unavailable."),
     REQUEST_INVALID(400, "Request body is invalid."),

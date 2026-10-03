@@ -18,7 +18,7 @@ class PlayerBootstrapServiceTests {
         assertEquals(first.player.displayName, second.player.displayName)
         assertEquals("es", second.player.language)
         assertEquals(0L, second.wallet.coins)
-        assertEquals(5, repository.store.documents.size)
+        assertEquals(5, repository.store.documents.keys.count { it.startsWith("players/") })
         assertTrue(first.player.displayName.matches(Regex("Guest-[A-Z0-9]{8}")))
     }
 

@@ -26,13 +26,13 @@ class OnboardingPersistenceTests {
         val first=store.documents.toMap()
         enabled.ensure(identity,"en","Guest-ZYXWVUTS")
         assertEquals(first,store.documents)
-        assertEquals(2,store.documents.size)
+        assertEquals(2,store.documents.keys.count { it.startsWith("players/") })
     }
     @Test fun `new bootstrap at boundary atomically creates five documents`() {
         val store=InMemoryFirestoreTransactions(now)
         val repo=FirestorePlayerFoundationRepository(store.firestore,java.time.Clock.fixed(now,java.time.ZoneOffset.UTC),OnboardingRolloutBoundary(now))
         repo.ensure(com.teamfho.domino.security.FirebaseIdentity("fixture-player",true),"en","Guest-ABCDEFGH")
-        assertEquals(5,store.documents.size)
+        assertEquals(5,store.documents.keys.count { it.startsWith("players/") })
         assertEquals("NOT_STARTED",store.documents.getValue("players/fixture-player/onboarding/current")["status"])
     }
     private fun prepare(player: Player) {

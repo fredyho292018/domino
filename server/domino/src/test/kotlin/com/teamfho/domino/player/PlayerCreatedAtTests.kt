@@ -38,7 +38,7 @@ class PlayerCreatedAtTests {
     @Test fun `new unresolved server timestamp stays null no fabricated date or additional read`() {
         val result=repository.ensure(identity,"en","Guest-ABCDEFGH")
         assertNull(PlayerBootstrapResponse.from(result).player.createdAt)
-        assertEquals(5,store.callbacks.flatten().count{it.startsWith("read:")})
+        assertEquals(7,store.callbacks.flatten().count{it.startsWith("read:")}) // foundation reads plus rollout/reservation; no createdAt follow-up
     }
     @ParameterizedTest @ValueSource(booleans=[false,true])
     fun `legacy missing or null creation supported without backfill`(explicitNull:Boolean) {

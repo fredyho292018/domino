@@ -20,6 +20,7 @@ internal class InMemoryFirestoreTransactions(val now: Instant) {
     private val lock = Any()
 
     init {
+        documents[PlayerAliasReservations.rolloutPath] = mapOf("status" to "READY", "normalizationVersion" to 1L)
         `when`(firestore.document(anyString())).thenAnswer { invocation ->
             val path = invocation.getArgument<String>(0)
             refs.computeIfAbsent(path) { mock(DocumentReference::class.java).also { `when`(it.path).thenReturn(path) } }
@@ -49,6 +50,12 @@ internal class InMemoryFirestoreTransactions(val now: Instant) {
                             }
                             doAnswer { write ->
                                 val path = write.getArgument<DocumentReference>(0).path
+                                trace += "set:$path"
+                                writes += Triple("set", path, write.getArgument<Map<String, Any>>(1).toMap())
+                                tx
+                            }.`when`(tx).set(any(DocumentReference::class.java), anyMap<String, Any>())
+                            doAnswer { write ->
+                                val path = write.getArgument<DocumentReference>(0).path
                                 trace += "create:$path"
                                 writes += Triple("create", path, write.getArgument<Map<String, Any>>(1).toMap())
                                 tx
@@ -68,7 +75,8 @@ internal class InMemoryFirestoreTransactions(val now: Instant) {
                                     val resolved = values.mapValues { (_, value) ->
                                         if (value == FieldValue.serverTimestamp()) Timestamp.ofTimeSecondsAndNanos(now.epochSecond, now.nano) else value
                                     }
-                                    if (operation == "create") {
+                                    if (operation == "set") { staged[path] = resolved }
+                                    else if (operation == "create") {
                                         check(!staged.containsKey(path))
                                         staged[path] = resolved
                                     } else {

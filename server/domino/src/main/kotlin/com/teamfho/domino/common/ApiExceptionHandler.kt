@@ -21,6 +21,8 @@ class ApiExceptionHandler(private val errors: ApiErrorWriter) {
             is HttpMessageNotReadableException -> ApiErrorCode.REQUEST_INVALID
             is UnsupportedPlayerLanguageException -> ApiErrorCode.LANGUAGE_UNSUPPORTED
             is PlayerFoundationException -> when (exception.code) {
+                FoundationError.DISPLAY_NAME_TAKEN -> ApiErrorCode.DISPLAY_NAME_TAKEN
+                FoundationError.DISPLAY_NAME_RESERVATIONS_NOT_READY -> ApiErrorCode.DISPLAY_NAME_RESERVATIONS_NOT_READY
                 FoundationError.PLAYER_STATE_CONFLICT -> ApiErrorCode.PLAYER_STATE_CONFLICT
                 FoundationError.WALLET_STATE_INVALID -> ApiErrorCode.WALLET_STATE_INVALID
                 FoundationError.FIRESTORE_UNAVAILABLE -> ApiErrorCode.DEPENDENCY_UNAVAILABLE

@@ -17,7 +17,7 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
     private val onboardingBoundary: OnboardingRolloutBoundary? = null) : PlayerFoundationRepository {
     override fun updateDisplayName(identity: FirebaseIdentity, displayName: String): BootstrapResult {
         require(identity.uid.isNotBlank() && identity.uid.length <= 128 && !identity.uid.contains('/') && identity.uid !in setOf(".", ".."))
-        DisplayNameRules.validate(displayName)
+        require(DisplayNameRules.validate(displayName) == displayName)
         val playerRef = firestore.document("players/${identity.uid}")
         val walletRef = firestore.document("players/${identity.uid}/wallet/main")
         try {
@@ -28,9 +28,11 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                 if (!walletDoc.exists()) throw PlayerFoundationException(FoundationError.WALLET_STATE_INVALID)
                 val player = FirestoreFoundationMapping.player(playerDoc.data ?: emptyMap(), identity.uid)
                 val wallet = FirestoreFoundationMapping.wallet(walletDoc.data ?: emptyMap())
+                val aliases = PlayerAliasReservations.prepare({ tx.get(firestore.document(it)).get().data }, identity.uid, player.displayName, displayName)
                 if (player.displayName == displayName) BootstrapResult(player, wallet)
                 else {
                     val publicIdentity = tx.get(firestore.document("players/${identity.uid}/publicIdentity/current")).get()
+                    aliases.forEach { (path, value) -> tx.set(firestore.document(path), value) }
                     tx.update(playerRef, mapOf("displayName" to displayName, "updatedAt" to FieldValue.serverTimestamp(),
                         "profileRevision" to Math.addExact(player.profileRevision, 1)))
                     if (publicIdentity.exists()) tx.update(firestore.document("publicPlayerProfiles/${publicIdentity.getString("publicPlayerId")}"),
@@ -70,6 +72,9 @@ class FirestorePlayerFoundationRepository(private val firestore: Firestore, priv
                     if (existingWallet != null) throw PlayerFoundationException(FoundationError.PLAYER_STATE_CONFLICT)
                     FirestoreOnboardingFoundation.prepareNew(firestore, tx, player, now)
                 } else null // Existing incomplete Players require separately authorized resolution.
+                val aliases = if (existingPlayer == null) PlayerAliasReservations.prepare(
+                    { tx.get(firestore.document(it)).get().data }, identity.uid, null, candidateDisplayName) else emptyMap()
+                aliases.forEach { (path, value) -> tx.set(firestore.document(path), value) }
                 if (existingPlayer == null) {
                     tx.create(playerRef, FirestoreFoundationMapping.newPlayer(player) + ("socialDefaultDiscoverable" to true))
                 } else {

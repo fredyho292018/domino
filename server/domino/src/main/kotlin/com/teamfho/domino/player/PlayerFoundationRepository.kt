@@ -6,7 +6,7 @@ import com.teamfho.domino.security.FirebaseIdentity
 data class BootstrapResult(val player: Player, val wallet: Wallet)
 
 enum class FoundationError {
-    PLAYER_STATE_CONFLICT, WALLET_STATE_INVALID, FIRESTORE_UNAVAILABLE, FIRESTORE_CONTENTION_EXHAUSTED
+    DISPLAY_NAME_TAKEN, DISPLAY_NAME_RESERVATIONS_NOT_READY, PLAYER_STATE_CONFLICT, WALLET_STATE_INVALID, FIRESTORE_UNAVAILABLE, FIRESTORE_CONTENTION_EXHAUSTED
 }
 
 class PlayerFoundationException(val code: FoundationError) : RuntimeException(code.name)

@@ -14,7 +14,7 @@ class NewPlayerFoundationTests {
     private val identity = FirebaseIdentity("new-foundation-fixture", true)
     private val root = "players/${identity.uid}"
     private fun assertFoundation(store: InMemoryFirestoreTransactions) {
-        assertEquals(setOf(root, "$root/wallet/main", "$root/preferences/current", "$root/dominoProfile/current", "$root/onboarding/current"),store.documents.keys)
+        assertEquals(setOf(root, "$root/wallet/main", "$root/preferences/current", "$root/dominoProfile/current", "$root/onboarding/current"),store.documents.keys.filter { it.startsWith("players/") }.toSet())
         val p=FoundationDocumentCodec.decode(store.documents.getValue("$root/preferences/current"),PlayerPreferences::class.java)
         assertEquals("es",p.preferredLocale);assertNull(p.timeZone);assertTrue(p.notificationPreferences.isEmpty());assertEquals(0L,p.revision)
         val d=FoundationDocumentCodec.decode(store.documents.getValue("$root/dominoProfile/current"),DominoProfile::class.java)
@@ -35,7 +35,7 @@ class NewPlayerFoundationTests {
         }
         val store=InMemoryFirestoreTransactions(now)
         assertFails { PlayerFoundationConfiguration().playerFoundationRepository(store.firestore,"not-an-instant") }
-        assertTrue(store.documents.isEmpty())
+        assertEquals(setOf(PlayerAliasReservations.rolloutPath),store.documents.keys)
     }
     @Test fun `valid past present and future cutoff never exempts a new player`() {
         for (cutoff in listOf(now.minusSeconds(1),now,now.plusSeconds(86400))) {

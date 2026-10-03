@@ -51,8 +51,8 @@ class PlayerFoundationRepositoryTests {
         assertEquals(0L, result.wallet.lifetimeCoinsEarned)
         assertEquals(0L, result.wallet.lifetimeCoinsSpent)
         assertEquals(FoundationTimestamp.ServerAssigned, result.player.createdAt)
-        assertEquals(setOf(playerPath, walletPath, "$playerPath/preferences/current", "$playerPath/dominoProfile/current", "$playerPath/onboarding/current"), store.documents.keys)
-        assertEquals(listOf("read:$playerPath", "read:$walletPath", "read:$playerPath/preferences/current", "read:$playerPath/dominoProfile/current", "read:$playerPath/onboarding/current", "create:$playerPath", "create:$walletPath", "create:$playerPath/preferences/current", "create:$playerPath/dominoProfile/current", "create:$playerPath/onboarding/current"), store.callbacks.single())
+        assertEquals(setOf(playerPath, walletPath, "$playerPath/preferences/current", "$playerPath/dominoProfile/current", "$playerPath/onboarding/current"), store.documents.keys.filter { it.startsWith("players/") }.toSet())
+        assertEquals(listOf("read:$playerPath", "read:$walletPath", "read:$playerPath/preferences/current", "read:$playerPath/dominoProfile/current", "read:$playerPath/onboarding/current", "create:$playerPath", "create:$walletPath", "create:$playerPath/preferences/current", "create:$playerPath/dominoProfile/current", "create:$playerPath/onboarding/current"), store.callbacks.single().filterNot { it.contains("playerAliases") })
         assertEquals(Timestamp.ofTimeSecondsAndNanos(now.epochSecond, now.nano), store.documents.getValue(playerPath)["createdAt"])
     }
     @Test fun `second ensure conserves alias language wallet and timestamps`() {
@@ -144,7 +144,7 @@ class PlayerFoundationRepositoryTests {
         val candidate = GuestDisplayNames.generate()
         val result = ensure(name = candidate)
         assertEquals(2, store.callbacks.size)
-        assertEquals(5, store.documents.size)
+        assertEquals(5, store.documents.keys.count { it.startsWith("players/") })
         assertEquals(candidate, result.player.displayName)
         assertEquals(candidate, store.documents.getValue(playerPath)["displayName"])
     }
@@ -159,7 +159,7 @@ class PlayerFoundationRepositoryTests {
             start.countDown()
             val results = futures.map { it.get(10, TimeUnit.SECONDS) }
             assertEquals(1, results.map { it.player.displayName }.toSet().size)
-            assertEquals(if (existingWallet) 2 else 5, store.documents.size)
+            assertEquals(if (existingWallet) 2 else 5, store.documents.keys.count { it.startsWith("players/") })
             if (existingWallet) assertEquals(before, store.documents[walletPath])
             else assertEquals(0L, store.documents.getValue(walletPath)["coins"])
             assertEquals(if (existingWallet) 0 else 5, store.callbacks.flatten().count { it.startsWith("create:") })
