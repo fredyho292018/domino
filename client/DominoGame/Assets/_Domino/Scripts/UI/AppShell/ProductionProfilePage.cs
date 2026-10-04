@@ -61,6 +61,10 @@ namespace Domino.UI.AppShell
         void RefreshIdentity()
         {
             Profile=source.ReadProfile();
+            bool es=DominoLocalization.Language=="es";
+            var title=Body.Q<Label>("SubpageTitle");if(title!=null)title.text=Section==ProfileSection.Profile?(es?"Perfil":"Profile"):Section==ProfileSection.GameHistory?(es?"Historial de partidas":"Game History"):(es?"Detalles de partida":"Game Details");
+            var action=Body.Q<Button>("ProfilePrimaryAction");if(action!=null&&Profile.IsOwnProfile){action.text=es?"Editar perfil":"Edit Profile";action.tooltip=action.text;}
+            var history=Body.Q<Label>("HistoryHeading");if(history!=null)history.text=es?"Historial de partidas":"Game History";
             if(playerName!=null) {
                 playerName.text=Profile.DisplayName;countryName.text=Profile.CountryName;
                 countryFlag.vectorImage=Profile.Flag;countryFlag.tooltip=Profile.Flag==null?null:Profile.CountryName;

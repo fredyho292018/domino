@@ -36,7 +36,7 @@ namespace Domino.UI.AppShell
             RefreshIdentity();
             RegisterCallback<AttachToPanelEvent>(_=>{
                 if(source is IObservableMenuDataSource observable)observable.Changed+=RefreshIdentity;
-                LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;
+                LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;RefreshLocale();
                 RefreshIdentity();
             });
             RegisterCallback<DetachFromPanelEvent>(_=>{
@@ -64,7 +64,17 @@ namespace Domino.UI.AppShell
                 Body.Add(row);
             }
         }
-        void LocaleChanged(Locale ignored)=>RefreshIdentity();
+        void LocaleChanged(Locale ignored){RefreshIdentity();RefreshLocale();}
+        void RefreshLocale(){
+            bool es=DominoLocalization.Language=="es";
+            Body.Q<Label>("MenuEyebrow").text=es?"TU ESPACIO":"YOUR CORNER";Body.Q<Label>("MenuTitle").text=es?"Menú":"Menu";
+            var groups=es?new[]{"SOCIAL","ACTIVIDAD","PERSONALIZACIÓN","APLICACIÓN"}:new[]{"SOCIAL","ACTIVITY","PERSONALIZATION","APP"};
+            for(int i=0;i<4;i++){var label=Body.Q<Label>("MenuGroup"+i);if(label!=null)label.text=groups[i];}
+            var keys=new[]{MenuDestination.Friends,MenuDestination.Messages,MenuDestination.Stats,MenuDestination.Coach,MenuDestination.Theme,MenuDestination.Membership,MenuDestination.Settings,MenuDestination.Support};
+            var translated=new[]{"Amigos","Mensajes","Estadísticas","Entrenador","Tema","Membresía","Ajustes","Ayuda y soporte"};
+            for(int i=0;i<keys.Length;i++){var row=Body.Q("MenuRow"+keys[i]);var label=row?.Q<Label>("PrimaryLabel");if(label!=null)label.text=es?translated[i]:Title(keys[i]);}
+            var signout=Body.Q("MenuSignOut");var text=signout?.Q<Label>("PrimaryLabel");if(text!=null)text.text=es?"Cerrar sesión":"Sign Out";
+        }
         void RefreshIdentity()
         {
             var data=source.Read();

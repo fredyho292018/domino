@@ -53,6 +53,7 @@ namespace Domino.UI.AppShell
         }
         public void Refresh()
         {
+            bool es=DominoLocalization.Language=="es";
             var previousScroll=scrollOffset;
             Body.Clear();var data=source.Read();ContentState=data?.State ?? HomeContentState.Empty;
             var identity=Text("CUBAN DOMINO CLUB",TextRole.Caption,Body,"HomeIdentity");RootVisualRhythm.Eyebrow(identity);
@@ -61,10 +62,10 @@ namespace Domino.UI.AppShell
                 Text(ContentState==HomeContentState.Loading?"Loading…":ContentState==HomeContentState.Error?"Unable to load Home.":"Nothing here yet.",TextRole.Body,Body,"HomeStatus");return;
             }
             Text(data.Greeting ?? "Hola, "+data.DisplayName+".",TextRole.PageTitle,Body,"HomeGreeting").enableRichText=false;
-            Text("Una buena partida empieza con una buena mesa.",TextRole.Secondary,Body,"HomeSubtitle").style.marginBottom=Theme.Spacing.SectionGap;
-            var play=Card("¿Jugamos?","Strategy, connection and a little Cuban spirit.","HomePlayCard");
+            Text(es?"Una buena partida empieza con una buena mesa.":"A good game starts with a good table.",TextRole.Secondary,Body,"HomeSubtitle").style.marginBottom=Theme.Spacing.SectionGap;
+            var play=Card(es?"¿Jugamos?":"Shall we play?",es?"Estrategia, conexión y un poco de espíritu cubano.":"Strategy, connection and a little Cuban spirit.","HomePlayCard");
             var notice=new Label("Coming Soon"){name="HomePlayNotice"};ThemeStyles.Text(notice,TextRole.Secondary);notice.style.display=DisplayStyle.None;
-            var button=new ThemeButton("PLAY →",()=>notice.style.display=DisplayStyle.Flex,true){name="HomePlay"};RootVisualRhythm.Cta(button);button.style.marginTop=Theme.Spacing.MD;play.Add(button);play.Add(notice);
+            var button=new ThemeButton(es?"JUGAR →":"PLAY →",()=>notice.style.display=DisplayStyle.Flex,true){name="HomePlay"};RootVisualRhythm.Cta(button);button.style.marginTop=Theme.Spacing.MD;play.Add(button);play.Add(notice);
             if(data.Coach!=null)
             {
                 var coach=Card(data.Coach.DisplayName,data.Coach.Greeting,"HomeCoachCard");
@@ -77,7 +78,7 @@ namespace Domino.UI.AppShell
                 image.style.width=image.style.height=Length.Percent(100);portrait.Add(image);coach.Add(portrait);
             }
             else if(!string.IsNullOrEmpty(data.CoachStatus))Text(data.CoachStatus,TextRole.Secondary,Body,"HomeCoachStatus");
-            var learning=new ThemeButton("Continue Learning",continueLearning){name="HomeContinueLearning"};RootVisualRhythm.Cta(learning);learning.style.marginBottom=Theme.Spacing.SectionGap;Body.Add(learning);
+            var learning=new ThemeButton(es?"Seguir aprendiendo":"Continue Learning",continueLearning){name="HomeContinueLearning"};RootVisualRhythm.Cta(learning);learning.style.marginBottom=Theme.Spacing.SectionGap;Body.Add(learning);
             if(data.Friends!=null)Card("Your table of friends",data.Friends.Count+" "+data.Friends.Description,"HomeFriendsCard");
             schedule.Execute(()=>scrollOffset=previousScroll);
         }

@@ -15,7 +15,17 @@ namespace Domino.UI
         public const string PreferenceKey = "domino.language";
         static StringTable english, spanish;
         public static bool Ready => english && spanish;
-        public static string Language => LocalizationSettings.SelectedLocale.Identifier.Code;
+        // Locale selection does not depend on legacy UGUI StringTable caching.
+        public static bool LocaleSelectionReady
+        {
+            get
+            {
+                var provider = LocalizationSettings.AvailableLocales;
+                if (provider is IPreloadRequired preload && !preload.PreloadOperation.IsDone) return false;
+                return provider?.GetLocale("en") != null && provider.GetLocale("es") != null;
+            }
+        }
+        public static string Language => LocalizationSettings.SelectedLocale?.Identifier.Code ?? "en";
         public static IEnumerator Initialize()
         {
             yield return LocalizationSettings.InitializationOperation;

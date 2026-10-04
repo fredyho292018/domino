@@ -67,9 +67,13 @@ namespace Domino.UI.AppShell
                 var label = labels[i] = new Label(((ShellTab)i).ToString()) { pickingMode = PickingMode.Ignore };
                 ThemeStyles.Text(label, TextRole.NavigationLabel); tab.Add(label); BottomNavigation.Add(tab);
             }
+            RegisterCallback<AttachToPanelEvent>(_=>{UnityEngine.Localization.Settings.LocalizationSettings.SelectedLocaleChanged+=LocaleChanged;RefreshLocale();});
+            RegisterCallback<DetachFromPanelEvent>(_=>UnityEngine.Localization.Settings.LocalizationSettings.SelectedLocaleChanged-=LocaleChanged);
             Select(ShellTab.Home);
         }
 
+        void LocaleChanged(UnityEngine.Localization.Locale ignored)=>RefreshLocale();
+        void RefreshLocale(){var es=DominoLocalization.Language=="es";var names=es?new[]{"Inicio","Puzles","Aprender","Ver","Menú"}:new[]{"Home","Puzzles","Learn","Watch","Menu"};for(int i=0;i<labels.Length;i++)labels[i].text=names[i];}
         public void Select(ShellTab tab)
         {
             if ((int)tab < 0 || (int)tab >= pages.Length) throw new ArgumentOutOfRangeException(nameof(tab));

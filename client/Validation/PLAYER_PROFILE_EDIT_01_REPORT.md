@@ -574,3 +574,228 @@ Protected files preserved: 102/102. Pending inventory classification follows; Pr
 | client/Validation/AuthenticatedRoutingTests.cs | HISTORICAL |
 | client/Validation/PLAYER_UI_01_REAL_PLAYER_BINDING_AUDIT_REPORT.md | HISTORICAL |
 | client/Validation/PlayerAliasBindingTests.cs | HISTORICAL |
+
+
+## PLAYER_PROFILE_EDIT_01_TEST_LIVE (2026-10-04)
+
+Result: PARTIAL. Deployment passed; the single controlled authenticated GET returned 403 and the live test stopped at the required gate. No PUT, Retry, profile change, alias change, or session-restore test was performed. The cause of the new 403 is UNPROVEN. The historical pre-deploy 403 remains UNPROVEN and is not rewritten.
+
+Exact committed source d02519ff68dfcb67c739d08bddda1c8dea4834ad was exported with git archive, compiled successfully, built as a linux/amd64 image, transferred with matching archive hash, and deployed only to local dominoserver TEST. Backend CI #19 PASS retained. No dirty source was used. Only API image/revision changed; normalized Compose, environment, mounts and resource/security configuration matched. Redis ID and start time remained unchanged. Rollback image and restricted configuration backups remain available.
+
+OLD_API_CONTAINER_ID=ce28ad229ed4a1accca595a3eae7e930f18d7390227804c531a11ee543571de8
+
+OLD_API_IMAGE=cuban-domino-api:aca8b2ebef57177258789ec464f7c800fbeb338c
+
+OLD_API_IMAGE_ID=sha256:951bfef610fa97b48a29c397f4059ff2fb39d53a8efea83b141208d904c639f1
+
+NEW_API_IMAGE=cuban-domino-api:d02519ff68dfcb67c739d08bddda1c8dea4834ad
+
+NEW_API_CONTAINER_ID=d85dd43021d407a09ee6d094c4e5ce3192466b81210e9e3fadbc29454223243a
+
+Local/public health passed, startup marker was present with 0 blocking startup errors. Deployed JAR SHA-256 matched the built artifact. That exact JAR contains PlayerProfileEditingController with the GET editable and PUT profile route annotations. This proves endpoint implementation presence in the deployed artifact, not successful authenticated reachability. Seven catalog/pointer document hashes and update times remained unchanged.
+
+GET /api/v1/player/profile/editable was executed exactly once against the public TEST URL, with the existing Unity session token kept in memory. Local checks confirmed TEST audience, matching subject and unexpired token; server authentication acceptance is NOT proven by the 403. Response: HTTP 403, API code absent, NON_JSON_ERROR. No raw response, identity or credential was persisted. No retries. No instrumented source changes.
+
+REAL_EDIT_PROFILE_LOAD=NOT_RETESTED_AFTER_GET_GATE_FAILURE
+REAL_EDIT_PROFILE_PREFILL_VALIDATED=NO
+PROFILE_UPDATE_REQUEST_COUNT=0
+REAL_PLAYER_MUTATIONS=0_BY_THIS_TASK
+PRIVATE_NAME_EDITED=NO
+COUNTRY_EDITED=NO
+DISPLAY_NAME_EDITED=NO
+LANGUAGE_EDITED=NO
+ATOMIC_PERSISTENCE_AND_UI_PROPAGATION=NOT_EXECUTED
+PROFILE_EDIT_SESSION_RESTORE=NOT_EXECUTED
+API_HEALTH_AFTER=UP
+REDIS_HEALTH_AFTER=UP
+REDIS_RESTARTED=NO
+UNITY_FINAL_PLAY_MODE=OFF
+SOURCE_CHANGED_DURING_REAL_VALIDATION=NO
+COMMIT=NONE
+PUSH=NONE
+PROD_DEPLOYMENT=NO
+GCP_DEPLOYMENT=NO
+PLAYER_PROFILE_EDIT_01_TEST_LIVE_SUCCESS=NO
+NEXT=POST_DEPLOY_403_READ_ONLY_ORIGIN_AND_AUTHORIZATION_REVIEW
+
+Unity was stopped normally without logout after the gate failure. Existing LOAD_ERROR was not retried. No private prefill values were inspected or reported. Report and ignored validation/deployment artifacts only.
+
+## PREFERRED_LANGUAGE_RUNTIME_APPLICATION (2026-10-04)
+
+Evidence qualification added by subsequent host review: the results in this section are ISOLATED only. User subsequently reported REAL_LANGUAGE_APPLICATION=FAIL_BEFORE_FIX. The host integration review below supersedes any interpretation of these checks as real-runtime PASS; historical results are retained.
+
+User subsequently confirmed real prefill/save PASS manually. This is separate evidence from the controlled HTTP 403 above, which remains recorded unchanged. A read-only administrative lookup matched the current local session to its Player and found preferences/current.preferredLocale=en and Player.language=en. No identity, email, token or profile payload is reported.
+
+Root cause: PERSISTED_BUT_RUNTIME_LOCALE_NOT_UPDATED. PUT already supports preferredLanguage and atomically persists it; editable GET returns it. The confirmed client Player projection also retained it. There was no connection from that projection to the existing Unity localization owner. No backend correction is required.
+
+Owner remains LocalizationSettings.SelectedLocale; DominoLocalization.Select is the existing validated selection API and retains its local domino.language preference. Startup fallback remains PlayerPrefLocaleSelector, SystemLocaleSelector, then configured English. The new host-scoped PlayerLocaleBinding applies only fresh, current-session, confirmed en/es preferences after localization is ready; missing/unsupported preference makes no selection. Restored/bootstrap Player language and authoritative onboarding/profile preferences use the same binding. Onboarding drafts do not change locale; confirmed onboarding preference does. Stale/disposed sessions cannot apply late responses. Device selection does not overwrite an explicit Player preference.
+
+Successful profile save validates the authoritative response, updates PlayerService, then SnapshotChanged applies locale before Saved navigation. Failed/no-op saves do not change locale. Existing SelectedLocaleChanged notifications refresh Edit Profile labels without rebuilding its fields; Home, Menu, Profile and bottom navigation subscribe to the same owner. No independent per-view locale store, network request or Player write was added. Static demo friends content was not changed.
+
+Focused client tests: 42 PASS. Covers restore/login, readiness, no-op, missing/unsupported fallback, failed save, retained selection, delayed success, both language directions, disposed/stale sessions, language-only dirty state. Unity isolated validation: 46 PASS, actual controller + API source + in-memory transport + confirmed Player binding, ES to EN to ES to EN, attached Edit Profile/Home/Menu/Profile/navigation, field preservation, 393x852 overflow and clipping. Temporary Editor harness is validation-only and performs no real requests or preferences persistence. Earlier harness preparation failures (OWNER/null locale) were corrected; final run passed. They are not hidden as historical exceptions.
+
+Regressions: Profile edit 42 PASS; Home 222 PASS; Menu 60 PASS; Profile 80 PASS; Guest post-link 69 PASS; onboarding full flow 407 PASS (bootstrap 31 and shell 93 also passed). Current imported source compiles with zero compiler errors and nine existing warnings. No large unrelated suites repeated.
+
+```ini
+REAL_PREFERRED_LANGUAGE_PERSISTED=YES_READ_ONLY_VERIFIED
+REAL_PREFERRED_LANGUAGE_VALUE=en
+PROFILE_UPDATE_PREFERRED_LANGUAGE_SUPPORTED=YES
+PROFILE_EDITABLE_RETURNS_PREFERRED_LANGUAGE=YES
+LOCALIZATION_STATE_OWNER=LocalizationSettings.SelectedLocale
+CURRENT_LOCALE_SOURCE=CONFIRMED_PLAYER_PREFERENCE_THEN_EXISTING_FALLBACK
+CURRENT_LOCALE_CHANGE_API=DominoLocalization.Select
+PLAYER_PREFERRED_LANGUAGE_APPLIED_ON_BOOTSTRAP=YES
+PLAYER_PREFERRED_LANGUAGE_APPLIED_ON_SESSION_RESTORE=YES_ISOLATED
+ONBOARDING_LANGUAGE_RUNTIME_POLICY=CONFIRMED_PREFERENCE_ONLY
+EDIT_PROFILE_SUCCESS_NOTIFIES_LOCALIZATION=YES
+PREFERRED_LANGUAGE_ROOT_CAUSE=PERSISTED_BUT_RUNTIME_LOCALE_NOT_UPDATED
+PREFERRED_LANGUAGE_APPLICATION_POLICY=IMMEDIATE_AFTER_SUCCESSFUL_SAVE
+LOCALE_CHANGED_BEFORE_SUCCESSFUL_SAVE=NO
+SAVE_FAILURE_CHANGES_RUNTIME_LOCALE=NO
+SAVE_FAILURE_PRESERVES_LANGUAGE_SELECTION=YES
+ES_TO_EN_IMMEDIATE_UI_REFRESH=PASS_ISOLATED
+EN_TO_ES_IMMEDIATE_UI_REFRESH=PASS_ISOLATED
+EDIT_PROFILE_RERENDERS_ON_LOCALE_CHANGE=YES_LABELS_ONLY_FORM_PRESERVED
+HOME_LOCALE_REFRESH=PASS
+MENU_LOCALE_REFRESH=PASS
+PROFILE_LOCALE_REFRESH=PASS
+BOTTOM_NAV_LOCALE_REFRESH=PASS
+LANGUAGE_CHANGE_UNRELATED_PLAYER_MUTATIONS=0
+LANGUAGE_CHANGE_ALIAS_RESERVATION_MUTATIONS=0
+PREFERRED_LANGUAGE_SESSION_RESTORE=PASS_ISOLATED
+PREFERRED_LANGUAGE_LOGIN_RESTORE=PASS_ISOLATED
+EXPLICIT_PLAYER_LANGUAGE_OVERRIDDEN_BY_DEVICE=NO
+MISSING_PREFERRED_LANGUAGE_FALLBACK=EXISTING_LOCAL_DEVICE_DEFAULT_POLICY
+LANGUAGE_ONLY_CHANGE_DIRTY=YES
+LANGUAGE_ONLY_SAVE_ENABLED=YES
+SAME_LANGUAGE_PROFILE_WRITE=0
+PREFERRED_LANGUAGE_TESTS=42_CLIENT_PASS_46_UNITY_PASS
+SECRET_SCAN=PASS_12_SCOPED_FILES_ZERO_CREDENTIAL_PATTERN_MATCHES
+PLAYER_PROFILE_EDIT_REGRESSION=PASS
+PLAYER_UI_01_REGRESSION=PASS
+ONBOARDING_REGRESSION=PASS
+GUEST_ACCOUNT_01_REGRESSION=PASS
+ADDITIONAL_REAL_PROFILE_WRITES=0
+BACKEND_CHANGE_REQUIRED=NO
+SOURCE_CHANGED=YES_CLIENT_AND_VALIDATION_ONLY
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+FINAL_PREVIEW=ISOLATED_EDIT_PROFILE_EN_393x852_AFTER_ES_TO_EN_SUCCESS
+MANUAL_VISUAL_REVIEW=PENDING
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+NEXT=MANUAL_PREFERRED_LANGUAGE_RUNTIME_REVIEW
+```
+
+## REAL_PREFERRED_LANGUAGE_HOST_INTEGRATION (2026-10-04)
+
+Manual evidence: persistence PASS (en); top-right selector changes runtime language PASS; Edit Profile real application FAIL before this fix. No new real profile save or backend read was required. The previous read-only persistence evidence remains valid; no claim is made that the new client fix has been manually retested against TEST.
+
+The top-right Game View control is Unity's `UnityEditor.Localization.UI.GameViewLanguageMenu` (package `com.unity.localization`, Editor/UI/GameViewLanguageMenu.cs). Its AddToolbarsToGameViews registers the PopupField callback that directly assigns `LocalizationSettings.SelectedLocale = evt.newValue`. Classification: EDITOR_VALIDATION_CONTROL. It changes presentation, not Player preference or the editable draft. Consequently top selector=en with field=Español can legitimately represent an English presentation of a Spanish saved preference (or unsaved draft); translating a field caption must not rewrite its domain value. The real field remains populated from editable GET, and after save from the authoritative response.
+
+First divergence proven in source and reproduced by host regression: `ProductionAuthEntry.Mount` disables legacy `DominoClientController`. Its Start is the only production call to `DominoLocalization.Initialize`, which populates the adapter's english/spanish StringTable caches. The previous host gated PlayerLocaleBinding on `DominoLocalization.Ready` (both caches loaded). In the production shell that gate could remain false, so the save event never reached Select. The working Editor selector has no such legacy table-cache prerequisite. Both paths use the SAME static LocalizationSettings context; there is no second runtime locale instance.
+
+Previous isolated test bypass: it supplied `ready=()=>true` and an AssetDatabase-backed direct SelectedLocale assignment. It proved event-driven UI response but did not exercise host readiness or the actual DominoLocalization.Select path. Its PASS was insufficient to prove integration.
+
+Minimal client fix: DominoLocalization.LocaleSelectionReady waits for available-locale preload and supported en/es assets, independently of the legacy StringTable cache. ProductionAuthHost.BindPlayer is shared by normal startup and the Editor host entry; it wires the same PlayerLocaleBinding readiness and DominoLocalization.Select and constructs the real ProfileEditController/ProfileEditApiSource. The Editor entry substitutes only Player/auth/API dependencies. No injected locale-application callback, manual top-right selection, second persistent locale owner, production navigation change, or new backend operation is used.
+
+Exact order: language draft -> ProfileEditController.Save -> ProfileEditApiSource PUT -> successful response contract check -> PlayerService.ReceiveConfirmedProfile -> SnapshotChanged -> PlayerLocaleBinding.Refresh -> DominoLocalization.Select -> LocalizationSettings.SelectedLocale -> attached view callbacks -> Saved's existing Profile navigation. The test observes the still-attached Edit Profile title becoming English/Spanish BEFORE that preexisting navigation; navigation is not needed to trigger translation. It reopens Edit Profile through the same shell only to leave a reviewable post-save form.
+
+Production-host regression: **58 PASS**, using the real ProductionAuthHost, ProductionAppShell, factory, controller, API source and Select. Asserted `DominoLocalization.Ready=false` throughout setup with available locales ready, reproducing the exact old failure. Restore applied authoritative es; three fake successful saves en/es/en changed the same locale owner and visible Edit Profile; one fake failed save preserved UI locale and draft; no optimistic application while fake PUT pending; Profile/navigation translated; reopened field matched confirmed preference; no-op/rerender added zero writes. Exactly four in-memory PUT attempts (three success, one failure), zero real requests, auth writes, onboarding writes or trial writes. Final 393x852 geometry and clipping checks passed. Local domino.language preference was restored after the test; temporary locale provider is restored when the preview closes.
+
+Relevant rerun regressions: Profile edit 42 PASS; Home 222 PASS; Menu 60 PASS; Profile 80 PASS; Guest 69 PASS; full onboarding 407 PASS plus bootstrap 31 and shell 93 PASS. Earlier isolated 46 PASS retained, not promoted to live evidence. Unity current compiler errors 0; Console has 10 warnings including a Firebase Future disposal warning from the Editor session, not a failing language test. No current blocking exception observed. Protected files unchanged 0/102; existing pending source preserved except the two authorized integration files and this report. New Editor validation harness is TEMPORARY_VALIDATION_PREVIEW, not a production dependency.
+
+```ini
+REAL_PREFERRED_LANGUAGE_PERSISTED=YES
+REAL_PREFERRED_LANGUAGE_VALUE=en
+TOP_RIGHT_LOCALE_SELECTOR_RUNTIME_CHANGE=PASS_MANUAL
+EDIT_PROFILE_REAL_RUNTIME_LOCALE_CHANGE=FAIL_BEFORE_FIX_PENDING_RETEST
+EDIT_PROFILE_ISOLATED_RUNTIME_LOCALE_CHANGE=PASS_RETAINED
+TOP_RIGHT_SELECTOR_OWNER=UNITY_LOCALIZATION_EDITOR
+TOP_RIGHT_SELECTOR_CLASS=UnityEditor.Localization.UI.GameViewLanguageMenu
+TOP_SELECTOR_CALL_PATH=PopupField_CHANGE_TO_LocalizationSettings.SelectedLocale
+TOP_SELECTOR_FINAL_LOCALE_OWNER=LocalizationSettings.SelectedLocale
+LANGUAGE_PATH_FIRST_DIVERGENCE=HOST_GATED_ON_DISABLED_LEGACY_TABLE_INITIALIZATION
+REAL_EDIT_PROFILE_CALLS_DOMINO_LOCALIZATION_SELECT=NO_WITH_OLD_BLOCKED_GATE_YES_AFTER_FIX_IN_HOST_TEST
+EDIT_PROFILE_AND_APP_SHELL_LOCALIZATION_CONTEXT_SAME=YES
+ISOLATED_LOCALIZATION_DEPENDENCY=PREVIOUS_ALWAYS_READY_DIRECT_ASSIGNMENT
+PRODUCTION_LOCALIZATION_DEPENDENCY=AVAILABLE_LOCALE_READINESS_AND_DominoLocalization.Select
+ISOLATED_TEST_FALSE_POSITIVE_CAUSE=PRODUCTION_READINESS_GATE_NOT_EXERCISED
+LOCALIZATION_STATE_OWNER=LocalizationSettings.SelectedLocale
+SECOND_LOCALIZATION_STATE_OWNER_CREATED=NO
+EDIT_PROFILE_USES_EXISTING_LOCALIZATION_OWNER=YES
+LOCALE_APPLIED_BEFORE_SAVE_SUCCESS=NO
+REAL_EDIT_PROFILE_SCREEN_RERENDERS=PASS_PRODUCTION_COMPOSITION_PENDING_REAL_RETEST
+SINGLE_RUNTIME_LOCALE_FOR_APP_SHELL=YES
+PRODUCTION_LANGUAGE_CHANGE_DEPENDS_ON_TOP_SELECTOR=NO
+PREFERRED_LANGUAGE_FIELD_MATCHES_PLAYER_PREFERENCE=YES_AFTER_CONFIRMED_SAVE
+OBSERVED_LOCALE_FIELD_MISMATCH_ROOT_CAUSE=EDITOR_DISPLAY_LOCALE_IS_NOT_SAVED_PLAYER_PREFERENCE_OR_DRAFT
+LOCALE_RERENDER_PROFILE_WRITES=0
+LOCALIZATION_SAVE_LOOP=NO
+REAL_HOST_LANGUAGE_REGRESSION_TEST=58_PASS
+SESSION_RESTORE_PRODUCTION_COMPOSITION_TEST=PASS
+ISOLATED_TESTS_RETAINED=YES
+BACKEND_CHANGE_REQUIRED=NO
+BACKEND_SOURCE_CHANGED=NO
+BACKEND_REDEPLOY_REQUIRED=NO
+ADDITIONAL_REAL_PROFILE_WRITES=0
+PLAYER_PROFILE_EDIT_REGRESSION=PASS
+PLAYER_UI_01_REGRESSION=PASS
+ONBOARDING_REGRESSION=PASS
+GUEST_ACCOUNT_01_REGRESSION=PASS
+REAL_LANGUAGE_APPLICATION=PENDING_RETEST
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+NEXT=MANUAL_REAL_PREFERRED_LANGUAGE_REVIEW
+```
+
+## PREFERRED_LANGUAGE_REAL_VALIDATION_CLOSURE (2026-10-04)
+
+User-authorized manual real evidence: Profile and Edit Profile started in English; selecting Español did not translate the UI before Save. One successful language save returned to Profile and immediately translated Profile and bottom navigation to Spanish, without logout/restart or use of Unity's top-right locale selector. This closes real EN-to-ES application as PASS; no new real ES-to-EN claim is made. Previous failures and isolated results above remain historical evidence.
+
+Subsequent read-only verification used the existing TEST session identity internally and read Firestore Player root and preferences/current through the established administrative reader. Sanitized result: identityMatches=true, preferredLanguage=es, rootLanguage=es, persisted=true. No new PUT, bootstrap, token refresh or logout was performed. The initial restricted SSH attempt failed before the read; the authorized external read then succeeded.
+
+Unrelated-data verification boundary: reviewed deployed-source PlayerProfileEditingService and PlayerAliasReservations. The update merges firstName/lastName/displayName/countryCode/language plus profileRevision/updatedAt into Player, and changes preference locale/revision/updatedAt. Other root values, including createdAt, are retained. Coach/dominoProfile, onboarding, membership/grants/trial/entitlements and wallet are outside its write set. An unchanged owned alias generates no reservation write; public profile writes occur only for an alias change. The user described only a language change and retained regressions passed. However, no real pre-save snapshot of all requested values exists in the language evidence; previous baselines are source-file inventories, not Player-data snapshots. Therefore zero unrelated mutations is supported by contract/manual scope, but is NOT independently proven as a before/after live-data comparison. In particular same-document names/country cannot be compared retroactively from the locale-only read. No repair or repeat save was performed to manufacture evidence.
+
+Durable localization changes remain uncommitted and are prepared as an explicit hash manifest under ignored validation artifacts, for the next checkpoint review. Includes only PlayerLocaleBinding and meta, DominoLocalization, ProductionAuthHost, ProductionAppShell, ProductionHomePage, ProductionMenuPage, ProductionProfilePage, ProductionProfileEditView, ProfileEditTests, its runner, and this report. All temporary Editor previews/observers and historical ProductionRoutingComposition changes are excluded. No source changes or repeated suites in this closure; no staging, commit, push or deploy.
+
+```ini
+REAL_PREFERRED_LANGUAGE_PERSISTED=YES
+FINAL_PERSISTED_PREFERRED_LANGUAGE=es
+EN_TO_ES_IMMEDIATE_UI_REFRESH=PASS_REAL_USER_CONFIRMED
+LOCALE_CHANGED_BEFORE_SUCCESSFUL_SAVE=NO
+PREFERRED_LANGUAGE_APPLICATION_POLICY=IMMEDIATE_AFTER_SUCCESSFUL_SAVE
+PROFILE_LOCALE_REFRESH=PASS_REAL
+BOTTOM_NAV_LOCALE_REFRESH=PASS_REAL
+EDIT_PROFILE_SUCCESS_ROUTE=PROFILE
+TOP_RIGHT_SELECTOR_REQUIRED_FOR_PRODUCTION=NO
+LANGUAGE_CHANGE_UNRELATED_PLAYER_MUTATIONS=NOT_INDEPENDENTLY_PROVEN_LIVE
+LANGUAGE_ONLY_WRITE_CONTRACT=NO_UNRELATED_DOMAIN_MUTATIONS
+PRE_SAVE_REAL_DATA_SNAPSHOT_AVAILABLE=NO
+PREFERRED_LANGUAGE_SESSION_RESTORE=PASS_RETAINED_PRODUCTION_COMPOSITION
+REAL_HOST_LANGUAGE_REGRESSION_TEST=58_PASS_RETAINED
+SESSION_RESTORE_PRODUCTION_COMPOSITION_TEST=PASS_RETAINED
+RELEVANT_REGRESSIONS=PASS_RETAINED
+REAL_LANGUAGE_APPLICATION=PASS
+ADDITIONAL_REAL_PROFILE_WRITES=1_AUTHORIZED_LANGUAGE_CHANGE_BY_USER
+ASSISTANT_ADDITIONAL_REAL_PROFILE_WRITES=0
+PRODUCT_SOURCE_CHANGED_THIS_CLOSURE=NO
+TEMPORARY_VALIDATION_CONTROLS_INCLUDED_IN_CHECKPOINT_SCOPE=NO
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+NEXT=PLAYER_PROFILE_EDIT_01_FINAL_CLOSURE_AND_LOCALIZATION_FIX_CHECKPOINT
+```
+
+## LOCALIZATION_FIX_FINAL_CHECKPOINT_REVIEW (2026-10-04)
+
+Approved checkpoint scope: 12 durable files (7 existing production localization/UI files, PlayerLocaleBinding plus its meta, 2 focused test/runner files, and this report). Product/test hashes match the reviewed manifest and retained test state; CHECKPOINT_TESTS_REPEATED=NO. Inventory before staging: 164 pending files, comprising 12 durable localization candidates, 102 protected, 28 historical pending, and 22 temporary Editor validation files. UNCLASSIFIED_PENDING_FILES=0. All 102 protected file hashes match. Historical/temporary files are excluded, including ProductionRoutingComposition's existing diagnostic changes. The main Profile and Guest checkpoints are not restaged.
+
+Reviewed contract: one LocalizationSettings.SelectedLocale owner; confirmed current-session Player preference applies through existing Select after successful persistence; failure/draft/no-op do not apply prematurely; session restore uses the same host binding; UI locale refresh performs no API writes and does not create a save loop. Editor-only BindIsolated accepts fake services for the shared composition seam; no temporary preview/control implementation is included. Backend code/configuration and deployment are excluded.
+
+Final real evidence retained exactly: persisted preferred language es, real EN-to-ES immediate Profile/navigation refresh PASS, successful save route Profile, no top-right Editor selector required. LANGUAGE_CHANGE_UNRELATED_PLAYER_MUTATIONS=NOT_INDEPENDENTLY_PROVEN: contract/regression coverage exists but complete real pre/post comparison is unavailable. No retrospective evidence is fabricated. Home/Menu/Edit Profile event propagation is tested composition evidence, not a claim of new real screenshots.
+
+Retained: REAL_HOST_LANGUAGE_REGRESSION_TEST=58_PASS; SESSION_RESTORE_PRODUCTION_COMPOSITION_TEST=PASS; RELEVANT_REGRESSIONS=PASS. Additional assistant real profile writes=0. Main/deployed TEST backend remains d02519ff68dfcb67c739d08bddda1c8dea4834ad. Client-only checkpoint needs no backend redeploy. The sole repository workflow is Backend CI with server/infrastructure/workflow path filters; these candidates do not match. Actual push/remote/CI outcome is recorded in the checkpoint delivery, not assumed here.
+
+Commit message authorized: `fix: apply preferred language after profile save`. No new block or TRIAL-LIVE-01 is started.

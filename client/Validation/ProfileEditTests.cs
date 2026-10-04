@@ -15,9 +15,9 @@ static class ProfileEditTests {
   public void Dispose(){}
  }
  sealed class Transport:IApiTransport {
-  public TaskCompletionSource<bool> Hold;public int Writes;public string Error;
+  public TaskCompletionSource<bool> Hold;public int Writes;public int Revision=1;public string Error;
   public async Task<ApiHttpResponse> SendAsync(string method,Uri uri,string body,string bearer,int timeout,CancellationToken token){
-   if(method=="PUT"){Writes++;if(Hold!=null)await Hold.Task;if(Error!=null)return new ApiHttpResponse(409,"{\"code\":\""+Error+"\"}");var p=JsonConvert.DeserializeObject<ProfileEditDto>(body);p.profileRevision=1;p.preferencesRevision=1;return new ApiHttpResponse(200,JsonConvert.SerializeObject(p));}
+   if(method=="PUT"){Writes++;if(Hold!=null)await Hold.Task;if(Error!=null)return new ApiHttpResponse(409,"{\"code\":\""+Error+"\"}");var p=JsonConvert.DeserializeObject<ProfileEditDto>(body);p.profileRevision=Revision;p.preferencesRevision=Revision;return new ApiHttpResponse(200,JsonConvert.SerializeObject(p));}
    return new ApiHttpResponse(200,JsonConvert.SerializeObject(new ProfileEditDto{firstName="Ana",lastName="Rivera",displayName="Fixture",country="CU",preferredLanguage="en"}));
   }
  }
@@ -39,6 +39,29 @@ static class ProfileEditTests {
    transport.Error=null;transport.Hold=new TaskCompletionSource<bool>();var pendingSave=source.Save(original,d,default);fixture.Session=new Domino.Identity.FirebaseAuthSessionSnapshot("other-fixture",false,true,true);transport.Hold.SetResult(true);try{await pendingSave;throw new Exception("STALE_ACCEPTED");}catch(OperationCanceledException){Need(fixture.Player.Player.DisplayName=="UpdatedAlias","STALE_SAVE_BLOCKED");}
   }
   f=new Fake{LoadFails=true};using(var c=new ProfileEditController(f)){await c.Load();Need(c.Error=="LOAD_FAILED"&&c.Draft==null&&!c.Busy&&!c.CanSave,"LOAD_FAILURE");Need(f.Loads==1&&f.Saves==0,"NO_AUTOMATIC_RETRY");f.LoadFails=false;await c.Load();Need(c.Error==""&&c.Draft!=null&&f.Loads==2,"EXPLICIT_LOAD_RECOVERY");c.Draft.FirstName="Edited";c.Draft.LastName="Preserved";c.Draft.Country="US";c.Draft.Language="es";await c.Alias("PreservedAlias");var draft=c.Draft;f.Failure="SAVE_FAILED";await c.Save();Need(c.Error=="SAVE_FAILED"&&!c.Busy&&ReferenceEquals(draft,c.Draft),"SAVE_FAILURE_RETAINS_DRAFT");Need(c.Draft.FirstName=="Edited"&&c.Draft.LastName=="Preserved"&&c.Draft.DisplayName=="PreservedAlias"&&c.Draft.Country=="US"&&c.Draft.Language=="es","ALL_FIVE_VALUES_PRESERVED");Need(c.CanSave&&f.Loads==2,"SAVE_ERROR_NO_RELOAD");}
+  using(var fixture=new RoutingCompositionFixture()){
+   fixture.State("COMPLETED",2);await fixture.Forms.RestoreAsync();
+   string locale="es";int calls=0;bool ready=false;
+   using var binding=new PlayerLocaleBinding(fixture.Player,()=>ready,v=>{locale=v;calls++;});
+   Need(calls==0,"LOCALE_WAIT_READY");ready=true;binding.Refresh();Need(locale==fixture.Player.PreferredLocale&&calls==1,"LOCALE_RESTORE");binding.Refresh();Need(calls==1,"LOCALE_NOOP");
+   var transport=new Transport();using var source=new ProfileEditApiSource(new OnboardingApiSession(new DominoApiConfiguration(true,"https://example.test"),fixture,transport,()=>fixture.Session?.Uid,default),fixture.Player);
+   var original=await source.Load(default);
+   var draft=new BasicProfileDraft{FirstName="Ana",LastName="Rivera",DisplayName="Fixture",Country="CU",Language="es"};
+   transport.Error="REVISION_MISMATCH";var previous=locale;try{await source.Save(original,draft,default);}catch(DominoApiException){}
+   Need(locale==previous,"LOCALE_FAILED_SAVE_UNCHANGED");Need(draft.Language=="es","LOCALE_FAILURE_SELECTION_RETAINED");
+   transport.Error=null;await source.Save(original,draft,default);Need(locale=="es","LOCALE_SUCCESS_ES");
+   transport.Revision=2;draft.Language="en";transport.Hold=new TaskCompletionSource<bool>();var pendingLocale=source.Save(original,draft,default);Need(locale=="es","LOCALE_NO_OPTIMISTIC_CHANGE");transport.Hold.SetResult(true);await pendingLocale;Need(locale=="en","LOCALE_SUCCESS_EN");
+   transport.Revision=3;transport.Hold=new TaskCompletionSource<bool>();draft.Language="es";var stale=source.Save(original,draft,default);fixture.Session=new Domino.Identity.FirebaseAuthSessionSnapshot("other-fixture",false,true,true);transport.Hold.SetResult(true);try{await stale;}catch(OperationCanceledException){}Need(locale=="en","LOCALE_STALE_SESSION_REJECTED");
+   binding.Dispose();binding.Refresh();Need(locale=="en","LOCALE_DISPOSED");
+  }
+  using(var fixture=new RoutingCompositionFixture()){
+   string runtime="es";int changes=0;using var binding=new PlayerLocaleBinding(fixture.Player,()=>true,v=>{runtime=v;changes++;});Need(changes==0,"NO_PLAYER_FALLBACK_UNCHANGED");
+   fixture.State("COMPLETED",2);await fixture.Forms.RestoreAsync();Need(runtime=="en","LOGIN_EXPLICIT_OVERRIDES_DEVICE");
+   // Deliberate absent/unsupported preference fixture, never a production mutation.
+   var preference=typeof(Domino.Player.PlayerService).GetProperty("PreferredLocale");preference.SetValue(fixture.Player,null);var prior=changes;binding.Refresh();Need(changes==prior,"MISSING_PREFERENCE_PRESERVES_FALLBACK");
+   preference.SetValue(fixture.Player,"xx");binding.Refresh();Need(changes==prior,"UNSUPPORTED_PREFERENCE_PRESERVES_FALLBACK");
+  }
+  f=new Fake();using(var c=new ProfileEditController(f)){await c.Load();await c.Save();Need(f.Saves==0,"LANGUAGE_SAME_NO_WRITE");c.Draft.Language="es";c.Edited();Need(c.Dirty&&c.CanSave,"LANGUAGE_ONLY_DIRTY_SAVE");}
   Console.WriteLine("PROFILE_EDIT_CLIENT_CHECKS="+count+"_PASS");
  }
 }

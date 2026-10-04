@@ -12,13 +12,15 @@ namespace Domino.UI.AppShell
     {
         ProductionAuthRouter router;
         ProductionRoutingComposition composition;
+        PlayerLocaleBinding playerLocale;
+        Func<ProfileEditController> profileEditor;
         // One host-scoped identity/catalog projection shared by Menu and Home.
         public PlayerPresentationSource PlayerPresentation { get; private set; }
         VisualElement isolatedRoot;
         VisualElement Root=>isolatedRoot??GetComponent<UIDocument>().rootVisualElement;
 #if UNITY_EDITOR
-        public void BindIsolated(VisualElement root,ProductionAuthRouter forms,ProductionRoutingComposition routing,PlayerPresentationSource presentation=null)
-        {isolatedRoot=root;router=forms;composition=routing;PlayerPresentation=presentation;router.Changed+=Render;Render();}
+        public void BindIsolated(VisualElement root,ProductionAuthRouter forms,ProductionRoutingComposition routing,PlayerPresentationSource presentation=null,Domino.Player.PlayerService player=null,Func<Domino.Infrastructure.Api.OnboardingApiSession> sessions=null)
+        {isolatedRoot=root;router=forms;composition=routing;PlayerPresentation=presentation;if(player!=null)BindPlayer(player,sessions??routing.CreatePlayerApiSession);router.Changed+=Render;Render();}
 #endif
         ProductionWelcomeView welcome;
         ProductionAppShell shell;
@@ -26,8 +28,14 @@ namespace Domino.UI.AppShell
         ProductionOnboardingRoot onboarding;
         VisualElement routingStatus;
         void Start(){ApplicationServices.SessionReplaced+=Rebind;Bind();}
-        void Rebind(){linking?.Dispose();linking=null;protectionOverlay?.Dispose();protection?.Dispose();protectionOverlay=null;protection=null;PlayerPresentation?.Dispose();PlayerPresentation=null;logout=null;if(router!=null)router.Changed-=Render;onboarding?.Dispose();onboarding=null;routingStatus=null;welcome=null;shell=null;email=null;Bind();}
-        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;if(composition!=null&&ApplicationServices.Player!=null)PlayerPresentation=new PlayerPresentationSource(ApplicationServices.Player,composition.Router,()=>composition.Onboarding);router.Changed+=Render;Render();_ = router.RestoreAsync();}
+        void Rebind(){playerLocale?.Dispose();playerLocale=null;linking?.Dispose();linking=null;protectionOverlay?.Dispose();protection?.Dispose();protectionOverlay=null;protection=null;PlayerPresentation?.Dispose();PlayerPresentation=null;logout=null;if(router!=null)router.Changed-=Render;onboarding?.Dispose();onboarding=null;routingStatus=null;welcome=null;shell=null;email=null;Bind();}
+        void Bind(){router=ApplicationServices.AuthRouter;composition=ApplicationServices.Routing;if(router==null)return;if(composition!=null&&ApplicationServices.Player!=null){PlayerPresentation=new PlayerPresentationSource(ApplicationServices.Player,composition.Router,()=>composition.Onboarding);BindPlayer(ApplicationServices.Player,composition.CreatePlayerApiSession);}router.Changed+=Render;Render();_ = router.RestoreAsync();}
+        void BindPlayer(Domino.Player.PlayerService player,Func<Domino.Infrastructure.Api.OnboardingApiSession> sessions)
+        {
+            playerLocale?.Dispose();
+            playerLocale=new PlayerLocaleBinding(player,()=>Domino.UI.DominoLocalization.LocaleSelectionReady,Domino.UI.DominoLocalization.Select);
+            profileEditor=()=>new ProfileEditController(new ProfileEditApiSource(sessions(),player));
+        }
         void Render(){
             if(protectionOverlay?.Visible==true)return;
             var root=Root;root.style.flexGrow=1;
@@ -38,7 +46,7 @@ namespace Domino.UI.AppShell
             if(router.Route==ProductionAuthRoute.Loading||router.Route==ProductionAuthRoute.Error||router.Route==ProductionAuthRoute.UpdateRequired){
                 root.Clear();welcome=null;shell=null;email=null;routingStatus=new ProductionRoutingStatusView(router.Route,router.Message,()=>{_=router.RetryRoutingAsync();});root.Add(routingStatus);return;
             }
-            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(profileDataSource:new PlayerProfileDataSource(PlayerPresentation),signOut:RequestLogout,menuDataSource:new PlayerMenuDataSource(PlayerPresentation),homeDataSource:new PlayerHomeDataSource(PlayerPresentation),profileEditor:composition==null||isolatedRoot!=null?null:()=>new ProfileEditController(new ProfileEditApiSource(composition.CreatePlayerApiSession(),ApplicationServices.Player)));root.Add(shell);welcome=null;email=null;}}
+            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(profileDataSource:new PlayerProfileDataSource(PlayerPresentation),signOut:RequestLogout,menuDataSource:new PlayerMenuDataSource(PlayerPresentation),homeDataSource:new PlayerHomeDataSource(PlayerPresentation),profileEditor:profileEditor);root.Add(shell);welcome=null;email=null;}}
             else if(router.Route==ProductionAuthRoute.EmailEntry||router.Route==ProductionAuthRoute.Register||router.Route==ProductionAuthRoute.VerificationPending||router.Route==ProductionAuthRoute.EmailPlaceholder||router.Route==ProductionAuthRoute.EmailSignIn||router.Route==ProductionAuthRoute.ForgotPassword){
                 if(email==null||email.Route!=router.Route){root.Clear();welcome=null;shell=null;email=new ProductionEmailView(router.Route,router.NavigateEmail,(e,p,c)=>{_=router.RegisterAsync(e,p,c);},()=>{_=router.CheckVerificationAsync();},()=>{_=router.ResendVerificationAsync();},c=>{if(c)RequestLogout();},(e,p)=>{_=router.SignInEmailAsync(e,p);},e=>{_=router.ResetPasswordAsync(e);});root.Add(email);}
                 email.SetState(router.Busy,router.EmailState,router.Message,router.DisplayEmail,true,router.EmailError);
@@ -76,7 +84,7 @@ namespace Domino.UI.AppShell
             }
             _=protection.RequestAsync();
         }
-        void Update(){var root=GetComponent<UIDocument>().rootVisualElement;if(root.layout.width<=0||Screen.width<=0||Screen.height<=0)return;var safe=Screen.safeArea;float x=root.layout.width/Screen.width,y=root.layout.height/Screen.height;root.style.paddingLeft=safe.xMin*x;root.style.paddingRight=(Screen.width-safe.xMax)*x;root.style.paddingTop=(Screen.height-safe.yMax)*y;root.style.paddingBottom=safe.yMin*y;}
-        void OnDestroy(){linking?.Dispose();protectionOverlay?.Dispose();protection?.Dispose();PlayerPresentation?.Dispose();onboarding?.Dispose();if(router!=null)router.Changed-=Render;ApplicationServices.SessionReplaced-=Rebind;}
+        void Update(){playerLocale?.Refresh();var root=GetComponent<UIDocument>().rootVisualElement;if(root.layout.width<=0||Screen.width<=0||Screen.height<=0)return;var safe=Screen.safeArea;float x=root.layout.width/Screen.width,y=root.layout.height/Screen.height;root.style.paddingLeft=safe.xMin*x;root.style.paddingRight=(Screen.width-safe.xMax)*x;root.style.paddingTop=(Screen.height-safe.yMax)*y;root.style.paddingBottom=safe.yMin*y;}
+        void OnDestroy(){playerLocale?.Dispose();linking?.Dispose();protectionOverlay?.Dispose();protection?.Dispose();PlayerPresentation?.Dispose();onboarding?.Dispose();if(router!=null)router.Changed-=Render;ApplicationServices.SessionReplaced-=Rebind;}
     }
 }

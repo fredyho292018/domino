@@ -5,7 +5,7 @@ $base = '../../../DominoGame/Assets/_Domino/Scripts/'
 $files = @('Auth/*.cs','Identity/*.cs','Player/*.cs','Infrastructure/CancellableTask.cs',
     'Infrastructure/Firebase/IFirebaseClient.cs','Infrastructure/Firebase/FirebaseBootstrap.cs','Infrastructure/Firebase/FirebaseAuthService.cs',
     'Infrastructure/Api/*.cs','Online/OnlineMatchClient.cs','Online/OnlineTurnClock.cs','Realtime/*.cs','Replay/ReplayClient.cs','Replay/ReplayReducer.cs',
-    'UI/AppShell/OnboardingShellController.cs','UI/AppShell/BasicProfileController.cs','UI/AppShell/ProfileEditController.cs','UI/AppShell/ExperienceController.cs',
+    'UI/AppShell/OnboardingShellController.cs','UI/AppShell/BasicProfileController.cs','UI/AppShell/ProfileEditController.cs','UI/AppShell/PlayerLocaleBinding.cs','UI/AppShell/ExperienceController.cs',
     'UI/AppShell/CoachController.cs','UI/AppShell/ContactsController.cs','UI/AppShell/MembershipController.cs',
     'UI/AppShell/ProductionRoutingComposition.cs','UI/AppShell/PlayerPresentationSource.cs','UI/AppShell/MenuPlayerText.cs','UI/AppShell/HomePlayerText.cs','UI/AppShell/ProfilePlayerText.cs','UI/AppShell/Editor/PlayerHomeCatalogFixture.cs',
     'UI/AppShell/Editor/IsolatedOnboardingServer.cs','UI/AppShell/Editor/RoutingCompositionFixture.cs')
