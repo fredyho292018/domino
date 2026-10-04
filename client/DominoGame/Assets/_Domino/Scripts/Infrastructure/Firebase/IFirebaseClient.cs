@@ -3,6 +3,11 @@ using Domino.Identity;
 
 namespace Domino.Infrastructure.Firebase
 {
+    public interface IFirebaseCredentialLinkClient
+    {
+        Task<FirebaseAuthSessionSnapshot> LinkCurrentUserAsync(string expectedUid,string email,string password);
+        Task<FirebaseAuthSessionSnapshot> ReloadLinkSessionAsync(string expectedUid);
+    }
     public interface IFirebaseEmailAccessClient
     {
         Task<FirebaseAuthSessionSnapshot> SignInEmailAsync(string email,string password);

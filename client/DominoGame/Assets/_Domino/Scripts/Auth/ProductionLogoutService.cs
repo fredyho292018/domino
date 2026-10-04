@@ -30,20 +30,21 @@ namespace Domino.Identity
         }
         public void Cancel()
         { if(State==LogoutState.LoggingOut)return;confirmedUid=null;State=LogoutState.Idle;Message="";Changed?.Invoke(); }
-        public Task ConfirmAsync()
+        public Task ConfirmAsync(Func<bool> sessionStillCurrent = null)
         {
             if(State==LogoutState.LoggingOut)return operation;
             if(State!=LogoutState.Confirming)return Task.CompletedTask;
             var done=new TaskCompletionSource<bool>();operation=done.Task;
-            State=LogoutState.LoggingOut;Changed?.Invoke();_=Run(done);return operation;
+            State=LogoutState.LoggingOut;Changed?.Invoke();_=Run(done,sessionStillCurrent);return operation;
         }
-        async Task Run(TaskCompletionSource<bool> done)
+        async Task Run(TaskCompletionSource<bool> done,Func<bool> sessionStillCurrent)
         {
             try {
-                if(current()?.Uid!=confirmedUid)throw new InvalidOperationException();
+                if(current()?.Uid!=confirmedUid || sessionStillCurrent?.Invoke()==false)throw new InvalidOperationException();
                 await prepare();
-                if(current()?.Uid!=confirmedUid)throw new InvalidOperationException();
+                if(current()?.Uid!=confirmedUid || sessionStillCurrent?.Invoke()==false)throw new InvalidOperationException();
                 await stop();
+                if(current()?.Uid!=confirmedUid || sessionStillCurrent?.Invoke()==false)throw new InvalidOperationException();
                 clear();signOut();welcome();State=LogoutState.Success;Message="";
             } catch { State=LogoutState.Error;Message="Sign out could not finish safely. Close any active game or queue, then try again."; }
             finally { confirmedUid=null;Changed?.Invoke();done.TrySetResult(true); }

@@ -5,7 +5,7 @@ using Domino.Identity;
 
 namespace Domino.Infrastructure.Firebase
 {
-    public sealed class FirebaseAuthService : IPlayerIdentityService
+    public sealed class FirebaseAuthService : IPlayerIdentityService, IAccountLinkAuth
     {
         readonly FirebaseBootstrap bootstrap;
         readonly IFirebaseClient client;
@@ -16,6 +16,8 @@ namespace Domino.Infrastructure.Firebase
         Task<PlayerIdentity> initialization;
         Task emailOperation;
         string createdEmailUid;
+        string attemptedLinkUid;
+        public PlayerIdentity LinkedIdentity { get; private set; }
         public IdentityState State { get; private set; }
         public PlayerIdentity Current { get; private set; }
         public Exception Error { get; private set; }
@@ -45,7 +47,7 @@ namespace Domino.Infrastructure.Firebase
                 if(emailOperation!=null&&!emailOperation.IsCompleted)throw new EmailAuthException(EmailAuthError.SessionConflict);
                 if (initialization != null && !initialization.IsCompleted) throw new InvalidOperationException("Authentication is busy.");
                 if (!(client is IFirebaseSessionControl control)) throw new InvalidOperationException("Sign out unavailable.");
-                control.SignOut(); createdEmailUid=null; Current = null; initialization = null; Error = null; State = IdentityState.NotStarted;
+                control.SignOut(); createdEmailUid=null; attemptedLinkUid=null;LinkedIdentity=null;Current = null; initialization = null; Error = null; State = IdentityState.NotStarted;
             }
         }
         public FirebaseAuthSessionSnapshot Session => (client as IFirebaseEmailSessionClient)?.GetSession();
@@ -72,6 +74,28 @@ namespace Domino.Infrastructure.Firebase
                 createdEmailUid=session.Uid;Adopt(latest);
             });
         }
+        public Task LinkGuestEmailAsync(string email,string password,string confirmation)=>RunEmail(async()=>{
+            var validation=EmailAuthRules.Validate(email,password,confirmation);
+            if(validation!=EmailAuthError.None)throw new EmailAuthException(validation);
+            var owner=Current;var before=Session;
+            if(owner==null||before?.Uid!=owner.Uid||!(client is IFirebaseCredentialLinkClient links))throw new EmailAuthException(EmailAuthError.SessionConflict);
+            void CheckOwner(){lifetime.ThrowIfCancellationRequested();if(!ReferenceEquals(Current,owner)||Session?.Uid!=owner.Uid)throw new EmailAuthException(EmailAuthError.SessionConflict);}
+            // An uncertain prior request must be reconciled before a second credential operation.
+            if(attemptedLinkUid==owner.Uid){before=await links.ReloadLinkSessionAsync(owner.Uid);CheckOwner();}
+            if(!before.IsAnonymous&&before.IsPasswordProvider&&attemptedLinkUid==owner.Uid){CheckOwner();createdEmailUid=null;Adopt(before);LinkedIdentity=Current;return;}
+            if(!owner.IsAnonymous||!before.IsAnonymous||before.IsPasswordProvider)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            attemptedLinkUid=owner.Uid;
+            FirebaseAuthSessionSnapshot linked;
+            try{linked=await links.LinkCurrentUserAsync(owner.Uid,EmailAuthRules.Normalize(email),password);}
+            catch {
+                CheckOwner();var current=Session;
+                if(current!=null&&!current.IsAnonymous&&current.IsPasswordProvider){createdEmailUid=null;Adopt(current);LinkedIdentity=Current;return;}
+                throw;
+            }
+            CheckOwner();var latest=Session;
+            if(linked?.Uid!=owner.Uid||latest.IsAnonymous||!latest.IsPasswordProvider)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            createdEmailUid=null;Adopt(latest);LinkedIdentity=Current;
+        });
         public Task SignInEmailAsync(string email,string password)=>RunEmail(async()=>{
             var error=EmailAuthRules.ValidateSignIn(email,password);if(error!=EmailAuthError.None)throw new EmailAuthException(error);
             await bootstrap.InitializeAsync();lifetime.ThrowIfCancellationRequested();RequireNoExistingSession();
@@ -93,8 +117,13 @@ namespace Domino.Infrastructure.Firebase
             if(current!=null)throw new EmailAuthException(current.IsAnonymous?EmailAuthError.GuestUpgradeRequired:EmailAuthError.SessionConflict);
         }
         public Task ReloadEmailAsync()=>RunEmail(async()=>{
-            var before=RequireEmailSession();await EmailClient.ReloadEmailAsync(before.Uid);lifetime.ThrowIfCancellationRequested();
-            var after=RequireEmailSession();if(after.Uid!=before.Uid)throw new EmailAuthException(EmailAuthError.SessionConflict);Adopt(after);
+            var owner=Current;var before=RequireEmailSession();
+            await EmailClient.ReloadEmailAsync(before.Uid);lifetime.ThrowIfCancellationRequested();
+            var after=RequireEmailSession();
+            if(after.Uid!=before.Uid||!ReferenceEquals(Current,owner)||owner.IsAnonymous!=after.IsAnonymous)
+                throw new EmailAuthException(EmailAuthError.SessionConflict);
+            // Verification/provider metadata is read from Session. Reloading this same
+            // password user does not create a new identity object or invalidate its owner.
         });
         public Task SendVerificationAsync()=>RunEmail(async()=>{
             var before=RequireEmailSession();await EmailClient.SendVerificationAsync(before.Uid);lifetime.ThrowIfCancellationRequested();

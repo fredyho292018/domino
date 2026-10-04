@@ -28,6 +28,11 @@ namespace Domino.Identity
         readonly IPostAuthenticationPolicy policy;
         readonly IAuthenticatedDestination destination;
         bool destinationActive;
+        string linkedPlayerBootstrapUid;
+        PlayerSnapshot linkedPlayerBaseline;
+        long? linkedWalletCoins;
+        public string LinkedReconciliationFailure {get;private set;}="";
+        public bool IsLinkedVerification {get;private set;}
         readonly CancellationTokenSource lifetime = new CancellationTokenSource();
         Task operation;bool disposed;
         ProductionAuthRoute formRoute = ProductionAuthRoute.Loading;
@@ -108,9 +113,47 @@ namespace Domino.Identity
         });
         public Task CheckVerificationAsync()=>Execute(EmailOperationState.Checking,async()=>{
             await identity.ReloadEmailAsync();if(disposed)return;
+            await RefreshLinkedPlayerAsync();if(disposed)return;
             await ClassifyAndBootstrap(identity.Current,false);
             if(!disposed&&SessionKind==AuthSessionKind.EmailUnverified)Message="Your email is not verified yet. Check your inbox and try again.";
         });
+        public Task AcceptLinkedAccountAsync()=>Execute(EmailOperationState.Routing,async()=>{
+            var session=identity.Session;
+            if(session==null||session.IsAnonymous||!session.IsPasswordProvider||session.Uid!=identity.Current?.Uid||!ReferenceEquals(identity.Current,identity.LinkedIdentity))
+                throw new EmailAuthException(EmailAuthError.SessionConflict);
+            linkedPlayerBootstrapUid=session.Uid;
+            if(linkedPlayerBaseline==null){linkedPlayerBaseline=player.Player;linkedWalletCoins=player.Wallet?.Coins;}
+            IsLinkedVerification=true;destinationActive=false;
+            SessionKind=session.IsEmailVerified?AuthSessionKind.EmailVerified:AuthSessionKind.EmailUnverified;
+            Route=ProductionAuthRoute.VerificationPending;VerificationSent=false;Notify();
+            if(session.IsEmailVerified){await RefreshLinkedPlayerAsync();if(!disposed)await ClassifyAndBootstrap(identity.Current,false);return;}
+            await identity.SendVerificationAsync();if(disposed)return;VerificationSent=true;Message="Verification email sent.";
+        });
+        async Task RefreshLinkedPlayerAsync()
+        {
+            if(linkedPlayerBootstrapUid==null)return;
+            if(identity.Session==null)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            if(!identity.Session.IsEmailVerified)return;
+            var uid=linkedPlayerBootstrapUid;
+            if(identity.Current?.Uid!=uid||identity.Session?.Uid!=uid||player.Player?.Uid!=uid)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            var before=linkedPlayerBaseline??player.Player;
+            var coins=linkedPlayerBaseline==null?player.Wallet?.Coins:linkedWalletCoins;
+            LinkedReconciliationFailure="";
+            await identity.RefreshVerifiedTokenAsync();if(disposed)return;
+            await player.RefreshConfirmedAsync(lifetime.Token);if(disposed)return;
+            if(identity.Current?.Uid!=uid||player.Player?.Uid!=uid||!player.IsFresh)throw new EmailAuthException(EmailAuthError.Unknown);
+            var after=player.Player;
+            // The create transaction returns ServerAssigned createdAt as null. A later read
+            // may resolve that same immutable timestamp; absence is not a different identity.
+            // Keep the original baseline across failures so retry cannot accept a domain change.
+            LinkedReconciliationFailure=before.DisplayName!=after.DisplayName?"ALIAS_CHANGED":
+                before.CountryCode!=after.CountryCode?"COUNTRY_CHANGED":
+                before.CreatedAt.HasValue&&before.CreatedAt!=after.CreatedAt?"KNOWN_CREATED_AT_CHANGED":
+                coins!=player.Wallet?.Coins?"WALLET_CHANGED":"";
+            if(LinkedReconciliationFailure.Length!=0)
+                throw new EmailAuthException(EmailAuthError.SessionConflict);
+            linkedPlayerBootstrapUid=null;linkedPlayerBaseline=null;linkedWalletCoins=null;
+        }
         public Task ResendVerificationAsync()=>Execute(EmailOperationState.Resending,async()=>{
             await identity.SendVerificationAsync();if(disposed)return;VerificationSent=true;Message="Verification email sent.";
         });

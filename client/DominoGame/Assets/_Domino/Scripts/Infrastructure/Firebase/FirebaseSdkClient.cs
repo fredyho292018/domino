@@ -8,7 +8,7 @@ using global::Firebase.Auth;
 
 namespace Domino.Infrastructure.Firebase
 {
-    internal sealed class FirebaseSdkClient : IFirebaseClient, IAuthTokenProvider, IFirebaseSessionControl, IFirebaseEmailSessionClient, IFirebaseEmailAccessClient
+    internal sealed class FirebaseSdkClient : IFirebaseClient, IAuthTokenProvider, IFirebaseSessionControl, IFirebaseEmailSessionClient, IFirebaseEmailAccessClient, IFirebaseCredentialLinkClient
     {
         readonly Func<PlayerIdentity> expectedIdentity;
         public FirebaseSdkClient(Func<PlayerIdentity> expectedIdentity = null) { this.expectedIdentity = expectedIdentity; }
@@ -71,6 +71,31 @@ namespace Domino.Infrastructure.Firebase
             var user=Auth.CurrentUser;var session=GetSession();
             if(user==null||session.Uid!=expectedUid||session.IsAnonymous||!session.IsPasswordProvider)throw new EmailAuthException(EmailAuthError.SessionConflict);
             return user;
+        }
+        public async Task<FirebaseAuthSessionSnapshot> LinkCurrentUserAsync(string expectedUid,string email,string password)
+        {
+            var user=Auth.CurrentUser;
+            if(user==null||user.UserId!=expectedUid||!user.IsAnonymous)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            try {
+                using(var credential=EmailAuthProvider.GetCredential(email,password)) {
+                    var result=await user.LinkWithCredentialAsync(credential);
+                    var current=GetSession();
+                    if(result?.User?.UserId!=expectedUid||current?.Uid!=expectedUid||current.IsAnonymous||!current.IsPasswordProvider)
+                        throw new EmailAuthException(EmailAuthError.SessionConflict);
+                    return current;
+                }
+            } catch(Exception error) {
+                if(ErrorCode(error)==AuthError.CredentialAlreadyInUse||ErrorCode(error)==AuthError.AccountExistsWithDifferentCredentials)
+                    throw new EmailAuthException(EmailAuthError.EmailAlreadyInUse);
+                throw SafeEmailError(error);
+            }
+        }
+        public async Task<FirebaseAuthSessionSnapshot> ReloadLinkSessionAsync(string expectedUid)
+        {
+            var user=Auth.CurrentUser;
+            if(user==null||user.UserId!=expectedUid)throw new EmailAuthException(EmailAuthError.SessionConflict);
+            try{await user.ReloadAsync();var current=GetSession();if(current?.Uid!=expectedUid)throw new EmailAuthException(EmailAuthError.SessionConflict);return current;}
+            catch(Exception error){throw SafeEmailError(error);}
         }
         static AuthError? ErrorCode(Exception error)
         {

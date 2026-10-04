@@ -121,6 +121,27 @@ namespace Domino.UI.AppShell
         }
         void SetPasswordErrors(EmailAuthError error){this.Q<ProductionPasswordField>("EmailPasswordRow")?.SetError(error==EmailAuthError.WeakPassword||error==EmailAuthError.PasswordRequired||error==EmailAuthError.InvalidCredential);this.Q<ProductionPasswordField>("EmailConfirmationRow")?.SetError(error==EmailAuthError.PasswordMismatch);}
         public void ClearPasswords(){if(Password!=null)Password.SetValueWithoutNotify("");if(Confirmation!=null)Confirmation.SetValueWithoutNotify("");}
+        public void PresentLinkedVerification(string locale,EmailAuthError error=EmailAuthError.None,bool busy=false,string message="")
+        {
+            if(Route!=ProductionAuthRoute.VerificationPending)return;
+            bool es=locale=="es";
+            this.Q<Label>("EmailPageTitle").text=es?"Revisa tu correo":"Check your email";
+            this.Q<Label>("EmailSubtitle").text=es?"Abre el enlace de verificación de tu correo y vuelve aquí.":"Open the verification link in your inbox, then return here.";
+            this.Q<Button>("EmailVerified").text=es?"Ya lo he verificado":"I've Verified";
+            this.Q<Button>("EmailResend").text=es?"Reenviar correo":"Resend Email";
+            // This is a linked account, not a reversible registration or anonymous session.
+            this.Q<Button>("EmailAnother").text=es?"Cerrar sesión":"Sign Out";
+            this.Q<Button>("EmailConfirmCancel").text=es?"Cerrar sesión":"Sign Out";
+            this.Q<Button>("EmailKeepVerifying").text=es?"Seguir verificando":"Keep verifying";
+            confirmation.Q<Label>().text=es?"¿Cerrar esta sesión? Tu cuenta vinculada no se eliminará.":"End this session? Your linked account will not be deleted.";
+            if(busy)status.PresentSemantic(AuthStatusVariant.Loading,es?"Comprobando tu cuenta…":"Checking your account…");
+            else if(error!=EmailAuthError.None)status.PresentSemantic(AuthStatusVariant.Warning,
+                error==EmailAuthError.SessionConflict
+                    ?(es?"Tu método de acceso ya está vinculado. No pudimos confirmar que el perfil sigue siendo el mismo. Contacta con soporte.":"Your sign-in method is already linked. We could not confirm the same profile. Please contact support.")
+                    :(es?"Tu método de acceso ya está vinculado. No pudimos completar la verificación. Inténtalo de nuevo.":"Your sign-in method is already linked. We could not complete verification. Please try again."));
+            else if(message=="Verification email sent.")status.PresentSemantic(AuthStatusVariant.Success,es?"Correo de verificación enviado.":"Verification email sent.");
+            else status.PresentSemantic(AuthStatusVariant.Info,es?"Verifica tu correo y vuelve aquí para continuar.":"Verify your email, then return here to continue.");
+        }
         public void SetStatus(string text){status.Present(false,EmailOperationState.Idle,text);}
         public void SetState(bool busy,EmailOperationState state,string message,string email,bool cancelAllowed,EmailAuthError error=EmailAuthError.None){
             canCancel=cancelAllowed;SetPasswordErrors(error);
