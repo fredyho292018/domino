@@ -40,9 +40,11 @@ namespace Domino.UI.AppShell
         readonly Image[] icons = new Image[5];
         readonly Label[] labels = new Label[5];
         VisualElement detail;
+        readonly Func<ProfileEditController> profileEditor;
 
-        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null)
+        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null, Func<ProfileEditController> profileEditor=null)
         {
+            this.profileEditor=profileEditor;
             ProfileDataSource=profileDataSource??new PlayerProfileDataSource(null);
             name = "ProductionAppShell"; style.flexGrow = 1; style.minHeight = 0;
             style.backgroundColor = Theme.Colors.Background;
@@ -101,7 +103,9 @@ namespace Domino.UI.AppShell
             if(ActiveTab!=ShellTab.Menu || (HasSubpage && ActiveMenuDestination!=MenuDestination.Profile))return;
             CloseDetail();ActiveMenuDestination=MenuDestination.Profile;ActiveProfileSection=section;
             pages[(int)ActiveTab].style.display=DisplayStyle.None;
-            detail=new ProductionProfilePage(ProfileDataSource,section,Back,OpenProfileSection);PageHost.Add(detail);
+            detail=section==ProfileSection.EditProfile && profileEditor!=null
+                ? new ProductionProfileEditView(profileEditor(),DominoLocalization.Language,()=>OpenProfileSection(ProfileSection.Profile))
+                : new ProductionProfilePage(ProfileDataSource,section,Back,OpenProfileSection);PageHost.Add(detail);
         }
         void OpenSubpage(string pageTitle,MenuDestination? destination)
         {

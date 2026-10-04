@@ -33,6 +33,7 @@ namespace Domino.UI.AppShell
         void RouteChanged(){if(disposed||published==Router.Route)return;published=Router.Route;Changed?.Invoke();}
         public Task ResolveAsync()=>Router.ResolveAsync();
         public Task RetryAsync()=>Router.RetryAsync();
+        public OnboardingApiSession CreatePlayerApiSession()=>sessions();
         async Task<FirebaseAuthSessionSnapshot> IRoutingSessionSource.ResolveAsync(CancellationToken token)
         {
             var user=await auth.RestoreAsync();token.ThrowIfCancellationRequested();
