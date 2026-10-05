@@ -16,8 +16,9 @@ data class LimitValue(val unlimited: Boolean = false, val maximum: Int? = null) 
 }
 data class EntitlementGrant(val id: String, val source: EntitlementSource, val plan: Plan = Plan.PREMIUM,
     val status: GrantStatus = GrantStatus.ACTIVE, val validFrom: Instant, val validUntil: Instant,
-    val createdAt: Instant, val policyVersion: Long, val reason: String, val grantedBy: String) {
+    val createdAt: Instant, val policyVersion: Long, val reason: String, val grantedBy: String, val planBoundTrial: PlanBoundTrial? = null) {
     init { require(id.isNotBlank() && '/' !in id && plan == Plan.PREMIUM && validUntil > validFrom)
+        require(planBoundTrial==null || (source==EntitlementSource.PROMOTIONAL_TRIAL && planBoundTrial.trialStartedAt==validFrom && planBoundTrial.trialEndsAt==validUntil))
         require(reason.isNotBlank() && grantedBy.isNotBlank() && policyVersion > 0) }
 }
 data class EntitlementState(val revision: Long = 0, val trialConsumed: Boolean = false,
@@ -25,7 +26,7 @@ data class EntitlementState(val revision: Long = 0, val trialConsumed: Boolean =
 @org.springframework.boot.context.properties.ConfigurationProperties("domino.subscription")
 data class SubscriptionPolicy(val enabled: Boolean = true, val policyVersion: Long = 1,
     val promotionalTrialEnabled: Boolean = true, val promotionalTrialDays: Int = 7,
-    val trialRequiresLinkedAccount: Boolean = false,
+    val trialRequiresLinkedAccount: Boolean = false, val trialReminderBeforeEndDays: Int = 2,
     val freeFriendsMax: Int = 5, val premiumFriendsMax: Int = 100,
     val freeHistoryMax: Int = 10, val freeReplayMax: Int = 3,
     val freeFeatures: Set<EntitlementFeature> = FREE_FEATURES,
@@ -45,7 +46,7 @@ data class SubscriptionPolicy(val enabled: Boolean = true, val policyVersion: Lo
 data class EffectiveEntitlements(val plan: Plan, val sources: Set<EntitlementSource>, val status: String,
     val validUntil: Instant?, val trialActive: Boolean, val trialEndsAt: Instant?, val trialConsumed: Boolean,
     val features: Set<EntitlementFeature>, val limits: Map<EntitlementLimit, LimitValue>,
-    val policyVersion: Long, val revision: Long, val serverTime: Instant, val nextTransitionAt: Instant?)
+    val policyVersion: Long, val revision: Long, val serverTime: Instant, val nextTransitionAt: Instant?, val trial:TrialStateResponse?=null, val membershipPlan:Plan?=null)
 data class EntitlementSummary(val availability: String, val snapshot: EffectiveEntitlements? = null,
     val trialGranted: Boolean = false)
 class EntitlementFailure(val code: String, val feature: EntitlementFeature? = null, val currentPlan: Plan? = null,
@@ -60,14 +61,20 @@ object EntitlementResolver {
         var until = active.maxOfOrNull { it.validUntil }
         if (until != null) for (g in state.grants.filter { it.status == GrantStatus.ACTIVE }.sortedBy { it.validFrom })
             if (g.validFrom <= until!! && g.validUntil > until!!) until = g.validUntil
-        val features = if (premium) policy.premiumFeatures else policy.freeFeatures
+        val legacyPremium=active.any{it.planBoundTrial==null}
+        val bound=active.mapNotNull{it.planBoundTrial}
+        val features = (if (legacyPremium) policy.premiumFeatures else policy.freeFeatures + bound.flatMap{it.effectiveFeatures}).toSortedSet(compareBy{it.ordinal})
+        fun limit(key:EntitlementLimit,base:LimitValue):LimitValue {
+            val values=listOf(base)+bound.mapNotNull{it.effectiveLimits[key]}
+            return if(values.any{it.unlimited})LimitValue(true) else LimitValue(maximum=values.maxOf{it.maximum?:0})
+        }
         return EffectiveEntitlements(if(premium) Plan.PREMIUM else Plan.FREE, active.map { it.source }.toSet(),
             if(premium) "ACTIVE" else if(state.trialConsumed) "EXPIRED" else "FREE", until,
             active.any { it.source == EntitlementSource.PROMOTIONAL_TRIAL }, trial?.validUntil, state.trialConsumed,
-            features, mapOf(EntitlementLimit.FRIENDS_MAX to LimitValue(maximum=if(premium) policy.premiumFriendsMax else policy.freeFriendsMax),
-                EntitlementLimit.HISTORY_MAX to (if(EntitlementFeature.FULL_HISTORY in features) LimitValue(true) else LimitValue(maximum=policy.freeHistoryMax)),
-                EntitlementLimit.REPLAY_MAX to (if(EntitlementFeature.FULL_REPLAY in features) LimitValue(true) else LimitValue(maximum=policy.freeReplayMax))),
+            features, mapOf(EntitlementLimit.FRIENDS_MAX to limit(EntitlementLimit.FRIENDS_MAX,LimitValue(maximum=if(legacyPremium) policy.premiumFriendsMax else policy.freeFriendsMax)),
+                EntitlementLimit.HISTORY_MAX to limit(EntitlementLimit.HISTORY_MAX,if(legacyPremium && EntitlementFeature.FULL_HISTORY in features) LimitValue(true) else LimitValue(maximum=policy.freeHistoryMax)),
+                EntitlementLimit.REPLAY_MAX to limit(EntitlementLimit.REPLAY_MAX,if(legacyPremium && EntitlementFeature.FULL_REPLAY in features) LimitValue(true) else LimitValue(maximum=policy.freeReplayMax))),
             policy.policyVersion, state.revision, now,
-            state.grants.filter { it.status == GrantStatus.ACTIVE }.flatMap { listOf(it.validFrom,it.validUntil) }.filter { it > now }.minOrNull())
+            state.grants.filter { it.status == GrantStatus.ACTIVE }.flatMap { listOf(it.validFrom,it.validUntil) }.filter { it > now }.minOrNull(),PlanBoundTrials.response(trial,now),if(active.any{it.source!=EntitlementSource.PROMOTIONAL_TRIAL})Plan.PREMIUM else Plan.FREE)
     }
 }

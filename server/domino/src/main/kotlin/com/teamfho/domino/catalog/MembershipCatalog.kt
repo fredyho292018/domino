@@ -29,13 +29,16 @@ data class BillingProductMetadataResponse(val platform:MembershipPlatform,val pl
 data class MembershipPlanFeatureResponse(val featureKey:String,val included:Boolean,val quota:MembershipQuota?)
 data class MembershipPlanResponse(val key:String,val name:String,val description:String,val iconKey:String,val sortOrder:Int,val active:Boolean,
     val productKind:String,val features:List<MembershipPlanFeatureResponse>,val billingProducts:List<BillingProductMetadataResponse>)
-data class MembershipFeatureResponse(val key:String,val name:String,val description:String,val iconKey:String,val sortOrder:Int,val kind:MembershipFeatureKind)
+data class MembershipFeatureResponse(val key:String,val name:String,val description:String,val iconKey:String,val sortOrder:Int,val kind:MembershipFeatureKind,
+    val implementationStatus:com.teamfho.domino.entitlement.CapabilityImplementationStatus=com.teamfho.domino.entitlement.CommercialCapabilityImplementation.describe(key).implementationStatus,
+    val currentlyUsable:Boolean=false)
 data class MembershipTrialPresentation(val policyVersion:Int,val product:String,val commercialTrialEnabled:Boolean,val familyTrialEnabled:Boolean)
 data class MembershipFamilyPresentation(val minPlayers:Int,val maxPlayers:Int,val ownerIncluded:Boolean,val effectivePlanKey:String,val limitsPerPlayer:Boolean)
 data class MembershipCatalogResponse(val schemaVersion:Int,val catalogVersion:Int,val resolvedLocale:String,val defaultLocale:String,
     val supportedLocales:List<String>,val hierarchy:List<String>,val entitlementPolicyVersion:Int,val trialPolicyVersion:Int,
     val plans:List<MembershipPlanResponse>,val features:List<MembershipFeatureResponse>,val trialPresentation:MembershipTrialPresentation,
-    val familyPresentation:MembershipFamilyPresentation,val priceAuthority:String="APPLE_GOOGLE_STORE")
+    val familyPresentation:MembershipFamilyPresentation,val priceAuthority:String="APPLE_GOOGLE_STORE",
+    val pricing:MembershipPricingResponse?=null)
 
 object MembershipCatalogValidation {
     private val key=Regex("[A-Z][A-Z0-9_]{0,63}")

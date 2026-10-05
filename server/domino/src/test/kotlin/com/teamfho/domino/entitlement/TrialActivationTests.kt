@@ -12,6 +12,8 @@ import kotlin.test.*
 
 class TrialMemory:OnboardingProgressRepository {
     val docs=linkedMapOf<String,Map<String,Any>>("players/fixture" to mapOf("status" to "ACTIVE","accountType" to "GUEST"))
+    init { catalog() }
+    fun catalog(){docs["systemConfig/membershipCatalog"]=mapOf("publishedVersion" to 1);docs["membershipCatalogs/1"]=GameCatalogCodec.map(com.teamfho.domino.catalog.MembershipCatalogSeed.canonical())}
     @Synchronized override fun <T> transaction(action:(OnboardingProgressTransaction)->T):T {
         val writes=linkedMapOf<String,Map<String,Any>>()
         val result=action(object:OnboardingProgressTransaction {
@@ -24,7 +26,7 @@ class TrialMemory:OnboardingProgressRepository {
 class TrialActivationTests {
     val db=TrialMemory();val clock=EntitlementClock();val id=FirebaseIdentity("fixture",true)
     val service=TrialActivationService(db,clock=clock)
-    fun request(v:Long=1)=TrialActivationRequest(UUID.randomUUID().toString(),v)
+    fun request(v:Long=1)=TrialActivationRequest(UUID.randomUUID().toString(),v,"DIAMOND","YEARLY")
     fun state()=db.docs["players/fixture/entitlementState/current"]?.let{MatchCodec.read(it,EntitlementState::class.java)} ?: EntitlementState()
     fun policy(p:SubscriptionPolicy){db.docs["systemConfig/subscriptionPolicy"]=MatchCodec.map(p)}
     fun error(code:String,action:()->Unit){val before=GameCatalogCodec.json(db.docs);assertEquals(code,assertFailsWith<OnboardingFailure>{action()}.code);assertEquals(before,GameCatalogCodec.json(db.docs))}

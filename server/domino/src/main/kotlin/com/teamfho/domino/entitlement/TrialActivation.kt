@@ -8,10 +8,10 @@ import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
-data class TrialActivationRequest(val operationId:String,val expectedPolicyVersion:Long)
+data class TrialActivationRequest(val operationId:String,val expectedPolicyVersion:Long,val plan:String?=null,val billingPeriod:String?=null)
 enum class TrialActivationOutcome { ACTIVATED, ALREADY_ACTIVE }
-data class TrialActivationResponse(val operationId:String,val outcome:TrialActivationOutcome,val entitlements:EntitlementSummary)
-data class TrialEligibilityResponse(val state:String,val eligible:Boolean,val policyVersion:Long?,val periodDays:Int?,val activationMode:String="EXPLICIT")
+data class TrialActivationResponse(val operationId:String,val outcome:TrialActivationOutcome,val entitlements:EntitlementSummary,val trial:TrialStateResponse?=null)
+data class TrialEligibilityResponse(val state:String,val eligible:Boolean,val policyVersion:Long?,val periodDays:Int?,val activationMode:String="EXPLICIT",val trial:TrialStateResponse?=null,val reminderBeforeEndDays:Int?=null)
 
 // Shared buffered Firestore transaction adapter; no dependence on onboarding state or catalog.
 class TrialActivationService(private val repository:OnboardingProgressRepository,
@@ -59,7 +59,7 @@ class TrialActivationService(private val repository:OnboardingProgressRepository
                 !i.policy.enabled || !i.policy.promotionalTrialEnabled->"INELIGIBLE"
                 else->"NOT_STARTED"
             }
-            TrialEligibilityResponse(state,state=="NOT_STARTED",i.policy.policyVersion,i.policy.promotionalTrialDays)
+            TrialEligibilityResponse(state,state=="NOT_STARTED",i.policy.policyVersion,i.policy.promotionalTrialDays,trial=PlanBoundTrials.response(i.grant,now),reminderBeforeEndDays=i.policy.trialReminderBeforeEndDays)
         }
     } catch(e:OnboardingFailure) {
         if(e.status==403)TrialEligibilityResponse("INELIGIBLE",false,null,null) else TrialEligibilityResponse("UNKNOWN",false,null,null)
@@ -69,7 +69,10 @@ class TrialActivationService(private val repository:OnboardingProgressRepository
         OnboardingWriteAuthorization.check(id)
         val r=root(id)
         onboardingCheck(runCatching{UUID.fromString(request.operationId).toString()==request.operationId}.getOrDefault(false) && request.expectedPolicyVersion>0,"REQUEST_INVALID",400)
-        val hash=java.security.MessageDigest.getInstance("SHA-256").digest(("TRIAL_ACTIVATE\n"+GameCatalogCodec.semantic(request)).toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
+        // Preserve old receipt fingerprints; normalize ANNUAL to the existing catalog YEARLY key.
+        val canonical:Any=if(request.plan==null && request.billingPeriod==null)mapOf("operationId" to request.operationId,"expectedPolicyVersion" to request.expectedPolicyVersion)
+            else request.copy(billingPeriod=PlanBoundTrials.period(request.billingPeriod)?.name?:request.billingPeriod)
+        val hash=java.security.MessageDigest.getInstance("SHA-256").digest(("TRIAL_ACTIVATE\n"+GameCatalogCodec.semantic(canonical)).toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
         return repository.transaction {tx->
             val now=clock.instant();val receiptPath="$r/trialActivationReceipts/${request.operationId}"
             val receipt=tx.read(receiptPath)
@@ -86,22 +89,26 @@ class TrialActivationService(private val repository:OnboardingProgressRepository
             onboardingCheck(eligible(i,id),"TRIAL_NOT_ELIGIBLE",403)
             onboardingCheck(!paid(i,now),"TRIAL_NOT_APPLICABLE")
             val already=activeTrial(i,now)
+            if(already && (request.plan!=null || request.billingPeriod!=null)) {
+                onboardingCheck(i.grant?.planBoundTrial?.trialPlan==request.plan && i.grant?.planBoundTrial?.trialBillingPeriod==PlanBoundTrials.period(request.billingPeriod),"TRIAL_BINDING_CONFLICT")
+            }
             val next:EntitlementState
             if(already) {
                 next=effective(i).let{if(it!=i.state)it.copy(revision=i.state.revision+1) else it}
             } else {
                 onboardingCheck(!i.state.trialConsumed && i.marker==null && i.grant==null,"TRIAL_ALREADY_CONSUMED")
                 onboardingCheck(i.policy.enabled && i.policy.promotionalTrialEnabled,"TRIAL_DISABLED",403)
+                val binding=PlanBoundTrials.create(tx,request,i.policy,now)
                 val grant=EntitlementGrant(grantId,EntitlementSource.PROMOTIONAL_TRIAL,validFrom=now,
                     validUntil=now.plusSeconds(i.policy.promotionalTrialDays*86400L),createdAt=now,policyVersion=i.policy.policyVersion,
-                    reason="WELCOME_PROMOTION",grantedBy="explicit-activation")
+                    reason="WELCOME_PROMOTION",grantedBy="explicit-activation",planBoundTrial=binding)
                 next=i.state.copy(revision=i.state.revision+1,trialConsumed=true,grants=i.state.grants+grant)
                 tx.write("$r/entitlementGrants/$grantId",MatchCodec.map(grant))
                 tx.write("$r/promotions/$grantId",mapOf("trialConsumed" to true,"grantId" to grantId,"trialGrantedAt" to grant.validFrom.toString(),"trialEndsAt" to grant.validUntil.toString()))
                 tx.write("$r/entitlementAudit/TRIAL_GRANTED",mapOf("type" to "TRIAL_GRANTED","at" to stamp(now),"grantId" to grantId,"operationId" to request.operationId,"policyVersion" to i.policy.policyVersion))
             }
             val result=TrialActivationResponse(request.operationId,if(already)TrialActivationOutcome.ALREADY_ACTIVE else TrialActivationOutcome.ACTIVATED,
-                EntitlementSummary("AVAILABLE",EntitlementResolver.resolve(next,i.policy,now),!already))
+                EntitlementSummary("AVAILABLE",EntitlementResolver.resolve(next,i.policy,now),!already),PlanBoundTrials.response(next.grants.firstOrNull{it.id==grantId},now))
             if(next!=i.state)tx.write("$r/entitlementState/current",MatchCodec.map(next))
             tx.write(receiptPath,mapOf("operationType" to "TRIAL_ACTIVATE","canonicalRequestHash" to hash,"eligibilityGroupKey" to "INITIAL_PREMIUM",
                 "grantId" to grantId,"outcome" to result.outcome.name,"responseSnapshot" to GameCatalogCodec.map(result),"responseSchemaVersion" to 1,

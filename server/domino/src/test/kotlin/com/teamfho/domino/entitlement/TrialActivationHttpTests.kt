@@ -33,8 +33,8 @@ class TrialActivationHttpTests {
     @Autowired lateinit var mvc:MockMvc
     @Autowired lateinit var db:TrialMemory
     @Autowired lateinit var entitlements:EntitlementService
-    @BeforeEach fun setup(){db.docs.clear();db.docs["players/verified-guest"]=mapOf("status" to "ACTIVE","accountType" to "GUEST");entitlements.invalidate("verified-guest")}
-    private fun payload()="""{"operationId":"${UUID.randomUUID()}","expectedPolicyVersion":1}"""
+    @BeforeEach fun setup(){db.docs.clear();db.catalog();db.docs["players/verified-guest"]=mapOf("status" to "ACTIVE","accountType" to "GUEST");entitlements.invalidate("verified-guest")}
+    private fun payload()="""{"operationId":"${UUID.randomUUID()}","expectedPolicyVersion":1,"plan":"DIAMOND","billingPeriod":"YEARLY"}"""
     private fun activate(body:String)=mvc.perform(post("/api/v1/player/trial/activate").header("Authorization","Bearer valid-guest")
         .header("X-Trial-Activation-Contract","1").contentType("application/json").content(body))
     @Test fun `unauthenticated activation rejected`() {mvc.perform(post("/api/v1/player/trial/activate").contentType("application/json").content(payload())).andExpect(status().isUnauthorized)}
@@ -50,7 +50,7 @@ class TrialActivationHttpTests {
             .andExpect(jsonPath("$.entitlements.snapshot.plan").value("FREE"))
             .andExpect(jsonPath("$.capabilities.trialActivationMode").value("EXPLICIT"))
             .andExpect(jsonPath("$.trialEligibility.eligible").value(true))}
-        assertEquals(setOf("players/verified-guest"),db.docs.keys)
+        assertEquals(setOf("players/verified-guest","systemConfig/membershipCatalog","membershipCatalogs/1"),db.docs.keys)
     }
     @Test fun `activation response receipt and current entitlement refresh`() {
         val body=payload();val first=activate(body).andExpect(status().isOk).andExpect(jsonPath("$.outcome").value("ACTIVATED"))
@@ -61,7 +61,7 @@ class TrialActivationHttpTests {
     }
     @Test fun `extra fields coercions and oversized input rejected without writes`() {
         val before=db.docs.toMap()
-        for(field in listOf("uid","playerId","duration","trialStartedAt","trialEndsAt","features","plan","trialConsumed")) {
+        for(field in listOf("uid","playerId","duration","trialStartedAt","trialEndsAt","reminderAt","firstChargeAt","features","trialConsumed")) {
             activate(payload().dropLast(1)+",\"$field\":\"untrusted\"}").andExpect(status().isBadRequest)
         }
         activate(payload().replace(":1",":\"1\"")).andExpect(status().isBadRequest)

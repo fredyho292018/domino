@@ -433,7 +433,85 @@
         "description": "2–5 players, including the owner, with Diamond-equivalent benefits.",
         "iconKey": "icon_premium_family"
       }
-    ]
+    ],
+    "pricing": {
+      "offerVersion": 1,
+      "catalogVersion": 1,
+      "market": "US",
+      "status": "AVAILABLE",
+      "authority": "CONFIGURED_COMMERCIAL_OFFER",
+      "purchasesAvailable": false,
+      "displayPricePrecedence": [
+        "STORE_PRICE_IF_AUTHORITATIVE",
+        "CONFIGURED_COMMERCIAL_OFFER"
+      ],
+      "offers": [
+        {
+          "planKey": "GOLD",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 699,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "GOLD",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 4999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "PLATINUM",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 1099,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "PLATINUM",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 7999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "DIAMOND",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 1699,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "DIAMOND",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 11999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "FRIENDS_AND_FAMILY",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 2799,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "FRIENDS_AND_FAMILY",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 19900,
+          "currencyCode": "USD",
+          "active": true
+        }
+      ]
+    }
   },
   "es": {
     "schemaVersion": 1,
@@ -869,6 +947,84 @@
         "description": "De 2 a 5 jugadores, incluido el titular, con beneficios equivalentes a Diamond.",
         "iconKey": "icon_premium_family"
       }
-    ]
+    ],
+    "pricing": {
+      "offerVersion": 1,
+      "catalogVersion": 1,
+      "market": "US",
+      "status": "AVAILABLE",
+      "authority": "CONFIGURED_COMMERCIAL_OFFER",
+      "purchasesAvailable": false,
+      "displayPricePrecedence": [
+        "STORE_PRICE_IF_AUTHORITATIVE",
+        "CONFIGURED_COMMERCIAL_OFFER"
+      ],
+      "offers": [
+        {
+          "planKey": "GOLD",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 699,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "GOLD",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 4999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "PLATINUM",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 1099,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "PLATINUM",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 7999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "DIAMOND",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 1699,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "DIAMOND",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 11999,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "FRIENDS_AND_FAMILY",
+          "billingPeriod": "MONTHLY",
+          "market": "US",
+          "amountMinorUnits": 2799,
+          "currencyCode": "USD",
+          "active": true
+        },
+        {
+          "planKey": "FRIENDS_AND_FAMILY",
+          "billingPeriod": "YEARLY",
+          "market": "US",
+          "amountMinorUnits": 19900,
+          "currencyCode": "USD",
+          "active": true
+        }
+      ]
+    }
   }
 }

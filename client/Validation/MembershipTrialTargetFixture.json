@@ -1,0 +1,70 @@
+{
+  "authority": "ISOLATED_TARGET_CONTRACT_NOT_BACKEND",
+  "membershipPlan": "FREE",
+  "selectedPlan": "DIAMOND",
+  "selectedBillingPeriod": "YEARLY",
+  "trialPlan": "DIAMOND",
+  "trialBillingPeriod": "YEARLY",
+  "durationDays": 7,
+  "reminderBeforeEndDays": 2,
+  "trialStartedAt": "2026-10-04T12:00:00Z",
+  "trialEndsAt": "2026-10-11T12:00:00Z",
+  "reminderAt": "2026-10-09T12:00:00Z",
+  "chargeTodayMinorUnits": 0,
+  "currency": "USD",
+  "storeProductId": null,
+  "postTrialPrice": null,
+  "billingAuthorityConfirmed": false,
+  "reminderDeliveryImplemented": false,
+  "trial": {
+    "trialPlan": "DIAMOND",
+    "trialStatus": "ACTIVE",
+    "trialBillingPeriod": "YEARLY",
+    "legacy": false,
+    "reminderAt": "2026-10-09T12:00:00Z",
+    "commercialPlanBenefits": [
+      {
+        "implementationStatus": "NOT_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "GAME_REVIEW"
+      },
+      {
+        "implementationStatus": "NOT_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "MOVE_EXPLANATIONS"
+      },
+      {
+        "implementationStatus": "PARTIALLY_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "ADVANCED_STATS"
+      },
+      {
+        "implementationStatus": "NOT_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "PUZZLES"
+      },
+      {
+        "implementationStatus": "NOT_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "LESSONS"
+      },
+      {
+        "implementationStatus": "NOT_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "COACH_GAMES"
+      },
+      {
+        "implementationStatus": "PARTIALLY_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "BOTS"
+      },
+      {
+        "implementationStatus": "PARTIALLY_IMPLEMENTED",
+        "currentlyUsable": false,
+        "key": "NO_ADS"
+      }
+    ],
+    "trialEndsAt": "2026-10-11T12:00:00Z",
+    "trialStartedAt": "2026-10-04T12:00:00Z"
+  }
+}

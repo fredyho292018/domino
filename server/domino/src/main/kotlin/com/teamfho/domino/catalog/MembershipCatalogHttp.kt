@@ -10,14 +10,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
 class MembershipCatalogFailure(val status:Int,val code:String):RuntimeException(code)
-class MembershipCatalogService(private val repository:MembershipCatalogRepository) {
-    fun read(locale:String?,version:Int?):MembershipCatalogResponse {
+class MembershipCatalogService(private val repository:MembershipCatalogRepository,
+    private val offers:MembershipCommercialOfferRepository=MissingMembershipCommercialOffers) {
+    fun read(locale:String?,version:Int?,market:String?=null):MembershipCatalogResponse {
         if(version!=null && version<=0)throw MembershipCatalogFailure(400,"MEMBERSHIP_VERSION_INVALID")
         try {
             val selected=version ?: repository.currentVersion() ?: throw MembershipCatalogFailure(404,"MEMBERSHIP_CATALOG_NOT_FOUND")
             val p=repository.read(selected) ?: throw MembershipCatalogFailure(404,"MEMBERSHIP_CATALOG_NOT_FOUND")
             require(p.catalogVersion==selected)
-            return MembershipCatalogLocalization.localize(p,locale,historical=version!=null)
+            val pricing=try { MembershipCommercialOfferResolution.resolve(offers.current(),p,market) }
+                catch(e:Exception) { if(e is InterruptedException)Thread.currentThread().interrupt();MembershipPricingResponse(null,p.catalogVersion,market,"UNAVAILABLE") }
+            return MembershipCatalogLocalization.localize(p,locale,historical=version!=null).copy(pricing=pricing)
         } catch(e:MembershipCatalogFailure){throw e}
         catch(e:Exception){if(e is InterruptedException)Thread.currentThread().interrupt();throw MembershipCatalogFailure(503,"MEMBERSHIP_CATALOG_UNAVAILABLE")}
     }
@@ -30,7 +33,9 @@ class MembershipCatalogConfiguration {
             override fun read(version:Int):MembershipCatalogPublication?=error("STORAGE_UNAVAILABLE")
             override fun publish(publication:MembershipCatalogPublication){error("STORAGE_UNAVAILABLE")}
         }
-    @Bean fun membershipCatalogService(repository:MembershipCatalogRepository)=MembershipCatalogService(repository)
+    @Bean fun membershipCommercialOfferRepository(db:ObjectProvider<Firestore>):MembershipCommercialOfferRepository =
+        db.ifAvailable?.let{FirestoreMembershipCommercialOfferRepository(it)} ?: MissingMembershipCommercialOffers
+    @Bean fun membershipCatalogService(repository:MembershipCatalogRepository,offers:MembershipCommercialOfferRepository)=MembershipCatalogService(repository,offers)
 }
 @RestController
 class MembershipCatalogController(private val service:MembershipCatalogService,private val access:OnboardingCatalogAccess) {
@@ -41,8 +46,11 @@ class MembershipCatalogController(private val service:MembershipCatalogService,p
         @RequestParam(required=false) version:Int?,request:jakarta.servlet.http.HttpServletRequest):ResponseEntity<*> {
         try {
             access.check(identity)
-            val r=service.read(locale,version)
-            val etag="\"membership/catalog-${r.catalogVersion}-${r.resolvedLocale}-${if(version==null)"active" else "historical"}\""
+            val market=request.getParameter("market")
+            if(market!=null && !Regex("[A-Z]{2}").matches(market))return failure(400,"MEMBERSHIP_MARKET_INVALID",request)
+            val r=service.read(locale,version,market)
+            val priceTag=r.pricing?.let{"-${it.offerVersion ?: 0}-${it.market ?: "none"}-${it.status}"} ?: ""
+            val etag="\"membership/catalog-${r.catalogVersion}-${r.resolvedLocale}-${if(version==null)"active" else "historical"}$priceTag\""
             val cache="private, max-age=${if(version==null)300 else 86400}"
             return if(request.getHeader("If-None-Match")==etag)ResponseEntity.status(304).header("ETag",etag).header("Cache-Control",cache).build<Void>()
                 else ResponseEntity.ok().header("ETag",etag).header("Cache-Control",cache).body(r)

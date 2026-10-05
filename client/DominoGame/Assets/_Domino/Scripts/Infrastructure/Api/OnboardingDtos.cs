@@ -39,12 +39,22 @@ namespace Domino.Infrastructure.Api
     [Serializable] public sealed class CoachDto { public string key, name, shortDescription, description; public CoachAvatarDto avatar; public bool selectable; public int sortOrder; }
     [Serializable] public sealed class CoachAvatarDto { public string key, storagePath; public int assetVersion; }
     [Serializable] public sealed class MembershipCatalogDto {
+        public MembershipPricingDto pricing;
         public int schemaVersion, catalogVersion, entitlementPolicyVersion, trialPolicyVersion; public string resolvedLocale, defaultLocale, priceAuthority;
         public string[] supportedLocales, hierarchy; public MembershipPlanDto[] plans; public MembershipFeatureDto[] features;
         public MembershipTrialDto trialPresentation; public MembershipFamilyDto familyPresentation;
     }
+    [Serializable] public sealed class MembershipPricingDto {
+        public int? offerVersion; public int catalogVersion;
+        public string market, status, authority; public bool purchasesAvailable;
+        public CommercialOfferDto[] offers; public string[] displayPricePrecedence;
+    }
+    [Serializable] public sealed class CommercialOfferDto {
+        public string planKey, billingPeriod, market, currencyCode;
+        public long? amountMinorUnits; public bool active;
+    }
     [Serializable] public sealed class MembershipPlanDto { public string key, name, description, iconKey, productKind; public int sortOrder; public bool active; public MembershipPlanFeatureDto[] features; public BillingProductDto[] billingProducts; }
-    [Serializable] public sealed class MembershipFeatureDto { public string key, name, description, iconKey, kind; public int sortOrder; }
+    [Serializable] public sealed class MembershipFeatureDto { public string key, name, description, iconKey, kind, implementationStatus; public bool currentlyUsable; public int sortOrder; }
     [Serializable] public sealed class MembershipPlanFeatureDto { public string featureKey; public bool included; public MembershipQuotaDto quota; }
     [Serializable] public sealed class MembershipQuotaDto { public bool unlimited; public int? maximum; }
     [Serializable] public sealed class BillingProductDto {
@@ -53,6 +63,6 @@ namespace Domino.Infrastructure.Api
     }
     [Serializable] public sealed class MembershipTrialDto { public int policyVersion; public string product; public bool commercialTrialEnabled, familyTrialEnabled; }
     [Serializable] public sealed class MembershipFamilyDto { public int minPlayers, maxPlayers; public bool ownerIncluded, limitsPerPlayer; public string effectivePlanKey; }
-    [Serializable] public sealed class TrialActivationRequestDto { public string operationId; public long expectedPolicyVersion; }
-    [Serializable] public sealed class TrialActivationResponseDto { public string operationId, outcome; public EntitlementSummaryDto entitlements; }
+    [Serializable] public sealed class TrialActivationRequestDto { public string operationId, plan, billingPeriod; public long expectedPolicyVersion; }
+    [Serializable] public sealed class TrialActivationResponseDto { public string operationId, outcome; public EntitlementSummaryDto entitlements; public TrialStateDto trial; }
 }

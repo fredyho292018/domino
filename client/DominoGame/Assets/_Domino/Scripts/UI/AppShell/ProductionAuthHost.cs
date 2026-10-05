@@ -14,6 +14,7 @@ namespace Domino.UI.AppShell
         ProductionRoutingComposition composition;
         PlayerLocaleBinding playerLocale;
         Func<ProfileEditController> profileEditor;
+        Func<AppMembershipController> membership;
         // One host-scoped identity/catalog projection shared by Menu and Home.
         public PlayerPresentationSource PlayerPresentation { get; private set; }
         VisualElement isolatedRoot;
@@ -35,6 +36,7 @@ namespace Domino.UI.AppShell
             playerLocale?.Dispose();
             playerLocale=new PlayerLocaleBinding(player,()=>Domino.UI.DominoLocalization.LocaleSelectionReady,Domino.UI.DominoLocalization.Select);
             profileEditor=()=>new ProfileEditController(new ProfileEditApiSource(sessions(),player));
+            membership=()=>new AppMembershipController(new AppMembershipApiSource(sessions(),player));
         }
         void Render(){
             if(protectionOverlay?.Visible==true)return;
@@ -46,7 +48,7 @@ namespace Domino.UI.AppShell
             if(router.Route==ProductionAuthRoute.Loading||router.Route==ProductionAuthRoute.Error||router.Route==ProductionAuthRoute.UpdateRequired){
                 root.Clear();welcome=null;shell=null;email=null;routingStatus=new ProductionRoutingStatusView(router.Route,router.Message,()=>{_=router.RetryRoutingAsync();});root.Add(routingStatus);return;
             }
-            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(profileDataSource:new PlayerProfileDataSource(PlayerPresentation),signOut:RequestLogout,menuDataSource:new PlayerMenuDataSource(PlayerPresentation),homeDataSource:new PlayerHomeDataSource(PlayerPresentation),profileEditor:profileEditor);root.Add(shell);welcome=null;email=null;}}
+            if(router.Route==ProductionAuthRoute.AppShell){if(shell==null){root.Clear();shell=new ProductionAppShell(profileDataSource:new PlayerProfileDataSource(PlayerPresentation),signOut:RequestLogout,menuDataSource:new PlayerMenuDataSource(PlayerPresentation),homeDataSource:new PlayerHomeDataSource(PlayerPresentation),profileEditor:profileEditor,membership:membership);root.Add(shell);welcome=null;email=null;}}
             else if(router.Route==ProductionAuthRoute.EmailEntry||router.Route==ProductionAuthRoute.Register||router.Route==ProductionAuthRoute.VerificationPending||router.Route==ProductionAuthRoute.EmailPlaceholder||router.Route==ProductionAuthRoute.EmailSignIn||router.Route==ProductionAuthRoute.ForgotPassword){
                 if(email==null||email.Route!=router.Route){root.Clear();welcome=null;shell=null;email=new ProductionEmailView(router.Route,router.NavigateEmail,(e,p,c)=>{_=router.RegisterAsync(e,p,c);},()=>{_=router.CheckVerificationAsync();},()=>{_=router.ResendVerificationAsync();},c=>{if(c)RequestLogout();},(e,p)=>{_=router.SignInEmailAsync(e,p);},e=>{_=router.ResetPasswordAsync(e);});root.Add(email);}
                 email.SetState(router.Busy,router.EmailState,router.Message,router.DisplayEmail,true,router.EmailError);

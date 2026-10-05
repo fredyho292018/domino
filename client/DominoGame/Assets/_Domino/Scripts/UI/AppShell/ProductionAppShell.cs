@@ -41,10 +41,11 @@ namespace Domino.UI.AppShell
         readonly Label[] labels = new Label[5];
         VisualElement detail;
         readonly Func<ProfileEditController> profileEditor;
+        readonly Func<AppMembershipController> membership;
 
-        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null, Func<ProfileEditController> profileEditor=null)
+        public ProductionAppShell(IProfileDataSource profileDataSource=null, Action signOut=null, IMenuDataSource menuDataSource=null, IHomeDataSource homeDataSource=null, Func<ProfileEditController> profileEditor=null, Func<AppMembershipController> membership=null)
         {
-            this.profileEditor=profileEditor;
+            this.profileEditor=profileEditor;this.membership=membership;
             ProfileDataSource=profileDataSource??new PlayerProfileDataSource(null);
             name = "ProductionAppShell"; style.flexGrow = 1; style.minHeight = 0;
             style.backgroundColor = Theme.Colors.Background;
@@ -100,6 +101,11 @@ namespace Domino.UI.AppShell
         {
             if(ActiveTab!=ShellTab.Menu)return;
             if(destination==MenuDestination.Profile){if(!HasSubpage && ActiveTab==ShellTab.Menu)OpenProfileSection(ProfileSection.Profile);return;}
+            if(destination==MenuDestination.Membership){
+                if(HasSubpage)return;
+                ActiveMenuDestination=destination;pages[(int)ActiveTab].style.display=DisplayStyle.None;
+                detail=new AppMembershipPage(membership?.Invoke()??new AppMembershipController(null),Back);PageHost.Add(detail);return;
+            }
             OpenSubpage(ProductionMenuPage.Title(destination),destination);
         }
         public void OpenProfileSection(ProfileSection section)

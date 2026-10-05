@@ -32,7 +32,7 @@ class TrialActivationFirestoreTests {
             ApiFutures.immediateFuture(result)
         }
         val service=TrialActivationService(FirestoreOnboardingProgressRepository(db),clock=clock)
-        val id=FirebaseIdentity("fixture",true);val request=TrialActivationRequest(UUID.randomUUID().toString(),1)
+        val id=FirebaseIdentity("fixture",true);val request=TrialActivationRequest(UUID.randomUUID().toString(),1,"DIAMOND","YEARLY")
         val first=service.activate(id,request)
         assertEquals(5,traces.last().count{it.startsWith("write:")})
         assertTrue(traces.last().contains("read:systemConfig/subscriptionPolicy"))

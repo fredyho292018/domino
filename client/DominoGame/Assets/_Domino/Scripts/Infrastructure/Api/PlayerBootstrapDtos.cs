@@ -4,7 +4,13 @@ namespace Domino.Infrastructure.Api
 {
     [Serializable] public sealed class PlayerBootstrapRequestDto { public string language; }
     [Serializable] public sealed class PlayerBootstrapResponseDto { public PlayerResponseDto player; public WalletResponseDto wallet; public EntitlementSummaryDto entitlements; public TrialEligibilityDto trialEligibility; public System.Collections.Generic.Dictionary<string,string> capabilities; }
-    [Serializable] public sealed class TrialEligibilityDto { public string state, activationMode; public bool eligible; public long? policyVersion; public int? periodDays; }
+    [Serializable] public sealed class TrialEligibilityDto { public string state, activationMode; public bool eligible; public long? policyVersion; public int? periodDays, reminderBeforeEndDays; public TrialStateDto trial; }
+    [Serializable] public sealed class CommercialBenefitDto { public string key, implementationStatus; public bool currentlyUsable; }
+    [Serializable] public sealed class TrialStateDto {
+        public string trialStatus, trialPlan, trialBillingPeriod, trialStartedAt, trialEndsAt, reminderAt;
+        public bool legacy;
+        public CommercialBenefitDto[] commercialPlanBenefits;
+    }
     [Serializable] public sealed class EntitlementSummaryDto { public string availability; public EffectiveEntitlementsDto snapshot; public bool trialGranted; }
     [Serializable] public sealed class EffectiveEntitlementsDto {
         public string plan, status, validUntil, trialEndsAt, serverTime, nextTransitionAt;
@@ -12,6 +18,8 @@ namespace Domino.Infrastructure.Api
         public bool trialActive, trialConsumed;
         public long policyVersion, revision;
         public EntitlementLimitsDto limits;
+        public string membershipPlan;
+        public TrialStateDto trial;
     }
     [Serializable] public sealed class EntitlementLimitsDto { public EntitlementLimitDto FRIENDS_MAX, HISTORY_MAX, REPLAY_MAX; }
     [Serializable] public sealed class EntitlementLimitDto { public bool unlimited; public int maximum; }

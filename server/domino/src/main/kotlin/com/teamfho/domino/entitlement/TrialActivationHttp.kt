@@ -18,7 +18,9 @@ class TrialActivationController(private val entitlements:EntitlementService) {
         onboardingCheck(bytes.size<=16384,"REQUEST_INVALID",400)
         val body=try {
             val tree=GameCatalogCodec.mapper.readTree(bytes)
-            require(tree.isObject && tree.size()==2 && tree.get("operationId")?.isString==true && tree.get("expectedPolicyVersion")?.isIntegralNumber==true)
+            require(tree.isObject && tree.get("operationId")?.isString==true && tree.get("expectedPolicyVersion")?.isIntegralNumber==true)
+            require(tree.properties().map{it.key}.toSet() in setOf(setOf("operationId","expectedPolicyVersion"),setOf("operationId","expectedPolicyVersion","plan","billingPeriod")))
+            if(tree.size()==4)require(tree.get("plan")?.isString==true && tree.get("billingPeriod")?.isString==true)
             GameCatalogCodec.mapper.readValue(bytes,TrialActivationRequest::class.java)
         } catch(_:Exception){throw OnboardingFailure("REQUEST_INVALID",400)}
         return ResponseEntity.ok().header("Cache-Control","no-store").body(entitlements.activateTrial(identity,body))
