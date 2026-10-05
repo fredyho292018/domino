@@ -1,6 +1,9 @@
 package com.teamfho.domino.entitlement
 
 import com.google.cloud.firestore.*
+import com.teamfho.domino.catalog.FirestoreMembershipCatalogRepository
+import com.teamfho.domino.catalog.MembershipCatalogSeed
+import com.teamfho.domino.catalog.MembershipBillingPeriod
 import com.teamfho.domino.player.*
 import com.teamfho.domino.security.FirebaseIdentity
 import org.junit.jupiter.api.Tag
@@ -20,12 +23,27 @@ class EntitlementEmulatorTests {
     @Test fun concurrentActivation() = database().use { db ->
         val id=FirebaseIdentity("trial-fixture-"+UUID.randomUUID(),true);val clock=EntitlementClock()
         com.teamfho.domino.player.ensureEmulatorPlayer(db,id,clock)
+        FirestoreMembershipCatalogRepository(db).publish(MembershipCatalogSeed.canonical())
         val service=TrialActivationService(FirestoreOnboardingProgressRepository(db),clock=clock)
         val pool=Executors.newFixedThreadPool(6)
         try {
-            val results=pool.invokeAll((1..12).map{Callable{service.activate(id,TrialActivationRequest(UUID.randomUUID().toString(),1))}}).map{it.get()}
+            val results=pool.invokeAll((1..12).map{Callable{service.activate(id,TrialActivationRequest(UUID.randomUUID().toString(),1,"DIAMOND","YEARLY"))}}).map{it.get()}
             assertEquals(1,results.count{it.outcome==TrialActivationOutcome.ACTIVATED})
+            assertEquals(11,results.count{it.outcome==TrialActivationOutcome.ALREADY_ACTIVE})
             assertEquals(1,db.collection("players/${id.uid}/entitlementGrants").get().get().size())
+            val state=FirestoreEntitlements(db).read(id.uid)
+            assertTrue(state.trialConsumed)
+            val binding=assertNotNull(state.grants.single().planBoundTrial)
+            assertEquals("DIAMOND",binding.trialPlan)
+            assertEquals(MembershipBillingPeriod.YEARLY,binding.trialBillingPeriod)
+            assertTrue(results.all{it.trial?.trialPlan==binding.trialPlan && it.trial?.trialEndsAt==binding.trialEndsAt})
+            assertEquals(1,db.collection("players/${id.uid}/entitlementAudit").get().get().size())
+            assertEquals(true,db.document("players/${id.uid}/promotions/initial-premium-trial").get().get().getBoolean("trialConsumed"))
+            val expired=TrialActivationService(FirestoreOnboardingProgressRepository(db),clock=java.time.Clock.fixed(binding.trialEndsAt.plusSeconds(1),java.time.ZoneOffset.UTC))
+            assertEquals("TRIAL_ALREADY_CONSUMED",assertFailsWith<OnboardingFailure>{
+                expired.activate(id,TrialActivationRequest(UUID.randomUUID().toString(),1,"GOLD","MONTHLY"))
+            }.code)
+            assertEquals(state,FirestoreEntitlements(db).read(id.uid))
         } finally {pool.shutdownNow()}
     }
     @Test fun testAccountExcluded() = database().use { db ->

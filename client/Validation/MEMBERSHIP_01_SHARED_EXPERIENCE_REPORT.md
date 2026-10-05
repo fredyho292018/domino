@@ -1122,3 +1122,130 @@ REAL_PURCHASE_EXECUTED=NO
 ```
 
 The commit SHA cannot be embedded in its own content. Post-commit push, remote SHA and terminal CI results are captured in the local `Generated/Membership01Checkpoint` evidence and the final task response. The deploy candidate is the resulting Membership checkpoint commit SHA, not an instruction to deploy. Stop after push/terminal CI; TEST deployment and real pricing validation require a later explicit task.
+
+## MEMBERSHIP_01_CI_FAILURE_REVIEW
+
+The original Backend CI run [37246116647](https://github.com/fredyho292018/domino/actions/runs/37246116647) for checkpoint `488b890090186e92b808faff337ef7321265a2d0` remains **FAILED**: `:emulatorTest`, 60 tests, 1 failure in `EntitlementEmulatorTests.concurrentActivation`. No remote CI rerun, commit, push or deployment was performed during this review. The checkpoint was neither amended nor rewritten.
+
+### Proven causal chain and fixture audit
+
+The exact test was run first, unchanged, against a fresh local Firestore emulator and reproduced the failure: `ExecutionException` wraps `OnboardingFailure: REQUEST_INVALID`. Original CI logs expose the wrapper and OnboardingFailure frames; the local JUnit XML supplies the sanitized code and deeper causal chain. Evidence is retained under `Generated/Membership01CIFailure/`: `ci-original-result.json`, `ci-failure-sanitized.txt`, `before/test-results/`, and `local-causal-chain-sanitized.txt`.
+
+The throw site is `onboardingCheck` in `OnboardingProgressModels.kt:8`, called by the request precondition in `PlanBoundTrial.kt:38`, via `TrialActivation.kt:101` and the transaction callback in `OnboardingProgressRepository.kt:19`. `PlanBoundTrials.create` requires a nonblank plan and canonical billing period. The old test supplied only request ID and policy version; both new fields were absent. This fails before catalog lookup. The exception name comes from a shared validator and transaction path; incomplete onboarding is not the cause, and the repository preserves the original OnboardingFailure code.
+
+| Fixture requirement | Before | After |
+| --- | --- | --- |
+| Player / foundation | ACTIVE GUEST; foundation created | Preserved |
+| Preferences / domino profile | Created by foundation | Preserved |
+| Onboarding | NOT_STARTED, revision 0, catalogVersion null; completion is not required for explicit activation | Preserved |
+| Alias global config | READY, normalizationVersion 1 | Preserved |
+| Existing trial / grants | Absent; eligible through default subscription policy version 1 | Preserved before activation |
+| Subscription policy | Seven-day trial, two-day reminder, linked identity not required | Preserved |
+| Plan / billing period | Missing | DIAMOND / YEARLY, canonical enum |
+| Membership catalog / pointer | Missing in isolated fixture | Canonical catalog and pointer published to emulator |
+| Target policy / trial reference | Missing with catalog | Created by canonical emulator seed |
+| Commercial offers / pricing | Absent | Absent; not required by this activation path |
+
+After the request validation, the production path requires the Membership catalog and pointer plus its target-policy data. Without the seed, the test would encounter a dependency failure next. `FirestoreMembershipCatalogRepository.publish(MembershipCatalogSeed.canonical())` supplies those emulator-only documents. This does not publish commercial offers or touch real TEST data. The activation path does not read store pricing or commercial-offer documents. The failure is classified **STALE_TEST_FIXTURE**, not a concurrency regression or a production validator defect.
+
+### Minimal correction and validation
+
+Only `server/domino/src/test/kotlin/com/teamfho/domino/entitlement/EntitlementEmulatorTests.kt` was changed in source. It seeds the canonical Membership catalog and sends DIAMOND/YEARLY. The six workers and twelve activation attempts remain. Assertions require exactly one ACTIVATED and eleven ALREADY_ACTIVE results; one persisted grant, one audit record, the consumed promotion marker, and matching bound plan/end time across all results. A request for GOLD/MONTHLY after expiry is rejected with TRIAL_ALREADY_CONSUMED and leaves entitlement state unchanged. The existing `bootstrapNoTrialWrites` test remains unchanged and passed, preserving the bootstrap no-auto-grant check. Production validation and eligibility rules were not weakened.
+
+| Local run | Total | Passed | Failed | Errors | Skipped |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Exact causal test, before correction | 1 | 0 | 1 | 0 | 0 |
+| Exact causal test, after correction | 1 | 1 | 0 | 0 | 0 |
+| First full suite, without CI Redis flags | 60 | 59 | 0 | 0 | 1 |
+| Final full suite, with CI Redis flags and disposable Redis | 60 | 60 | 0 | 0 | 0 |
+
+The first full run omitted the distributed Social emulator test because its Redis environment flag was absent. That result is retained accurately. The final full run enabled the workflow's Redis flags and used an isolated Redis container with an ownership label and no persistent volume. Both its owned Redis container and owned Firestore emulator were removed/stopped successfully. JUnit results for all four runs and `results.json` remain in the generated evidence folder. These are local results; they do not convert the original remote CI failure to a pass.
+
+Scope checks: production source files changed 0; test files changed 1; durable report files changed 1. Protected baseline hashes remain unchanged, 0/102 modified. Existing historical pending work was preserved. Scoped whitespace checks and sanitized evidence review passed; unrelated JVM/deprecation warnings were not repaired. No files are staged. No real Firestore, Player, trial, entitlement, pricing or catalog mutations occurred.
+
+```ini
+CHECKPOINT_SHA=488b890090186e92b808faff337ef7321265a2d0
+CI_RUN=37246116647
+CI_TASK=:emulatorTest
+CI_TESTS_TOTAL=60
+CI_TESTS_FAILED=1
+FAILING_TEST=EntitlementEmulatorTests.concurrentActivation
+ONBOARDING_FAILURE_CODE=REQUEST_INVALID
+ONBOARDING_FAILURE_MESSAGE_SANITIZED=OnboardingFailure: REQUEST_INVALID
+ONBOARDING_FAILURE_THROW_SITE=OnboardingProgressModels.kt:8 via PlanBoundTrial.kt:38
+CI_FAILURE_REPRODUCED_LOCALLY=YES
+CONCURRENT_ACTIVATION_FIXTURE_STATE=STALE_REQUEST_AND_MISSING_MEMBERSHIP_CATALOG
+FIXTURE_MATCHES_NEW_TRIAL_CONTRACT=NO_BEFORE;YES_AFTER
+MISSING_FIXTURE_REQUIREMENTS=plan;billingPeriod;catalog;catalogPointer;targetPolicy;trialReference
+ONBOARDING_FAILURE_CLASSIFICATION=STALE_TEST_FIXTURE
+EMULATOR_GLOBAL_CONFIG_COMPLETE=YES_AFTER_FIX
+EMULATOR_COMMERCIAL_OFFER_REQUIRED=NO
+EMULATOR_COMMERCIAL_OFFER_PRESENT=NO
+FIXTURE_BILLING_PERIOD_CANONICAL=YES_YEARLY
+CONCURRENT_ACTIVATION_SINGLE_WINNER_CONTRACT_PRESERVED=YES
+TEST_FIXTURE_FIX_REQUIRED=YES_APPLIED
+PRODUCTION_SOURCE_FIX_REQUIRED=NO
+EXACT_CAUSAL_TEST=PASS_1_OF_1
+EMULATOR_TEST_AFTER_FIX=PASS_60_OF_60;FAILED_0;ERRORS_0;SKIPPED_0
+MEMBERSHIP_EMULATOR_CONTRACT=PASS
+PRODUCTION_SOURCE_FILES_CHANGED=0
+TEST_FILES_CHANGED=1
+UNRELATED_SOURCE_CHANGED=NO
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+REAL_TEST_FIRESTORE_MUTATIONS=0
+REAL_PLAYER_MUTATIONS=0
+REAL_TRIAL_ACTIVATIONS=0
+REAL_ENTITLEMENT_MUTATIONS=0
+COMMIT=NONE
+PUSH=NONE
+DEPLOY=NO
+NEXT=MEMBERSHIP-01 CI FIX REVIEW
+```
+
+## MEMBERSHIP_01_CI_FIX_CHECKPOINT
+
+The CI-fix checkpoint is based on `488b890090186e92b808faff337ef7321265a2d0` on main and contains only the causal emulator test correction and this durable report. The historical CI run `37246116647` remains FAILED and is not rerun. The root cause remains STALE_TEST_FIXTURE / REQUEST_INVALID; production source and validation are unchanged.
+
+The reviewed fixture supplies DIAMOND, canonical YEARLY, catalog, catalog pointer, target policy and trial reference through the canonical emulator publication. No commercial-offer fixture was added. The original six workers / twelve requests and single-winner assertion remain, with assertions for eleven already-active responses, one grant, one audit record, consumed-trial state, consistent bound-trial results and rejection of a second trial after expiry. Duplicate activation grants: 0 in the successful local test.
+
+The source correction has not changed since the retained exact-test PASS 1/1 and complete emulator-suite PASS 60/60 (0 failures, errors or skipped tests). These tests are not repeated for checkpoint preparation. The new remote Backend CI will validate the committed tree.
+
+All 154 pending files were classified: 1 causal test, 1 Membership report, 102 protected, 39 historical and 11 temporary validation files. The 152 preexisting excluded files match their recorded hashes, including 0/102 protected modifications. Only the causal test and report are allowed into the index; product implementation, unrelated historical files and generated evidence are excluded. Local classification and staged-review evidence are saved under `Generated/Membership01CIFixCheckpoint/`.
+
+```ini
+HISTORICAL_FAILED_CI_PRESERVED=YES
+HISTORICAL_CI_RERUN=NO
+TEST_FIX_SCOPE_ONLY=YES
+FIXTURE_PLAN_PRESENT=YES
+FIXTURE_BILLING_PERIOD_PRESENT=YES
+FIXTURE_CATALOG_PRESENT=YES
+FIXTURE_CATALOG_POINTER_PRESENT=YES
+FIXTURE_TARGET_POLICY_PRESENT=YES
+FIXTURE_TRIAL_REFERENCE_PRESENT=YES
+FIXTURE_BILLING_PERIOD=YEARLY
+FIXTURE_BILLING_PERIOD_CANONICAL=YES
+EMULATOR_COMMERCIAL_OFFER_REQUIRED=NO
+UNNECESSARY_COMMERCIAL_OFFER_FIXTURE_ADDED=NO
+CONCURRENT_ACTIVATION_SINGLE_WINNER_CONTRACT_PRESERVED=YES
+DUPLICATE_ACTIVATION_GRANTS=0
+PRODUCTION_VALIDATION_WEAKENED=NO
+PRODUCTION_SOURCE_FIX_REQUIRED=NO
+EXACT_CAUSAL_TEST=PASS_1_OF_1
+EMULATOR_TEST_AFTER_FIX=PASS_60_OF_60
+MEMBERSHIP_EMULATOR_CONTRACT=PASS
+CHECKPOINT_EMULATOR_TEST_REPEATED=NO
+UNCLASSIFIED_PENDING_FILES=0
+HISTORICAL_PENDING_FILES_PRESERVED=152/152
+PREEXISTING_PROTECTED_FILES_MODIFIED=0/102
+CHECKPOINT_FIRESTORE_WRITES=0
+TEST_COMMERCIAL_OFFER_WRITES=0
+REAL_TRIAL_ACTIVATION_EXECUTED=NO
+REAL_PURCHASE_EXECUTED=NO
+REAL_PLAYER_MUTATIONS=0
+REAL_ENTITLEMENT_MUTATIONS=0
+BACKEND_REDEPLOYED=NO
+DEPLOY=NO
+PROD_DEPLOYMENT=NO
+```
+
+Commit/push and the new CI terminal outcome are recorded after this checkpoint is created. This commit cannot contain its own SHA or the future CI result; the post-checkpoint report update and generated evidence will retain those results without amending the checkpoint. TEST deployment requires the next explicitly authorized task.
